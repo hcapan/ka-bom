@@ -4,7 +4,6 @@ import { useCallback } from "react";
 import { useLocalStorage } from "usehooks-ts";
 import Sidebar from "./SideBar";
 import TopologyCanvas from "./TopologyCanvas";
-import InventoryPanel from "./InventoryPanel";
 import { Device, Link } from "../lib/types";
 
 export default function TopologyApp() {
@@ -19,8 +18,8 @@ export default function TopologyApp() {
   const handleSetLinks = useCallback((l: Link[]) => setLinks(l), [setLinks]);
 
   return (
-     <main className="min-h-screen grid grid-cols-1 lg:grid-cols-4 gap-4 p-4 bg-slate-50">
-          <aside className="lg:col-span-1">
+     <main className="min-h-screen grid grid-cols-1 lg:grid-cols-12 gap-4 p-4 bg-slate-50">
+          <aside className="lg:col-span-2 xl:col-span-2">
             <Sidebar
               devices={devices}
               links={links}
@@ -31,7 +30,7 @@ export default function TopologyApp() {
             />
           </aside>
     
-          <section className="lg:col-span-2">
+          <section className="lg:col-span-10 xl:col-span-10 max-h-screen min-w-0">
             <TopologyCanvas
               devices={devices}
               links={links}
@@ -41,9 +40,6 @@ export default function TopologyApp() {
             />
           </section>
     
-          <aside className="lg:col-span-1">
-            <InventoryPanel devices={devices} links={links} />
-          </aside>
         </main>
   );
 }
