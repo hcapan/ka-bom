@@ -1,29 +1,35 @@
 "use client";
 import { useState } from "react";
 import { HARDWARE_LIBRARY, DeviceType } from "../lib/hardware";
-import { Device, Link } from "../lib/types";
+import { ConfiguredDevice, Link } from "../lib/types";
 import InventoryPanel from "./InventoryPanel";
 import CollapsibleSection from "./CollapsibleSection";
 
 type Props = {
-  devices: Device[];
+  devices: ConfiguredDevice[];
   links: Link[];
-  setDevices: (d: Device[]) => void;
+  setDevices: (d: ConfiguredDevice[]) => void;
   setLinks: (l: Link[]) => void;
   defaultLinkSku: string;
   setDefaultLinkSku: (s: string) => void;
+  onExport: () => void;
+  onImport: (file: File) => void;
+  onReset: () => void;
 };
-
-const TOPOLOGY_SCHEMA_VERSION = 2;
 
 const TYPE_PREFIX: Record<DeviceType, string> = {
   core: "CORE",
   distribution: "DIST",
   access: "ACC",
   security: "SEC",
+  wireless: "WL",
+  management: "MGT",
 };
 
-function generateDeviceId(type: DeviceType, existing: Device[]): string {
+function generateDeviceId(
+  type: DeviceType,
+  existing: ConfiguredDevice[]
+): string {
   const prefix = TYPE_PREFIX[type] ?? "DEV";
   const nums = existing
     .filter((d) => d.id.startsWith(`${prefix}-`))
@@ -42,6 +48,9 @@ export default function Sidebar({
   setLinks,
   defaultLinkSku,
   setDefaultLinkSku,
+  onExport,
+  onImport,
+  onReset,
 }: Props) {
   const firstSeries = Object.keys(HARDWARE_LIBRARY)[0];
   const [newNode, setNewNode] = useState({
@@ -55,7 +64,9 @@ export default function Sidebar({
   const previewType = currentSeries.type;
   const previewId = generateDeviceId(previewType, devices);
 
-  // When the series changes, reset PID to the first one in that series
+  // ============================================================
+  // HANDLERS
+  // ============================================================
   const handleSeriesChange = (series: string) => {
     setNewNode({
       ...newNode,
@@ -68,16 +79,20 @@ export default function Sidebar({
     if (!newNode.name.trim()) return;
 
     const series = HARDWARE_LIBRARY[newNode.series];
-    const device: Device = {
+    const device: ConfiguredDevice = {
       id: generateDeviceId(series.type, devices),
       name: newNode.name.trim(),
-      model: newNode.series, // series name (e.g., "Catalyst 9500")
-      pid: newNode.pid, // specific PID (e.g., "C9500-48Y4C-A")
       type: series.type,
+      hardware: {
+        series: newNode.series,
+        chassisPid: newNode.pid,
+      },
+      // license/smartnet inherit from globalDefaults at BOM time,
+      // or get explicitly set in the Configure panel (Chunk 3)
     };
 
     setDevices([...devices, device]);
-    setNewNode({ ...newNode, name: "" }); // keep series/pid sticky
+    setNewNode({ ...newNode, name: "" });
   };
 
   const deleteDevice = (id: string) => {
@@ -85,31 +100,7 @@ export default function Sidebar({
     setLinks(links.filter((l) => l.from !== id && l.to !== id));
   };
 
-  const exportTopology = () => {
-    if (devices.length === 0) {
-      alert("Nothing to export — add some devices first.");
-      return;
-    }
-    const data = {
-      schemaVersion: TOPOLOGY_SCHEMA_VERSION,
-      exportedAt: new Date().toISOString(),
-      devices,
-      links,
-    };
-    const blob = new Blob([JSON.stringify(data, null, 2)], {
-      type: "application/json",
-    });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `topology-${new Date().toISOString().split("T")[0]}.json`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-  };
-
-  const importTopology = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImportFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     if (devices.length > 0 || links.length > 0) {
@@ -118,34 +109,20 @@ export default function Sidebar({
         return;
       }
     }
-    const reader = new FileReader();
-    reader.onload = (evt) => {
-      try {
-        const data = JSON.parse(evt.target?.result as string);
-        if (!Array.isArray(data.devices) || !Array.isArray(data.links)) {
-          throw new Error("Invalid file structure.");
-        }
-
-        // Backward-compat: old files might have `sku` instead of `pid`
-        const migratedDevices = data.devices.map((d: Device & { sku?: string }) => ({
-          ...d,
-          pid: d.pid ?? d.sku ?? "UNKNOWN",
-        }));
-
-        setDevices(migratedDevices);
-        setLinks(data.links);
-      } catch (err) {
-        alert(
-          `Could not import: ${err instanceof Error ? err.message : "error"}`
-        );
-      } finally {
-        e.target.value = "";
-      }
-    };
-    reader.readAsText(file);
+    onImport(file);
+    e.target.value = "";
   };
 
-  // Group series names by their layer/type for the optgroup dropdown
+  const handleReset = () => {
+    if (devices.length === 0 && links.length === 0) return;
+    if (confirm("Clear all devices and links?")) {
+      onReset();
+    }
+  };
+
+  // ============================================================
+  // GROUPING for Series Selector
+  // ============================================================
   const groupedSeries = Object.entries(HARDWARE_LIBRARY).reduce<
     Record<string, string[]>
   >((acc, [name, s]) => {
@@ -155,9 +132,18 @@ export default function Sidebar({
     return acc;
   }, {});
 
-  // Order of layer groups in the dropdown
-  const layerOrder: DeviceType[] = ["security", "core", "distribution", "access"];
+  const layerOrder: DeviceType[] = [
+    "security",
+    "core",
+    "distribution",
+    "access",
+    "wireless",
+    "management",
+  ];
 
+  // ============================================================
+  // RENDER
+  // ============================================================
   return (
     <div className="space-y-4">
       {/* ============================================ */}
@@ -192,10 +178,7 @@ export default function Sidebar({
               {layerOrder
                 .filter((layer) => groupedSeries[layer.toUpperCase()])
                 .map((layer) => (
-                  <optgroup
-                    key={layer}
-                    label={layer.toUpperCase()}
-                  >
+                  <optgroup key={layer} label={layer.toUpperCase()}>
                     {groupedSeries[layer.toUpperCase()].map((name) => (
                       <option key={name} value={name}>
                         {name}
@@ -311,7 +294,7 @@ export default function Sidebar({
                     {d.name}
                   </span>
                   <span className="text-[10px] text-slate-400 font-mono truncate">
-                    {d.id} · {d.pid}
+                    {d.id} · {d.hardware.chassisPid}
                   </span>
                 </div>
                 <button
@@ -336,7 +319,7 @@ export default function Sidebar({
         </p>
         <div className="flex gap-2 mb-2">
           <button
-            onClick={exportTopology}
+            onClick={onExport}
             className="flex-1 text-xs py-2 bg-slate-200 hover:bg-slate-300 rounded font-bold transition-colors"
           >
             ⬇ EXPORT
@@ -346,19 +329,13 @@ export default function Sidebar({
             <input
               type="file"
               accept=".json"
-              onChange={importTopology}
+              onChange={handleImportFile}
               className="hidden"
             />
           </label>
         </div>
         <button
-          onClick={() => {
-            if (devices.length === 0 && links.length === 0) return;
-            if (confirm("Clear all devices and links?")) {
-              setDevices([]);
-              setLinks([]);
-            }
-          }}
+          onClick={handleReset}
           disabled={devices.length === 0 && links.length === 0}
           className="w-full text-xs py-2 bg-red-50 hover:bg-red-100 text-red-700 rounded font-bold transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
         >

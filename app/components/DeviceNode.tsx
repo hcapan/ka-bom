@@ -5,8 +5,8 @@ import SwitchFaceplate from "./SwitchFaceplate";
 
 export type DeviceData = {
   name: string;
-  pid: string;
-  model: string;
+  pid: string;        // ← read from device.hardware.chassisPid
+  model: string;      // ← read from device.hardware.series
   type: DeviceType;
   [key: string]: unknown;
 };

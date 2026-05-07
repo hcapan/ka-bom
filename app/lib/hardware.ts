@@ -2,7 +2,7 @@
 // HARDWARE LIBRARY — Cisco Enterprise Catalog (Series → PIDs)
 // ============================================================
 
-export type DeviceType = "core" | "distribution" | "access" | "security";
+export type DeviceType = "core" | "distribution" | "access" | "security" | "wireless" | "management";
 
 export type PortSpeed =
   | "1G"
@@ -921,6 +921,18 @@ export const LAYER_CONFIG: Record<
   },
   access: {
     label: "ACCESS LAYER",
+    color: "#22c55e",
+    bg: "rgba(34, 197, 94, 0.05)",
+    y: 720,
+  },
+  wireless: {
+    label: "WIRELESS LAYER",
+    color: "#22c55e",
+    bg: "rgba(34, 197, 94, 0.05)",
+    y: 720,
+  },
+  management: {
+    label: "MANAGEMENT LAYER",
     color: "#22c55e",
     bg: "rgba(34, 197, 94, 0.05)",
     y: 720,

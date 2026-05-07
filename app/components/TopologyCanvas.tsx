@@ -19,10 +19,11 @@ import {
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 
-import DeviceNode, {DeviceData} from "./DeviceNode";
+import DeviceNode, { DeviceData } from "./DeviceNode";
 import CustomEdge from "./CustomEdge";
 import { Device, Link } from "../lib/types";
 import { LAYER_CONFIG, DeviceType } from "../lib/hardware";
+import { ConfiguredDevice } from "../lib/types";
 
 const nodeTypes = { device: DeviceNode };
 const edgeTypes = { custom: CustomEdge };
@@ -40,7 +41,7 @@ type Props = {
 // HELPERS
 // ============================================================
 
-function devicesToNodes(devices: Device[]): Node[] {
+function devicesToNodes(devices: ConfiguredDevice[]): Node[] {
   return devices.map((d, i) => ({
     id: d.id,
     type: "device",
@@ -50,8 +51,8 @@ function devicesToNodes(devices: Device[]): Node[] {
     },
     data: {
       name: d.name,
-      pid: d.pid,            // ✅ orderable SKU (e.g., C9500-48Y4C-A)
-      model: d.model,        // ✅ series name (e.g., Catalyst 9500)
+      pid: d.hardware.chassisPid, // ← was d.pid
+      model: d.hardware.series, // ← was d.model
       type: d.type,
     },
   }));
@@ -59,10 +60,11 @@ function devicesToNodes(devices: Device[]): Node[] {
 
 function linksToEdges(links: Link[]): Edge[] {
   return links.map((l) => {
-    const is100G = l.sku.includes("100G");
-    const is40G = l.sku.includes("40G");
-    const is25G = l.sku.includes("25G");
-    const isHighSpeed = is100G || is40G;
+    const opticPid = l.optic.pid; // ← was l.sku
+    const is100G = opticPid.includes("100G");
+    const is40G = opticPid.includes("40G");
+    const is25G = opticPid.includes("25G");
+    const isHighSpeed = is100G || is40G; 
 
     let label = "10G";
     let stroke = "#0ea5e9";
@@ -79,7 +81,7 @@ function linksToEdges(links: Link[]): Edge[] {
     } else if (is25G) {
       label = "25G";
       stroke = "#06b6d4";
-    } else if (l.sku.includes("1G") || l.sku.startsWith("GLC")) {
+    } else if (opticPid.includes("1G") || opticPid.startsWith("GLC")) {
       label = "1G";
       stroke = "#64748b";
     }
@@ -88,8 +90,8 @@ function linksToEdges(links: Link[]): Edge[] {
       id: l.id,
       source: l.from,
       target: l.to,
-      sourceHandle: l.sourceHandle,    // ✅ tell RF which handle to attach to
-      targetHandle: l.targetHandle,    // ✅
+      sourceHandle: l.sourceHandle, // ✅ tell RF which handle to attach to
+      targetHandle: l.targetHandle, // ✅
       type: "custom",
       label,
       animated: isHighSpeed && !l.isLateral, // don't animate HA links
@@ -131,13 +133,13 @@ function CanvasInner({
   }, [links]);
 
   const layerBands = useMemo(
-  () =>
-    Object.entries(LAYER_CONFIG).map(([type, cfg]) => ({
-      type: type as DeviceType,
-      ...cfg,
-    })),
-  []
-);
+    () =>
+      Object.entries(LAYER_CONFIG).map(([type, cfg]) => ({
+        type: type as DeviceType,
+        ...cfg,
+      })),
+    [],
+  );
 
   // ---------- One-way sync: PARENT → CANVAS (only when prop IDs differ) ----------
   // Handles external adds (Sidebar), Reset, Import JSON
@@ -145,7 +147,10 @@ function CanvasInner({
   const lastSyncedLinkIdsRef = useRef<string>("");
 
   useEffect(() => {
-    const incomingIds = devices.map((d) => d.id).sort().join("|");
+    const incomingIds = devices
+      .map((d) => d.id)
+      .sort()
+      .join("|");
     if (incomingIds !== lastSyncedDeviceIdsRef.current) {
       lastSyncedDeviceIdsRef.current = incomingIds;
       setNodes(devicesToNodes(devices));
@@ -153,7 +158,10 @@ function CanvasInner({
   }, [devices, setNodes]);
 
   useEffect(() => {
-    const incomingIds = links.map((l) => l.id).sort().join("|");
+    const incomingIds = links
+      .map((l) => l.id)
+      .sort()
+      .join("|");
     if (incomingIds !== lastSyncedLinkIdsRef.current) {
       lastSyncedLinkIdsRef.current = incomingIds;
       setEdges(linksToEdges(links));
@@ -163,14 +171,13 @@ function CanvasInner({
   // ---------- Imperative sync: CANVAS → PARENT ----------
   const onNodesChange = useCallback(
   (changes: NodeChange[]) => {
-    // ✅ Compute next state from current node state via flushSync-safe path
-    const currentNodes = nodes; // closure-captured; ok because we use functional setters below
-    const next = applyNodeChanges(changes, currentNodes);
+    // ✅ Compute next state OUTSIDE any setState updater
+    const next = applyNodeChanges(changes, nodes);
 
     // Always update React Flow's internal state
     setNodes(next);
 
-    // Only sync to parent on meaningful changes
+    // Detect meaningful changes for parent sync
     const hasPositionChange = changes.some(
       (c) => c.type === "position" && !c.dragging
     );
@@ -178,16 +185,22 @@ function CanvasInner({
 
     if (!hasPositionChange && !hasRemoval) return;
 
-    const newDevices: Device[] = next.map((n) => {
+    // Build new devices array (preserve hardware/license/smartnet config)
+    const newDevices: ConfiguredDevice[] = next.map((n) => {
       const data = n.data as DeviceData;
-      return {
-        id: n.id,
-        name: data.name,
-        pid: data.pid,
-        model: data.model,
-        type: data.type,
-        position: n.position,
-      };
+      const existing = devicesRef.current.find((d) => d.id === n.id);
+      return existing
+        ? { ...existing, position: n.position }
+        : {
+            id: n.id,
+            name: data.name,
+            type: data.type,
+            position: n.position,
+            hardware: {
+              series: data.model,
+              chassisPid: data.pid,
+            },
+          };
     });
 
     lastSyncedDeviceIdsRef.current = newDevices
@@ -216,68 +229,68 @@ function CanvasInner({
 );
 
   const onEdgesChange = useCallback(
-    (changes: EdgeChange[]) => {
-      setEdges((current) => {
-        const next = applyEdgeChanges(changes, current);
+  (changes: EdgeChange[]) => {
+    // ✅ Compute next state OUTSIDE any setState updater
+    const next = applyEdgeChanges(changes, edges);
 
-        const hasRemoval = changes.some((c) => c.type === "remove");
-        if (hasRemoval) {
-          const remainingIds = new Set(next.map((e) => e.id));
-          const newLinks = linksRef.current.filter((l) =>
-            remainingIds.has(l.id)
-          );
-          lastSyncedLinkIdsRef.current = newLinks
-            .map((l) => l.id)
-            .sort()
-            .join("|");
-          setLinks(newLinks);
+    const hasRemoval = changes.some((c) => c.type === "remove");
 
-          // Rebuild edges so CustomEdge re-evaluates pair counts
-          return linksToEdges(newLinks);
-        }
+    if (hasRemoval) {
+      const remainingIds = new Set(next.map((e) => e.id));
+      const newLinks = linksRef.current.filter((l) => remainingIds.has(l.id));
 
-        return next;
-      });
-    },
-    [setEdges, setLinks]
-  );
+      lastSyncedLinkIdsRef.current = newLinks
+        .map((l) => l.id)
+        .sort()
+        .join("|");
+
+      // Sequential setState calls (React batches them automatically)
+      setLinks(newLinks);
+      setEdges(linksToEdges(newLinks)); // rebuild for CustomEdge pair-counting
+    } else {
+      // No removal — just apply the changes (selection, etc.)
+      setEdges(next);
+    }
+  },
+  [edges, setEdges, setLinks]
+);
 
   // ---------- Connect handler ----------
   const onConnect = useCallback(
-  (params: Connection) => {
-    if (!params.source || !params.target) return;
-    if (params.source === params.target) return;
+    (params: Connection) => {
+      if (!params.source || !params.target) return;
+      if (params.source === params.target) return;
 
-    // Detect lateral link (HA/VSS/SVL)
-    const isLateral =
-      (params.sourceHandle === "left" || params.sourceHandle === "right") &&
-      (params.targetHandle === "left" || params.targetHandle === "right");
+      // Detect lateral link (HA/VSS/SVL)
+      const isLateral =
+        (params.sourceHandle === "left" || params.sourceHandle === "right") &&
+        (params.targetHandle === "left" || params.targetHandle === "right");
 
-    const newId = `${isLateral ? "HA" : "LNK"}-${Date.now()}-${Math.random()
-      .toString(36)
-      .slice(2, 7)
-      .toUpperCase()}`;
+      const newId = `${isLateral ? "HA" : "LNK"}-${Date.now()}-${Math.random()
+        .toString(36)
+        .slice(2, 7)
+        .toUpperCase()}`;
 
-    const newLink: Link = {
-      id: newId,
-      from: params.source,
-      to: params.target,
-      sku: defaultLinkSku,
-      sourceHandle: params.sourceHandle ?? undefined,  // ✅ remember which port
-      targetHandle: params.targetHandle ?? undefined,
-      isLateral,                                        // ✅ flag it
-    };
+      const newLink: Link = {
+        id: newId,
+        from: params.source,
+        to: params.target,
+        sourceHandle: params.sourceHandle ?? undefined,
+        targetHandle: params.targetHandle ?? undefined,
+        isLateral,
+        optic: { pid: defaultLinkSku },
+      };
 
-    const newLinks = [...linksRef.current, newLink];
-    lastSyncedLinkIdsRef.current = newLinks
-      .map((l) => l.id)
-      .sort()
-      .join("|");
-    setLinks(newLinks);
-    setEdges(linksToEdges(newLinks));
-  },
-  [setEdges, setLinks, defaultLinkSku]
-);
+      const newLinks = [...linksRef.current, newLink];
+      lastSyncedLinkIdsRef.current = newLinks
+        .map((l) => l.id)
+        .sort()
+        .join("|");
+      setLinks(newLinks);
+      setEdges(linksToEdges(newLinks));
+    },
+    [setEdges, setLinks, defaultLinkSku],
+  );
 
   return (
     <div className="w-full h-[80vh] bg-slate-100 rounded-xl shadow-inner border-2 border-slate-300 overflow-hidden relative">
@@ -306,7 +319,7 @@ function CanvasInner({
       </ReactFlow>
 
       {/* Layer labels (non-interactive overlay) */}
-       <div className="absolute top-2 left-2 z-10 flex flex-col gap-1 pointer-events-none">
+      <div className="absolute top-2 left-2 z-10 flex flex-col gap-1 pointer-events-none">
         {layerBands.map((band) => (
           <span
             key={band.type}
@@ -316,25 +329,20 @@ function CanvasInner({
             ▎ {band.label}
           </span>
         ))}
-      </div> 
-
+      </div>
 
       <div className="absolute top-2 right-35 z-10">
-        
         <span className="bg-white/90 px-3 py-1 rounded-full text-[12px] font-bold text-slate-500 shadow-sm border">
           DRAG NODES • CONNECT HANDLES • DEL TO REMOVE
         </span>
       </div>
       <div className="absolute top-2 right-5 z-10">
-        <span className="text-[12px] font-bold bg-white/90 px-3 py-1 rounded-full text-slate-500 shadow-sm border" >
-          { (
-        <button
-          onClick={onExport}
-          title="Export topology as JSON"
-        >
-          ⬇ Export BOM
-        </button>
-      )}
+        <span className="text-[12px] font-bold bg-white/90 px-3 py-1 rounded-full text-slate-500 shadow-sm border">
+          {
+            <button onClick={onExport} title="Export topology as JSON">
+              ⬇ Export BOM
+            </button>
+          }
         </span>
       </div>
     </div>
