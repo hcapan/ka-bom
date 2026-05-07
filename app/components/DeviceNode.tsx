@@ -40,6 +40,7 @@ function DeviceNode({ data, selected }: NodeProps) {
         >
           {d.type}
         </span>
+        
       </div>
 
       <div className="text-sm font-bold text-slate-800 mb-0.5">{d.name}</div>

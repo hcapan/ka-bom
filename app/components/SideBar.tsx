@@ -14,7 +14,7 @@ type Props = {
   setDefaultLinkSku: (s: string) => void;
 };
 
-const TOPOLOGY_SCHEMA_VERSION = 1;
+const TOPOLOGY_SCHEMA_VERSION = 2;
 
 const TYPE_PREFIX: Record<DeviceType, string> = {
   core: "CORE",
@@ -43,33 +43,41 @@ export default function Sidebar({
   defaultLinkSku,
   setDefaultLinkSku,
 }: Props) {
-  const firstModel = Object.keys(HARDWARE_LIBRARY)[0];
+  const firstSeries = Object.keys(HARDWARE_LIBRARY)[0];
   const [newNode, setNewNode] = useState({
     name: "",
-    model: firstModel,
-    sku: HARDWARE_LIBRARY[firstModel].skus[0],
+    series: firstSeries,
+    pid: HARDWARE_LIBRARY[firstSeries].pids[0].pid,
   });
 
-  // ✅ Live preview of the next ID
-  const previewType = HARDWARE_LIBRARY[newNode.model].type as DeviceType;
+  const currentSeries = HARDWARE_LIBRARY[newNode.series];
+  const currentPidObj = currentSeries.pids.find((p) => p.pid === newNode.pid);
+  const previewType = currentSeries.type;
   const previewId = generateDeviceId(previewType, devices);
+
+  // When the series changes, reset PID to the first one in that series
+  const handleSeriesChange = (series: string) => {
+    setNewNode({
+      ...newNode,
+      series,
+      pid: HARDWARE_LIBRARY[series].pids[0].pid,
+    });
+  };
 
   const addNode = () => {
     if (!newNode.name.trim()) return;
 
-    const modelData = HARDWARE_LIBRARY[newNode.model];
-    const type = modelData.type as DeviceType;
-
+    const series = HARDWARE_LIBRARY[newNode.series];
     const device: Device = {
-      id: generateDeviceId(type, devices),
+      id: generateDeviceId(series.type, devices),
       name: newNode.name.trim(),
-      model: newNode.model,
-      sku: newNode.sku,
-      type,
+      model: newNode.series, // series name (e.g., "Catalyst 9500")
+      pid: newNode.pid, // specific PID (e.g., "C9500-48Y4C-A")
+      type: series.type,
     };
 
     setDevices([...devices, device]);
-    setNewNode({ ...newNode, name: "" });
+    setNewNode({ ...newNode, name: "" }); // keep series/pid sticky
   };
 
   const deleteDevice = (id: string) => {
@@ -117,7 +125,14 @@ export default function Sidebar({
         if (!Array.isArray(data.devices) || !Array.isArray(data.links)) {
           throw new Error("Invalid file structure.");
         }
-        setDevices(data.devices);
+
+        // Backward-compat: old files might have `sku` instead of `pid`
+        const migratedDevices = data.devices.map((d: Device & { sku?: string }) => ({
+          ...d,
+          pid: d.pid ?? d.sku ?? "UNKNOWN",
+        }));
+
+        setDevices(migratedDevices);
         setLinks(data.links);
       } catch (err) {
         alert(
@@ -130,67 +145,96 @@ export default function Sidebar({
     reader.readAsText(file);
   };
 
+  // Group series names by their layer/type for the optgroup dropdown
+  const groupedSeries = Object.entries(HARDWARE_LIBRARY).reduce<
+    Record<string, string[]>
+  >((acc, [name, s]) => {
+    const key = s.type.toUpperCase();
+    acc[key] = acc[key] || [];
+    acc[key].push(name);
+    return acc;
+  }, {});
+
+  // Order of layer groups in the dropdown
+  const layerOrder: DeviceType[] = ["security", "core", "distribution", "access"];
+
   return (
     <div className="space-y-4">
-      {/* Add Device */}
+      {/* ============================================ */}
+      {/* ADD DEVICE                                   */}
+      {/* ============================================ */}
       <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
         <p className="text-[10px] uppercase font-bold text-slate-500 mb-3">
           Add Device
         </p>
         <div className="space-y-3">
+          {/* Hostname */}
           <input
             placeholder="HOSTNAME"
             className="w-full border border-slate-200 p-2 rounded text-sm"
             value={newNode.name}
-            onChange={(e) =>
-              setNewNode({ ...newNode, name: e.target.value })
-            }
+            onChange={(e) => setNewNode({ ...newNode, name: e.target.value })}
             onKeyDown={(e) => {
               if (e.key === "Enter") addNode();
             }}
           />
 
-          <select
-            className="w-full border border-slate-200 p-2 rounded text-sm"
-            value={newNode.model}
-            onChange={(e) =>
-              setNewNode({
-                ...newNode,
-                model: e.target.value,
-                sku: HARDWARE_LIBRARY[e.target.value].skus[0],
-              })
-            }
-          >
-            {Object.keys(HARDWARE_LIBRARY).map((m) => (
-              <option key={m} value={m}>
-                {m}
-              </option>
-            ))}
-          </select>
+          {/* Series selector */}
+          <div>
+            <label className="text-[10px] uppercase font-bold text-slate-500">
+              Series
+            </label>
+            <select
+              className="w-full border border-slate-200 p-2 rounded text-sm mt-1"
+              value={newNode.series}
+              onChange={(e) => handleSeriesChange(e.target.value)}
+            >
+              {layerOrder
+                .filter((layer) => groupedSeries[layer.toUpperCase()])
+                .map((layer) => (
+                  <optgroup
+                    key={layer}
+                    label={layer.toUpperCase()}
+                  >
+                    {groupedSeries[layer.toUpperCase()].map((name) => (
+                      <option key={name} value={name}>
+                        {name}
+                      </option>
+                    ))}
+                  </optgroup>
+                ))}
+            </select>
+          </div>
 
-          <select
-            className="w-full border border-slate-200 p-2 rounded text-sm"
-            value={newNode.sku}
-            onChange={(e) => setNewNode({ ...newNode, sku: e.target.value })}
-          >
-            {HARDWARE_LIBRARY[newNode.model].skus.map((s) => (
-              <option key={s} value={s}>
-                {s}
-              </option>
-            ))}
-          </select>
+          {/* Series description */}
+          <div className="text-[11px] text-slate-500 bg-slate-50 p-2 rounded border border-slate-100 italic">
+            {currentSeries.description}
+          </div>
 
-{newNode.model && (
-  <div className="text-[11px] text-slate-500 bg-slate-50 p-2 rounded border border-slate-100">
-    <p className="font-semibold text-slate-700">
-      {HARDWARE_LIBRARY[newNode.model].ports}
-    </p>
-    <p className="mt-1 italic">
-      {HARDWARE_LIBRARY[newNode.model].description}
-    </p>
-  </div>
-)}
-          {/* ✅ Live ID preview */}
+          {/* PID selector */}
+          <div>
+            <label className="text-[10px] uppercase font-bold text-slate-500">
+              Product (PID)
+            </label>
+            <select
+              className="w-full border border-slate-200 p-2 rounded text-sm mt-1 font-mono"
+              value={newNode.pid}
+              onChange={(e) => setNewNode({ ...newNode, pid: e.target.value })}
+            >
+              {currentSeries.pids.map((p) => (
+                <option key={p.pid} value={p.pid}>
+                  {p.pid}
+                </option>
+              ))}
+            </select>
+            {currentPidObj && (
+              <p className="text-[10px] text-slate-400 mt-1">
+                {currentPidObj.description}
+              </p>
+            )}
+          </div>
+
+          {/* Auto-generated ID preview */}
           <p className="text-[10px] text-slate-400">
             Auto ID:{" "}
             <span className="font-mono font-semibold text-slate-600">
@@ -198,6 +242,7 @@ export default function Sidebar({
             </span>
           </p>
 
+          {/* Add button */}
           <button
             onClick={addNode}
             disabled={!newNode.name.trim()}
@@ -208,7 +253,9 @@ export default function Sidebar({
         </div>
       </div>
 
-      {/* Default Link SKU */}
+      {/* ============================================ */}
+      {/* DEFAULT LINK SKU                             */}
+      {/* ============================================ */}
       <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200">
         <p className="text-[10px] uppercase font-bold text-slate-500 mb-2">
           Default Link Type
@@ -218,15 +265,33 @@ export default function Sidebar({
           value={defaultLinkSku}
           onChange={(e) => setDefaultLinkSku(e.target.value)}
         >
-          <option value="QSFP-40G-SR4">40G QSFP</option>
-          <option value="SFP-10G-SR">10G SFP+</option>
+          <optgroup label="100G">
+            <option value="QSFP-100G-SR4">100G SR4 (Multi-mode)</option>
+            <option value="QSFP-100G-LR4">100G LR4 (Single-mode)</option>
+          </optgroup>
+          <optgroup label="40G">
+            <option value="QSFP-40G-SR4">40G SR4</option>
+          </optgroup>
+          <optgroup label="25G">
+            <option value="SFP-25G-SR-S">25G SR</option>
+          </optgroup>
+          <optgroup label="10G">
+            <option value="SFP-10G-SR">10G SR (Multi-mode)</option>
+            <option value="SFP-10G-LR">10G LR (Single-mode)</option>
+          </optgroup>
+          <optgroup label="1G">
+            <option value="GLC-SX-MMD">1G SX (Multi-mode)</option>
+            <option value="GLC-LH-SMD">1G LH (Single-mode)</option>
+          </optgroup>
         </select>
         <p className="text-[10px] text-slate-400 mt-2 italic">
           Used when you drag-connect nodes on the canvas.
         </p>
       </div>
 
-      {/* Device List */}
+      {/* ============================================ */}
+      {/* DEVICE LIST                                  */}
+      {/* ============================================ */}
       <CollapsibleSection
         title="Devices"
         count={devices.length}
@@ -241,12 +306,12 @@ export default function Sidebar({
                 key={d.id}
                 className="flex justify-between items-center text-xs py-1 px-2 hover:bg-slate-50 rounded group"
               >
-                <div className="flex flex-col min-w-0">
+                <div className="flex flex-col min-w-0 flex-1">
                   <span className="font-semibold text-slate-700 truncate">
                     {d.name}
                   </span>
-                  <span className="text-[10px] text-slate-400 font-mono">
-                    {d.id}
+                  <span className="text-[10px] text-slate-400 font-mono truncate">
+                    {d.id} · {d.pid}
                   </span>
                 </div>
                 <button
@@ -262,10 +327,9 @@ export default function Sidebar({
         )}
       </CollapsibleSection>
 
-
-      
-
-      {/* File Toolbar */}
+      {/* ============================================ */}
+      {/* FILE TOOLBAR                                 */}
+      {/* ============================================ */}
       <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200">
         <p className="text-[10px] uppercase font-bold text-slate-500 mb-3">
           Topology File
@@ -302,6 +366,9 @@ export default function Sidebar({
         </button>
       </div>
 
+      {/* ============================================ */}
+      {/* INVENTORY                                    */}
+      {/* ============================================ */}
       <InventoryPanel devices={devices} links={links} />
     </div>
   );

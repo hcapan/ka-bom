@@ -1,272 +1,270 @@
+// ============================================================
+// HARDWARE LIBRARY — Cisco Enterprise Catalog (Series → PIDs)
+// ============================================================
+
 export type DeviceType = "core" | "distribution" | "access" | "security";
 
-export interface HardwareModel {
-  type: DeviceType;
-  category: string; // e.g., "Catalyst 9500", "Nexus 9000"
-  description: string;
-  ports: string; // human-readable port summary
-  skus: string[]; // available transceiver/module SKUs for uplinks
+export interface ProductSKU {
+  pid: string;          // e.g., "C9500-48Y4C-A"
+  description: string;  // human-readable note (ports, license, etc.)
 }
 
-export const HARDWARE_LIBRARY: Record<string, HardwareModel> = {
+export interface HardwareSeries {
+  type: DeviceType;
+  vendor: string;
+  description: string;             // overall series description
+  pids: ProductSKU[];              // all orderable variants in this series
+  compatibleOptics: string[];      // shared optics for the series
+}
+
+// Top-level keys are SERIES (what user picks first)
+// Inside each, `pids` contains specific orderable SKUs (what user picks second)
+export const HARDWARE_LIBRARY: Record<string, HardwareSeries> = {
   // ============================================================
-  // CORE / DATA CENTER SPINE
+  // CORE / DATA CENTER
   // ============================================================
-  "Catalyst 9500-48Y4C": {
+  "Catalyst 9500": {
     type: "core",
-    category: "Catalyst 9500",
-    description: "48x 25G SFP28 + 4x 100G QSFP28 — Campus Core",
-    ports: "48x 25G + 4x 100G",
-    skus: [
+    vendor: "Cisco",
+    description: "Fixed Campus Core / Aggregation",
+    compatibleOptics: [
       "QSFP-100G-SR4",
       "QSFP-100G-LR4",
-      "QSFP-40G-SR4",
-      "SFP-25G-SR-S",
-      "SFP-10G-SR",
-    ],
-  },
-  "Catalyst 9500-24Y4C": {
-    type: "core",
-    category: "Catalyst 9500",
-    description: "24x 25G SFP28 + 4x 100G QSFP28 — Campus Core",
-    ports: "24x 25G + 4x 100G",
-    skus: [
-      "QSFP-100G-SR4",
-      "QSFP-40G-SR4",
-      "SFP-25G-SR-S",
-      "SFP-10G-SR",
-    ],
-  },
-  "Catalyst 9500-32C": {
-    type: "core",
-    category: "Catalyst 9500",
-    description: "32x 100G QSFP28 — High-Density Core",
-    ports: "32x 100G",
-    skus: ["QSFP-100G-SR4", "QSFP-100G-LR4", "QSFP-40G-SR4"],
-  },
-  "Catalyst 9500-40X": {
-    type: "core",
-    category: "Catalyst 9500",
-    description: "40x 10G SFP+ — Mid-Density Core",
-    ports: "40x 10G",
-    skus: ["SFP-10G-SR", "SFP-10G-LR", "QSFP-40G-SR4"],
-  },
-  "Nexus 9336C-FX2": {
-    type: "core",
-    category: "Nexus 9000",
-    description: "36x 100G QSFP28 — Data Center Spine",
-    ports: "36x 100G",
-    skus: [
-      "QSFP-100G-SR4",
-      "QSFP-100G-LR4",
-      "QSFP-100G-AOC3M",
-      "QSFP-40G-SR4",
-    ],
-  },
-  "Nexus 93180YC-FX3": {
-    type: "core",
-    category: "Nexus 9000",
-    description: "48x 25G SFP28 + 6x 100G QSFP28 — Data Center Leaf",
-    ports: "48x 25G + 6x 100G",
-    skus: [
-      "QSFP-100G-SR4",
-      "QSFP-40G-SR4",
-      "SFP-25G-SR-S",
-      "SFP-10G-SR",
-    ],
-  },
-  "Nexus 9364C": {
-    type: "core",
-    category: "Nexus 9000",
-    description: "64x 100G QSFP28 — DC Spine / Super-Spine",
-    ports: "64x 100G",
-    skus: ["QSFP-100G-SR4", "QSFP-100G-LR4", "QSFP-100G-AOC3M"],
-  },
-
-  // ============================================================
-  // DISTRIBUTION / AGGREGATION
-  // ============================================================
-  "Catalyst 9400-Sup-1XL": {
-    type: "distribution",
-    category: "Catalyst 9400",
-    description: "Modular Chassis Supervisor — 240Gbps per slot",
-    ports: "Modular (up to 384 ports)",
-    skus: ["QSFP-40G-SR4", "SFP-10G-SR", "SFP-10G-LR", "GLC-SX-MMD"],
-  },
-  "Catalyst 9400-Sup-2": {
-    type: "distribution",
-    category: "Catalyst 9400",
-    description: "High-Performance Modular Supervisor — 480Gbps per slot",
-    ports: "Modular (up to 384 ports)",
-    skus: [
-      "QSFP-100G-SR4",
-      "QSFP-40G-SR4",
-      "SFP-25G-SR-S",
-      "SFP-10G-SR",
-    ],
-  },
-  "Catalyst 9300-48UXM": {
-    type: "distribution",
-    category: "Catalyst 9300",
-    description: "36x 2.5G + 12x 5G UPOE — Distribution / Aggregation",
-    ports: "48x mGig UPOE + 8x 10G uplinks",
-    skus: ["QSFP-40G-SR4", "SFP-10G-SR", "SFP-10G-LR"],
-  },
-  "Catalyst 9300-24UX": {
-    type: "distribution",
-    category: "Catalyst 9300",
-    description: "24x mGig UPOE — Distribution",
-    ports: "24x mGig + 8x 10G uplinks",
-    skus: ["QSFP-40G-SR4", "SFP-10G-SR", "SFP-10G-LR"],
-  },
-  "Catalyst 9300X-48HXN": {
-    type: "distribution",
-    category: "Catalyst 9300X",
-    description: "48x mGig + 8x 25G uplinks — Modern Aggregation",
-    ports: "48x mGig + 8x 25G",
-    skus: ["SFP-25G-SR-S", "SFP-10G-SR", "QSFP-40G-SR4"],
-  },
-
-  // ============================================================
-  // ACCESS LAYER
-  // ============================================================
-  "Catalyst 9300-48P": {
-    type: "access",
-    category: "Catalyst 9300",
-    description: "48x 1G PoE+ + 4x 10G uplinks — Standard Access",
-    ports: "48x 1G PoE+ + 4x 10G",
-    skus: ["SFP-10G-SR", "SFP-10G-LR", "GLC-SX-MMD", "GLC-LH-SMD"],
-  },
-  "Catalyst 9300-24P": {
-    type: "access",
-    category: "Catalyst 9300",
-    description: "24x 1G PoE+ + 4x 10G uplinks — Small Branch Access",
-    ports: "24x 1G PoE+ + 4x 10G",
-    skus: ["SFP-10G-SR", "SFP-10G-LR", "GLC-SX-MMD"],
-  },
-  "Catalyst 9300-48T": {
-    type: "access",
-    category: "Catalyst 9300",
-    description: "48x 1G + 4x 10G — Data-Only Access",
-    ports: "48x 1G + 4x 10G",
-    skus: ["SFP-10G-SR", "SFP-10G-LR", "GLC-SX-MMD"],
-  },
-  "Catalyst 9200-48P": {
-    type: "access",
-    category: "Catalyst 9200",
-    description: "48x 1G PoE+ + 4x 10G — Cost-Effective Access",
-    ports: "48x 1G PoE+ + 4x 10G",
-    skus: ["SFP-10G-SR", "GLC-SX-MMD", "GLC-LH-SMD"],
-  },
-  "Catalyst 9200-24P": {
-    type: "access",
-    category: "Catalyst 9200",
-    description: "24x 1G PoE+ + 4x 10G — Small Branch",
-    ports: "24x 1G PoE+ + 4x 10G",
-    skus: ["SFP-10G-SR", "GLC-SX-MMD"],
-  },
-  "Catalyst 9200L-24T": {
-    type: "access",
-    category: "Catalyst 9200L",
-    description: "24x 1G + 4x 10G — Lite Access (No PoE)",
-    ports: "24x 1G + 4x 10G",
-    skus: ["SFP-10G-SR", "GLC-SX-MMD"],
-  },
-  "Catalyst 9200L-48T": {
-    type: "access",
-    category: "Catalyst 9200L",
-    description: "48x 1G + 4x 10G — Lite Access (No PoE)",
-    ports: "48x 1G + 4x 10G",
-    skus: ["SFP-10G-SR", "GLC-SX-MMD"],
-  },
-  "Meraki MS390-48P": {
-    type: "access",
-    category: "Meraki",
-    description: "48x 1G PoE+ + 4x 10G — Cloud-Managed Access",
-    ports: "48x 1G PoE+ + 4x 10G",
-    skus: ["MA-SFP-10GB-SR", "MA-SFP-10GB-LR", "MA-SFP-1GB-SX"],
-  },
-  "Meraki MS250-48FP": {
-    type: "access",
-    category: "Meraki",
-    description: "48x 1G Full PoE + 4x 10G — Cloud-Managed Access",
-    ports: "48x 1G PoE+ + 4x 10G",
-    skus: ["MA-SFP-10GB-SR", "MA-SFP-10GB-LR"],
-  },
-
-  // ============================================================
-  // SECURITY / FIREWALL (Cisco Secure Firewall)
-  // ============================================================
-  "Secure Firewall 1010": {
-    type: "security",
-    category: "Cisco Secure Firewall",
-    description: "2 Gbps NGFW — Small Branch / SOHO",
-    ports: "8x 1G RJ45",
-    skus: ["SFP-1G-T", "GLC-SX-MMD"],
-  },
-  "Secure Firewall 1140": {
-    type: "security",
-    category: "Cisco Secure Firewall",
-    description: "8.5 Gbps NGFW — Branch Office",
-    ports: "8x 1G + 4x 10G SFP+",
-    skus: ["SFP-10G-SR", "SFP-10G-LR", "GLC-SX-MMD"],
-  },
-  "Secure Firewall 3110": {
-    type: "security",
-    category: "Cisco Secure Firewall",
-    description: "17 Gbps NGFW — Mid-Sized Enterprise",
-    ports: "8x 1G + 8x 10G SFP+",
-    skus: ["SFP-10G-SR", "SFP-10G-LR", "GLC-SX-MMD"],
-  },
-  "Secure Firewall 3140": {
-    type: "security",
-    category: "Cisco Secure Firewall",
-    description: "45 Gbps NGFW — Enterprise Edge",
-    ports: "8x 1G + 8x 10G + 8x 25G SFP28",
-    skus: ["SFP-25G-SR-S", "SFP-10G-SR", "SFP-10G-LR"],
-  },
-  "Secure Firewall 4115": {
-    type: "security",
-    category: "Cisco Secure Firewall",
-    description: "55 Gbps NGFW — Data Center Perimeter",
-    ports: "8x 10G + 8x 25G + 4x 40G QSFP+",
-    skus: [
       "QSFP-40G-SR4",
       "SFP-25G-SR-S",
       "SFP-10G-SR",
       "SFP-10G-LR",
     ],
+    pids: [
+      { pid: "C9500-48Y4C-A", description: "48x 25G + 4x 100G — Network Advantage" },
+      { pid: "C9500-48Y4C-E", description: "48x 25G + 4x 100G — Network Essentials" },
+      { pid: "C9500-24Y4C-A", description: "24x 25G + 4x 100G — Network Advantage" },
+      { pid: "C9500-24Y4C-E", description: "24x 25G + 4x 100G — Network Essentials" },
+      { pid: "C9500-32C-A",   description: "32x 100G — Network Advantage" },
+      { pid: "C9500-32C-E",   description: "32x 100G — Network Essentials" },
+      { pid: "C9500-40X-A",   description: "40x 10G — Network Advantage" },
+      { pid: "C9500-40X-E",   description: "40x 10G — Network Essentials" },
+      { pid: "C9500-16X-A",   description: "16x 10G — Network Advantage" },
+      { pid: "C9500-16X-E",   description: "16x 10G — Network Essentials" },
+    ],
   },
-  "Secure Firewall 4145": {
-    type: "security",
-    category: "Cisco Secure Firewall",
-    description: "80 Gbps NGFW — Large DC / Campus Core",
-    ports: "16x 10G + 8x 40G QSFP+ + 4x 100G QSFP28",
-    skus: [
+
+  "Catalyst 9500X": {
+    type: "core",
+    vendor: "Cisco",
+    description: "Next-Gen High-Performance Core",
+    compatibleOptics: [
+      "QSFP-400G-SR4",
+      "QSFP-400G-LR4",
       "QSFP-100G-SR4",
+      "QSFP-100G-LR4",
+      "SFP-25G-SR-S",
+    ],
+    pids: [
+      { pid: "C9500X-28C8D-A", description: "28x 100G + 8x 400G — Network Advantage" },
+      { pid: "C9500X-28C8D-E", description: "28x 100G + 8x 400G — Network Essentials" },
+      { pid: "C9500X-60L4D-A", description: "60x 50G + 4x 400G — Network Advantage" },
+    ],
+  },
+
+  "Nexus 9000": {
+    type: "core",
+    vendor: "Cisco",
+    description: "Data Center Spine / Leaf",
+    compatibleOptics: [
+      "QSFP-100G-SR4",
+      "QSFP-100G-LR4",
+      "QSFP-100G-AOC3M",
       "QSFP-40G-SR4",
       "SFP-25G-SR-S",
       "SFP-10G-SR",
     ],
+    pids: [
+      { pid: "N9K-C9336C-FX2",   description: "36x 100G — DC Spine" },
+      { pid: "N9K-C9336C-FX2-Z", description: "36x 100G — Cloud Scale Z" },
+      { pid: "N9K-C93180YC-FX3", description: "48x 25G + 6x 100G — DC Leaf" },
+      { pid: "N9K-C9364C",       description: "64x 100G — DC Super-Spine" },
+      { pid: "N9K-C9364C-GX",    description: "64x 100G — Cloud Scale GX" },
+      { pid: "N9K-C93600CD-GX",  description: "28x 100G + 8x 400G — Modern Spine" },
+    ],
   },
-  "Secure Firewall 9300": {
-    type: "security",
-    category: "Cisco Secure Firewall",
-    description: "240 Gbps NGFW — Service Provider / Large DC",
-    ports: "Modular: up to 32x 100G QSFP28",
-    skus: [
+
+  // ============================================================
+  // DISTRIBUTION / AGGREGATION
+  // ============================================================
+  "Catalyst 9400": {
+    type: "distribution",
+    vendor: "Cisco",
+    description: "Modular Chassis — Distribution / Aggregation",
+    compatibleOptics: [
+      "QSFP-40G-SR4",
+      "SFP-10G-SR",
+      "SFP-10G-LR",
+      "GLC-SX-MMD",
+    ],
+    pids: [
+      { pid: "C9404R", description: "4-Slot Chassis" },
+      { pid: "C9407R", description: "7-Slot Chassis" },
+      { pid: "C9410R", description: "10-Slot Chassis" },
+      { pid: "C9400-SUP-1XL",   description: "Supervisor 1XL — 240Gbps/slot" },
+      { pid: "C9400-SUP-1XL-Y", description: "Supervisor 1XL-Y — Enhanced" },
+      { pid: "C9400-SUP-2",     description: "Supervisor 2 — 480Gbps/slot" },
+    ],
+  },
+
+  // ============================================================
+  // ACCESS LAYER
+  // ============================================================
+  "Catalyst 9300": {
+    type: "access",
+    vendor: "Cisco",
+    description: "Stackable Access / Distribution",
+    compatibleOptics: [
+      "SFP-10G-SR",
+      "SFP-10G-LR",
+      "QSFP-40G-SR4",
+      "GLC-SX-MMD",
+      "GLC-LH-SMD",
+    ],
+    pids: [
+      { pid: "C9300-48P-A",   description: "48x 1G PoE+ + 4x 10G — Network Advantage" },
+      { pid: "C9300-48P-E",   description: "48x 1G PoE+ + 4x 10G — Network Essentials" },
+      { pid: "C9300-48T-A",   description: "48x 1G + 4x 10G — Network Advantage" },
+      { pid: "C9300-48T-E",   description: "48x 1G + 4x 10G — Network Essentials" },
+      { pid: "C9300-24P-A",   description: "24x 1G PoE+ + 4x 10G — Network Advantage" },
+      { pid: "C9300-24P-E",   description: "24x 1G PoE+ + 4x 10G — Network Essentials" },
+      { pid: "C9300-24T-A",   description: "24x 1G + 4x 10G — Network Advantage" },
+      { pid: "C9300-48UXM-A", description: "48x mGig UPOE + 8x 10G — Network Advantage" },
+      { pid: "C9300-48UXM-E", description: "48x mGig UPOE + 8x 10G — Network Essentials" },
+      { pid: "C9300-24UX-A",  description: "24x mGig UPOE + 8x 10G — Network Advantage" },
+    ],
+  },
+
+  "Catalyst 9300X": {
+    type: "access",
+    vendor: "Cisco",
+    description: "Next-Gen Stackable Access with 25G/100G Uplinks",
+    compatibleOptics: [
+      "SFP-25G-SR-S",
+      "SFP-10G-SR",
       "QSFP-100G-SR4",
-      "QSFP-100G-LR4",
+      "QSFP-40G-SR4",
+    ],
+    pids: [
+      { pid: "C9300X-48HXN-A", description: "48x mGig + 8x 25G — Network Advantage" },
+      { pid: "C9300X-48HXN-E", description: "48x mGig + 8x 25G — Network Essentials" },
+      { pid: "C9300X-24HXN-A", description: "24x mGig + 8x 25G — Network Advantage" },
+      { pid: "C9300X-12Y-A",   description: "12x 25G — Aggregation" },
+      { pid: "C9300X-24Y-A",   description: "24x 25G — Aggregation" },
+    ],
+  },
+
+  "Catalyst 9200": {
+    type: "access",
+    vendor: "Cisco",
+    description: "Cost-Effective Stackable Access",
+    compatibleOptics: ["SFP-10G-SR", "GLC-SX-MMD", "GLC-LH-SMD"],
+    pids: [
+      { pid: "C9200-48P-A",  description: "48x 1G PoE+ + 4x 10G — Network Advantage" },
+      { pid: "C9200-48P-E",  description: "48x 1G PoE+ + 4x 10G — Network Essentials" },
+      { pid: "C9200-48T-A",  description: "48x 1G + 4x 10G — Network Advantage" },
+      { pid: "C9200-24P-A",  description: "24x 1G PoE+ + 4x 10G — Network Advantage" },
+      { pid: "C9200-24P-E",  description: "24x 1G PoE+ + 4x 10G — Network Essentials" },
+      { pid: "C9200-24T-A",  description: "24x 1G + 4x 10G — Network Advantage" },
+    ],
+  },
+
+  "Catalyst 9200L": {
+    type: "access",
+    vendor: "Cisco",
+    description: "Lite Branch Access Switches",
+    compatibleOptics: ["SFP-10G-SR", "GLC-SX-MMD"],
+    pids: [
+      { pid: "C9200L-48P-4X-A", description: "48x 1G PoE+ + 4x 10G uplinks — Network Advantage" },
+      { pid: "C9200L-48P-4X-E", description: "48x 1G PoE+ + 4x 10G uplinks — Network Essentials" },
+      { pid: "C9200L-48P-4G-A", description: "48x 1G PoE+ + 4x 1G uplinks — Network Advantage" },
+      { pid: "C9200L-48P-4G-E", description: "48x 1G PoE+ + 4x 1G uplinks — Network Essentials" },
+      { pid: "C9200L-48T-4X-A", description: "48x 1G + 4x 10G uplinks — Network Advantage" },
+      { pid: "C9200L-48T-4G-E", description: "48x 1G + 4x 1G uplinks — Network Essentials" },
+      { pid: "C9200L-24P-4X-A", description: "24x 1G PoE+ + 4x 10G uplinks — Network Advantage" },
+      { pid: "C9200L-24P-4G-E", description: "24x 1G PoE+ + 4x 1G uplinks — Network Essentials" },
+      { pid: "C9200L-24T-4X-A", description: "24x 1G + 4x 10G uplinks — Network Advantage" },
+      { pid: "C9200L-24T-4G-E", description: "24x 1G + 4x 1G uplinks — Network Essentials" },
+    ],
+  },
+
+  "Meraki MS Series": {
+    type: "access",
+    vendor: "Cisco Meraki",
+    description: "Cloud-Managed Access Switches",
+    compatibleOptics: ["MA-SFP-10GB-SR", "MA-SFP-10GB-LR", "MA-SFP-1GB-SX"],
+    pids: [
+      { pid: "MS390-48P-HW",   description: "48x 1G PoE+ + 4x 10G — Cloud Managed" },
+      { pid: "MS390-24P-HW",   description: "24x 1G PoE+ + 4x 10G — Cloud Managed" },
+      { pid: "MS250-48FP-HW",  description: "48x 1G Full PoE + 4x 10G" },
+      { pid: "MS250-24P-HW",   description: "24x 1G PoE+ + 4x 10G" },
+      { pid: "MS125-48FP-HW",  description: "48x 1G Full PoE + 4x 10G — Compact" },
+      { pid: "MS125-24P-HW",   description: "24x 1G PoE+ + 4x 10G — Compact" },
+    ],
+  },
+
+  // ============================================================
+  // SECURITY / FIREWALL
+  // ============================================================
+  "Secure Firewall 1000": {
+    type: "security",
+    vendor: "Cisco",
+    description: "Branch / SOHO NGFW",
+    compatibleOptics: ["SFP-10G-SR", "SFP-10G-LR", "GLC-SX-MMD", "SFP-1G-T"],
+    pids: [
+      { pid: "FPR1010-NGFW-K9", description: "2 Gbps — 8x 1G RJ45 — FTD" },
+      { pid: "FPR1010-ASA-K9",  description: "2 Gbps — 8x 1G RJ45 — ASA Code" },
+      { pid: "FPR1120-NGFW-K9", description: "3 Gbps — 8x 1G + 4x 10G — FTD" },
+      { pid: "FPR1140-NGFW-K9", description: "8.5 Gbps — 8x 1G + 4x 10G — FTD" },
+      { pid: "FPR1140-ASA-K9",  description: "8.5 Gbps — 8x 1G + 4x 10G — ASA Code" },
+      { pid: "FPR1150-NGFW-K9", description: "10 Gbps — 8x 1G + 8x 10G — FTD" },
+    ],
+  },
+
+  "Secure Firewall 3100": {
+    type: "security",
+    vendor: "Cisco",
+    description: "Mid-Sized Enterprise NGFW",
+    compatibleOptics: ["SFP-25G-SR-S", "SFP-10G-SR", "SFP-10G-LR", "GLC-SX-MMD"],
+    pids: [
+      { pid: "FPR3110-NGFW-K9", description: "17 Gbps — 8x 1G + 8x 10G — FTD" },
+      { pid: "FPR3110-ASA-K9",  description: "17 Gbps — 8x 1G + 8x 10G — ASA" },
+      { pid: "FPR3120-NGFW-K9", description: "27 Gbps — 8x 1G + 8x 10G + 8x 25G — FTD" },
+      { pid: "FPR3130-NGFW-K9", description: "37 Gbps — 8x 1G + 8x 10G + 8x 25G — FTD" },
+      { pid: "FPR3140-NGFW-K9", description: "45 Gbps — 8x 1G + 8x 10G + 8x 25G — FTD" },
+      { pid: "FPR3140-ASA-K9",  description: "45 Gbps — 8x 1G + 8x 10G + 8x 25G — ASA" },
+    ],
+  },
+
+  "Secure Firewall 4100": {
+    type: "security",
+    vendor: "Cisco",
+    description: "Enterprise / DC Edge NGFW",
+    compatibleOptics: [
+      "QSFP-100G-SR4",
       "QSFP-40G-SR4",
       "SFP-25G-SR-S",
+      "SFP-10G-SR",
+      "SFP-10G-LR",
+    ],
+    pids: [
+      { pid: "FPR4112-NGFW-K9", description: "20 Gbps — Modular — FTD" },
+      { pid: "FPR4115-NGFW-K9", description: "55 Gbps — 8x 10G + 8x 25G + 4x 40G — FTD" },
+      { pid: "FPR4125-NGFW-K9", description: "65 Gbps — Modular + 100G — FTD" },
+      { pid: "FPR4145-NGFW-K9", description: "80 Gbps — 16x 10G + 8x 40G + 4x 100G — FTD" },
+      { pid: "FPR4145-ASA-K9",  description: "80 Gbps — 16x 10G + 8x 40G + 4x 100G — ASA" },
     ],
   },
 };
 
 // ============================================================
-// LAYER VISUAL CONFIG (for React Flow canvas)
+// LAYER VISUAL CONFIG
 // ============================================================
-
 export const LAYER_CONFIG: Record<
   DeviceType,
   { label: string; color: string; bg: string; y: number }
@@ -274,25 +272,25 @@ export const LAYER_CONFIG: Record<
   security: {
     label: "SECURITY PERIMETER",
     color: "#ef4444",
-    bg: "rgba(254, 242, 242, 0.6)",
+    bg: "rgba(239, 68, 68, 0.05)",
     y: 0,
   },
   core: {
-    label: "NETWORK CORE",
+    label: "CORE LAYER",
     color: "#8b5cf6",
-    bg: "rgba(245, 243, 255, 0.6)",
-    y: 250,
+    bg: "rgba(139, 92, 246, 0.05)",
+    y: 240,
   },
   distribution: {
-    label: "DISTRIBUTION",
-    color: "#0ea5e9",
-    bg: "rgba(240, 249, 255, 0.6)",
-    y: 500,
+    label: "DISTRIBUTION LAYER",
+    color: "#3b82f6",
+    bg: "rgba(59, 130, 246, 0.05)",
+    y: 480,
   },
   access: {
     label: "ACCESS LAYER",
-    color: "#3b82f6",
-    bg: "rgba(239, 246, 255, 0.6)",
-    y: 750,
+    color: "#22c55e",
+    bg: "rgba(34, 197, 94, 0.05)",
+    y: 720,
   },
 };

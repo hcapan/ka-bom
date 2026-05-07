@@ -1,17 +1,18 @@
 import type { DeviceType } from "./hardware";
 
-export type Device = {
+export interface Device {
   id: string;
   name: string;
+  model: string;     // series name, e.g., "Catalyst 9500"
+  pid: string;       // ✅ orderable SKU, e.g., "C9500-48Y4C-A"
   type: DeviceType;
-  model: string;
-  sku: string;
   position?: { x: number; y: number };
-};
+}
 
-export type Link = {
+
+export interface Link {
   id: string;
   from: string;
   to: string;
-  sku: string;
-};
+  sku: string;       // optic/transceiver SKU
+}

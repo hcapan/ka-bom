@@ -5,7 +5,6 @@ import {
   Background,
   Controls,
   MiniMap,
-  addEdge,
   Connection,
   Edge,
   Node,
@@ -21,13 +20,12 @@ import {
 import "@xyflow/react/dist/style.css";
 
 import DeviceNode from "./DeviceNode";
+import CustomEdge from "./CustomEdge";
 import { Device, Link } from "../lib/types";
 import { LAYER_CONFIG, DeviceType } from "../lib/hardware";
-import CustomEdge from "./CustomEdge";
-
 
 const nodeTypes = { device: DeviceNode };
-const edgeTypes = { custom: CustomEdge };  
+const edgeTypes = { custom: CustomEdge };
 
 type Props = {
   devices: Device[];
@@ -35,7 +33,12 @@ type Props = {
   setDevices: (d: Device[]) => void;
   setLinks: (l: Link[]) => void;
   defaultLinkSku: string;
+  onExport?: () => void;
 };
+
+// ============================================================
+// HELPERS
+// ============================================================
 
 function devicesToNodes(devices: Device[]): Node[] {
   return devices.map((d, i) => ({
@@ -47,8 +50,8 @@ function devicesToNodes(devices: Device[]): Node[] {
     },
     data: {
       name: d.name,
-      sku: d.sku,
-      model: d.model,
+      pid: d.pid,            // ✅ orderable SKU (e.g., C9500-48Y4C-A)
+      model: d.model,        // ✅ series name (e.g., Catalyst 9500)
       type: d.type,
     },
   }));
@@ -56,21 +59,47 @@ function devicesToNodes(devices: Device[]): Node[] {
 
 function linksToEdges(links: Link[]): Edge[] {
   return links.map((l) => {
+    // Determine link speed from optic SKU for visual styling
+    const is100G = l.sku.includes("100G");
     const is40G = l.sku.includes("40G");
+    const is25G = l.sku.includes("25G");
+    const isHighSpeed = is100G || is40G;
+
+    let label = "10G";
+    let stroke = "#0ea5e9"; // sky blue (10G default)
+
+    if (is100G) {
+      label = "100G";
+      stroke = "#9333ea"; // violet
+    } else if (is40G) {
+      label = "40G";
+      stroke = "#7c3aed"; // purple
+    } else if (is25G) {
+      label = "25G";
+      stroke = "#06b6d4"; // cyan
+    } else if (l.sku.includes("1G") || l.sku.startsWith("GLC")) {
+      label = "1G";
+      stroke = "#64748b"; // slate
+    }
+
     return {
       id: l.id,
       source: l.from,
       target: l.to,
-      type: "custom", // ✅ use the custom edge
-      label: is40G ? "40G" : "10G",
-      animated: is40G,
+      type: "custom",
+      label,
+      animated: isHighSpeed,
       style: {
-        stroke: is40G ? "#7c3aed" : "#0ea5e9",
-        strokeWidth: is40G ? 3 : 2,
+        stroke,
+        strokeWidth: isHighSpeed ? 3 : 2,
       },
     };
   });
 }
+
+// ============================================================
+// CANVAS COMPONENT
+// ============================================================
 
 function CanvasInner({
   devices,
@@ -78,17 +107,17 @@ function CanvasInner({
   setDevices,
   setLinks,
   defaultLinkSku,
+  onExport,
 }: Props) {
-  // ✅ React Flow is the SINGLE source of truth during interaction
-  const [nodes, setNodes, onNodesChangeRF] = useNodesState(
-    devicesToNodes(devices)
-  );
-  const [edges, setEdges, onEdgesChangeRF] = useEdgesState(linksToEdges(links));
+  // React Flow owns live state during interaction
+  const [nodes, setNodes] = useNodesState(devicesToNodes(devices));
+  const [edges, setEdges] = useEdgesState(linksToEdges(links));
 
-  // Refs to access latest values inside callbacks without re-creating them
+  // Refs for latest values inside event handlers (no re-creating callbacks)
   const devicesRef = useRef(devices);
   const linksRef = useRef(links);
-    useEffect(() => {
+
+  useEffect(() => {
     devicesRef.current = devices;
   }, [devices]);
 
@@ -96,9 +125,8 @@ function CanvasInner({
     linksRef.current = links;
   }, [links]);
 
-
   // ---------- One-way sync: PARENT → CANVAS (only when prop IDs differ) ----------
-  // This handles: external adds (Sidebar), Reset, Import JSON
+  // Handles external adds (Sidebar), Reset, Import JSON
   const lastSyncedDeviceIdsRef = useRef<string>("");
   const lastSyncedLinkIdsRef = useRef<string>("");
 
@@ -118,13 +146,13 @@ function CanvasInner({
     }
   }, [links, setEdges]);
 
-  // ---------- Imperative sync: CANVAS → PARENT (on each change event) ----------
+  // ---------- Imperative sync: CANVAS → PARENT ----------
   const onNodesChange = useCallback(
     (changes: NodeChange[]) => {
       setNodes((current) => {
         const next = applyNodeChanges(changes, current);
 
-        // Detect meaningful changes for parent sync
+        // Only sync to parent when something meaningful happens
         const hasPositionChange = changes.some(
           (c) => c.type === "position" && !c.dragging
         );
@@ -134,21 +162,20 @@ function CanvasInner({
           const newDevices: Device[] = next.map((n) => {
             const data = n.data as {
               name: string;
-              sku: string;
+              pid: string;
               model: string;
               type: DeviceType;
             };
             return {
               id: n.id,
               name: data.name,
-              sku: data.sku,
+              pid: data.pid,        // ✅ correct field
               model: data.model,
               type: data.type,
               position: n.position,
             };
           });
 
-          // Mark these IDs as "already synced" so the IN-effect doesn't fire
           lastSyncedDeviceIdsRef.current = newDevices
             .map((d) => d.id)
             .sort()
@@ -194,6 +221,9 @@ function CanvasInner({
             .sort()
             .join("|");
           setLinks(newLinks);
+
+          // Rebuild edges so CustomEdge re-evaluates pair counts
+          return linksToEdges(newLinks);
         }
 
         return next;
@@ -202,38 +232,36 @@ function CanvasInner({
     [setEdges, setLinks]
   );
 
-
- 
   // ---------- Connect handler ----------
   const onConnect = useCallback(
-  (params: Connection) => {
-    if (!params.source || !params.target) return;
-    if (params.source === params.target) return;
+    (params: Connection) => {
+      if (!params.source || !params.target) return;
+      if (params.source === params.target) return;
 
-    const newId = `link-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
-    const newLink: Link = {
-      id: newId,
-      from: params.source,
-      to: params.target,
-      sku: defaultLinkSku,
-    };
+      const newId = `LNK-${Date.now()}-${Math.random()
+        .toString(36)
+        .slice(2, 7)
+        .toUpperCase()}`;
+      const newLink: Link = {
+        id: newId,
+        from: params.source,
+        to: params.target,
+        sku: defaultLinkSku,
+      };
 
-    const newLinks = [...linksRef.current, newLink];
+      const newLinks = [...linksRef.current, newLink];
 
-    // ✅ Mark as synced so the IN-effect doesn't double-fire
-    lastSyncedLinkIdsRef.current = newLinks
-      .map((l) => l.id)
-      .sort()
-      .join("|");
+      lastSyncedLinkIdsRef.current = newLinks
+        .map((l) => l.id)
+        .sort()
+        .join("|");
 
-    // ✅ Update parent state (localStorage)
-    setLinks(newLinks);
+      setLinks(newLinks);
+      setEdges(linksToEdges(newLinks));
+    },
+    [setEdges, setLinks, defaultLinkSku]
+  );
 
-    // ✅ Rebuild ALL edges (so CustomEdge sees the right pair count)
-    setEdges(linksToEdges(newLinks));
-  },
-  [setEdges, setLinks, defaultLinkSku]
-);
   // ---------- Layer band labels ----------
   const layerBands = useMemo(
     () =>
@@ -253,7 +281,7 @@ function CanvasInner({
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
         nodeTypes={nodeTypes}
-        edgeTypes={edgeTypes} 
+        edgeTypes={edgeTypes}
         fitView
         fitViewOptions={{ padding: 0.3 }}
         proOptions={{ hideAttribution: true }}
@@ -270,7 +298,7 @@ function CanvasInner({
         />
       </ReactFlow>
 
-      {/* Layer labels as a non-interactive overlay (won't block nodes) */}
+      {/* Layer labels (non-interactive overlay) */}
       <div className="absolute top-2 left-2 z-10 flex flex-col gap-1 pointer-events-none">
         {layerBands.map((band) => (
           <span
@@ -283,7 +311,17 @@ function CanvasInner({
         ))}
       </div>
 
+{ (
+        <button
+          onClick={onExport}
+          className="text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg shadow-sm transition-colors flex items-center gap-1"
+          title="Export topology as JSON"
+        >
+          ⬇ Export BOM
+        </button>
+      )}
       <div className="absolute top-2 right-2 z-10">
+        
         <span className="bg-white/90 px-3 py-1 rounded-full text-[10px] font-bold text-slate-500 shadow-sm border">
           DRAG NODES • CONNECT HANDLES • DEL TO REMOVE
         </span>
