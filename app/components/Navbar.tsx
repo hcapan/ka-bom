@@ -1,7 +1,6 @@
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
 
 type Props = {
   /** Optional: shown on the right (e.g., "12 devices · 8 links") */
@@ -19,12 +18,12 @@ export default function Navbar({ stats }: Props) {
   const pathname = usePathname();
 
   return (
-    <nav className="bg-white border-b border-slate-200 sticky top-0 z-50 backdrop-blur-md bg-white/90">
-      <div className="max-w-[1920px] mx-auto px-4 lg:px-6">
+    <nav className="bg-white/ border-b border-slate-200 sticky top-0 z-50 backdrop-blur-md ">
+      <div className="max-w-480 mx-auto px-4 lg:px-6">
         <div className="flex items-center justify-between h-14">
           {/* ============ LEFT: LOGO ============ */}
           <Link href="/" className="flex items-center gap-2 group">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-600 to-violet-600 flex items-center justify-center text-white font-bold text-sm shadow-sm group-hover:shadow-md transition-shadow">
+            <div className="w-8 h-8 rounded-lg bg-linear-to-br from-blue-600 to-violet-600 flex items-center justify-center text-white font-bold text-sm shadow-sm group-hover:shadow-md transition-shadow">
               KB
             </div>
             <div className="flex flex-col leading-tight">

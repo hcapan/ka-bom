@@ -19,7 +19,7 @@ import {
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 
-import DeviceNode from "./DeviceNode";
+import DeviceNode, {DeviceData} from "./DeviceNode";
 import CustomEdge from "./CustomEdge";
 import { Device, Link } from "../lib/types";
 import { LAYER_CONFIG, DeviceType } from "../lib/hardware";
@@ -59,39 +59,44 @@ function devicesToNodes(devices: Device[]): Node[] {
 
 function linksToEdges(links: Link[]): Edge[] {
   return links.map((l) => {
-    // Determine link speed from optic SKU for visual styling
     const is100G = l.sku.includes("100G");
     const is40G = l.sku.includes("40G");
     const is25G = l.sku.includes("25G");
     const isHighSpeed = is100G || is40G;
 
     let label = "10G";
-    let stroke = "#0ea5e9"; // sky blue (10G default)
+    let stroke = "#0ea5e9";
 
-    if (is100G) {
+    if (l.isLateral) {
+      label = "HA/VSS";
+      stroke = "#f59e0b"; // amber
+    } else if (is100G) {
       label = "100G";
-      stroke = "#9333ea"; // violet
+      stroke = "#9333ea";
     } else if (is40G) {
       label = "40G";
-      stroke = "#7c3aed"; // purple
+      stroke = "#7c3aed";
     } else if (is25G) {
       label = "25G";
-      stroke = "#06b6d4"; // cyan
+      stroke = "#06b6d4";
     } else if (l.sku.includes("1G") || l.sku.startsWith("GLC")) {
       label = "1G";
-      stroke = "#64748b"; // slate
+      stroke = "#64748b";
     }
 
     return {
       id: l.id,
       source: l.from,
       target: l.to,
+      sourceHandle: l.sourceHandle,    // ✅ tell RF which handle to attach to
+      targetHandle: l.targetHandle,    // ✅
       type: "custom",
       label,
-      animated: isHighSpeed,
+      animated: isHighSpeed && !l.isLateral, // don't animate HA links
       style: {
         stroke,
-        strokeWidth: isHighSpeed ? 3 : 2,
+        strokeWidth: l.isLateral ? 3 : isHighSpeed ? 3 : 2,
+        strokeDasharray: l.isLateral ? "8 4" : undefined,
       },
     };
   });
@@ -125,6 +130,15 @@ function CanvasInner({
     linksRef.current = links;
   }, [links]);
 
+  const layerBands = useMemo(
+  () =>
+    Object.entries(LAYER_CONFIG).map(([type, cfg]) => ({
+      type: type as DeviceType,
+      ...cfg,
+    })),
+  []
+);
+
   // ---------- One-way sync: PARENT → CANVAS (only when prop IDs differ) ----------
   // Handles external adds (Sidebar), Reset, Import JSON
   const lastSyncedDeviceIdsRef = useRef<string>("");
@@ -148,62 +162,58 @@ function CanvasInner({
 
   // ---------- Imperative sync: CANVAS → PARENT ----------
   const onNodesChange = useCallback(
-    (changes: NodeChange[]) => {
-      setNodes((current) => {
-        const next = applyNodeChanges(changes, current);
+  (changes: NodeChange[]) => {
+    // ✅ Compute next state from current node state via flushSync-safe path
+    const currentNodes = nodes; // closure-captured; ok because we use functional setters below
+    const next = applyNodeChanges(changes, currentNodes);
 
-        // Only sync to parent when something meaningful happens
-        const hasPositionChange = changes.some(
-          (c) => c.type === "position" && !c.dragging
-        );
-        const hasRemoval = changes.some((c) => c.type === "remove");
+    // Always update React Flow's internal state
+    setNodes(next);
 
-        if (hasPositionChange || hasRemoval) {
-          const newDevices: Device[] = next.map((n) => {
-            const data = n.data as {
-              name: string;
-              pid: string;
-              model: string;
-              type: DeviceType;
-            };
-            return {
-              id: n.id,
-              name: data.name,
-              pid: data.pid,        // ✅ correct field
-              model: data.model,
-              type: data.type,
-              position: n.position,
-            };
-          });
+    // Only sync to parent on meaningful changes
+    const hasPositionChange = changes.some(
+      (c) => c.type === "position" && !c.dragging
+    );
+    const hasRemoval = changes.some((c) => c.type === "remove");
 
-          lastSyncedDeviceIdsRef.current = newDevices
-            .map((d) => d.id)
-            .sort()
-            .join("|");
-          setDevices(newDevices);
+    if (!hasPositionChange && !hasRemoval) return;
 
-          // Cascade-remove orphan links
-          if (hasRemoval) {
-            const ids = new Set(newDevices.map((d) => d.id));
-            const filtered = linksRef.current.filter(
-              (l) => ids.has(l.from) && ids.has(l.to)
-            );
-            if (filtered.length !== linksRef.current.length) {
-              lastSyncedLinkIdsRef.current = filtered
-                .map((l) => l.id)
-                .sort()
-                .join("|");
-              setLinks(filtered);
-              setEdges(linksToEdges(filtered));
-            }
-          }
-        }
+    const newDevices: Device[] = next.map((n) => {
+      const data = n.data as DeviceData;
+      return {
+        id: n.id,
+        name: data.name,
+        pid: data.pid,
+        model: data.model,
+        type: data.type,
+        position: n.position,
+      };
+    });
 
-        return next;
-      });
-    },
-    [setNodes, setEdges, setDevices, setLinks]
-  );
+    lastSyncedDeviceIdsRef.current = newDevices
+      .map((d) => d.id)
+      .sort()
+      .join("|");
+    setDevices(newDevices);
+
+    // Cascade-remove orphan links
+    if (hasRemoval) {
+      const ids = new Set(newDevices.map((d) => d.id));
+      const filtered = linksRef.current.filter(
+        (l) => ids.has(l.from) && ids.has(l.to)
+      );
+      if (filtered.length !== linksRef.current.length) {
+        lastSyncedLinkIdsRef.current = filtered
+          .map((l) => l.id)
+          .sort()
+          .join("|");
+        setLinks(filtered);
+        setEdges(linksToEdges(filtered));
+      }
+    }
+  },
+  [nodes, setNodes, setEdges, setDevices, setLinks]
+);
 
   const onEdgesChange = useCallback(
     (changes: EdgeChange[]) => {
@@ -234,43 +244,40 @@ function CanvasInner({
 
   // ---------- Connect handler ----------
   const onConnect = useCallback(
-    (params: Connection) => {
-      if (!params.source || !params.target) return;
-      if (params.source === params.target) return;
+  (params: Connection) => {
+    if (!params.source || !params.target) return;
+    if (params.source === params.target) return;
 
-      const newId = `LNK-${Date.now()}-${Math.random()
-        .toString(36)
-        .slice(2, 7)
-        .toUpperCase()}`;
-      const newLink: Link = {
-        id: newId,
-        from: params.source,
-        to: params.target,
-        sku: defaultLinkSku,
-      };
+    // Detect lateral link (HA/VSS/SVL)
+    const isLateral =
+      (params.sourceHandle === "left" || params.sourceHandle === "right") &&
+      (params.targetHandle === "left" || params.targetHandle === "right");
 
-      const newLinks = [...linksRef.current, newLink];
+    const newId = `${isLateral ? "HA" : "LNK"}-${Date.now()}-${Math.random()
+      .toString(36)
+      .slice(2, 7)
+      .toUpperCase()}`;
 
-      lastSyncedLinkIdsRef.current = newLinks
-        .map((l) => l.id)
-        .sort()
-        .join("|");
+    const newLink: Link = {
+      id: newId,
+      from: params.source,
+      to: params.target,
+      sku: defaultLinkSku,
+      sourceHandle: params.sourceHandle ?? undefined,  // ✅ remember which port
+      targetHandle: params.targetHandle ?? undefined,
+      isLateral,                                        // ✅ flag it
+    };
 
-      setLinks(newLinks);
-      setEdges(linksToEdges(newLinks));
-    },
-    [setEdges, setLinks, defaultLinkSku]
-  );
-
-  // ---------- Layer band labels ----------
-  const layerBands = useMemo(
-    () =>
-      Object.entries(LAYER_CONFIG).map(([type, cfg]) => ({
-        type: type as DeviceType,
-        ...cfg,
-      })),
-    []
-  );
+    const newLinks = [...linksRef.current, newLink];
+    lastSyncedLinkIdsRef.current = newLinks
+      .map((l) => l.id)
+      .sort()
+      .join("|");
+    setLinks(newLinks);
+    setEdges(linksToEdges(newLinks));
+  },
+  [setEdges, setLinks, defaultLinkSku]
+);
 
   return (
     <div className="w-full h-[80vh] bg-slate-100 rounded-xl shadow-inner border-2 border-slate-300 overflow-hidden relative">
@@ -299,7 +306,7 @@ function CanvasInner({
       </ReactFlow>
 
       {/* Layer labels (non-interactive overlay) */}
-      <div className="absolute top-2 left-2 z-10 flex flex-col gap-1 pointer-events-none">
+       <div className="absolute top-2 left-2 z-10 flex flex-col gap-1 pointer-events-none">
         {layerBands.map((band) => (
           <span
             key={band.type}
@@ -309,21 +316,25 @@ function CanvasInner({
             ▎ {band.label}
           </span>
         ))}
-      </div>
+      </div> 
 
-{ (
+
+      <div className="absolute top-2 right-35 z-10">
+        
+        <span className="bg-white/90 px-3 py-1 rounded-full text-[12px] font-bold text-slate-500 shadow-sm border">
+          DRAG NODES • CONNECT HANDLES • DEL TO REMOVE
+        </span>
+      </div>
+      <div className="absolute top-2 right-5 z-10">
+        <span className="text-[12px] font-bold bg-white/90 px-3 py-1 rounded-full text-slate-500 shadow-sm border" >
+          { (
         <button
           onClick={onExport}
-          className="text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg shadow-sm transition-colors flex items-center gap-1"
           title="Export topology as JSON"
         >
           ⬇ Export BOM
         </button>
       )}
-      <div className="absolute top-2 right-2 z-10">
-        
-        <span className="bg-white/90 px-3 py-1 rounded-full text-[10px] font-bold text-slate-500 shadow-sm border">
-          DRAG NODES • CONNECT HANDLES • DEL TO REMOVE
         </span>
       </div>
     </div>

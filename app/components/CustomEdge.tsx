@@ -84,6 +84,10 @@ export default function CustomEdge({
     labelY = labelY + offset / 2; // approximate label position on the curve
   }
 
+  const isLateralLink =
+  (sourcePosition === "left" || sourcePosition === "right") &&
+  (targetPosition === "left" || targetPosition === "right");
+
   return (
     <>
       <BaseEdge
@@ -104,6 +108,9 @@ export default function CustomEdge({
           strokeDasharray="6 4"
           style={{
             animation: "rf-dash 1s linear infinite",
+            stroke: isLateralLink ? "#f59e0b" : style.stroke, 
+            strokeWidth: isLateralLink ? 3 : style.strokeWidth,
+            strokeDasharray: isLateralLink ? "8 4" : undefined,  
           }}
         />
       )}

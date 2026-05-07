@@ -14,5 +14,8 @@ export interface Link {
   id: string;
   from: string;
   to: string;
-  sku: string;       // optic/transceiver SKU
+  sku: string;
+  sourceHandle?: string;   // ✅ NEW: which handle on source node
+  targetHandle?: string;   // ✅ NEW: which handle on target node
+  isLateral?: boolean;     // ✅ NEW: HA/VSS/SVL flag
 }
