@@ -5,11 +5,11 @@ type Props = { devices: Device[]; links: Link[] };
 
 export default function InventoryPanel({ devices, links }: Props) {
   const chassisCounts = devices.reduce(
-    (acc, d) => ({ ...acc, [d.model]: (acc[d.model] || 0) + 1 }),
+    (acc, d) => ({ ...acc, [d.hardware.chassisPid]: (acc[d.hardware.chassisPid] || 0) + 1 }),
     {} as Record<string, number>
   );
   const sfpCounts = links.reduce(
-    (acc, l) => ({ ...acc, [l.sku]: (acc[l.sku] || 0) + 2 }),
+    (acc, l) => ({ ...acc, [l.optic.pid]: (acc[l.optic.pid] || 0) + 2 }),
     {} as Record<string, number>
   );
 

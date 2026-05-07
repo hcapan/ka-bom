@@ -299,7 +299,7 @@ export default function Sidebar({
                 </div>
                 <button
                   onClick={() => deleteDevice(d.id)}
-                  className="text-red-500 hover:text-red-700 opacity-0 group-hover:opacity-100 transition-opacity font-bold ml-2 flex-shrink-0"
+                  className="text-red-500 hover:text-red-700 opacity-0 group-hover:opacity-100 transition-opacity font-bold ml-2 shrink-0"
                   title="Delete"
                 >
                   ✕

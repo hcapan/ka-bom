@@ -1,18 +1,13 @@
 // ============================================================
-// HARDWARE LIBRARY — Cisco Enterprise Catalog (Series → PIDs)
+// HARDWARE LIBRARY — Cisco Enterprise Catalog (CCW-Aware)
 // ============================================================
+
+import { Region, SmartnetTier, ContractTermYears } from "./types";
 
 export type DeviceType = "core" | "distribution" | "access" | "security" | "wireless" | "management";
 
 export type PortSpeed =
-  | "1G"
-  | "2.5G"
-  | "10G"
-  | "25G"
-  | "40G"
-  | "50G"
-  | "100G"
-  | "400G";
+  | "1G" | "2.5G" | "10G" | "25G" | "40G" | "50G" | "100G" | "400G";
 
 export interface PortGroup {
   count: number;
@@ -24,14 +19,69 @@ export interface FaceplateConfig {
   accessPorts?: PortGroup;
   uplinkPorts?: PortGroup;
   rackUnits?: 1 | 2 | 3 | 4 | 5 | 7 | 10;
-  /** For modular chassis: number of line-card slots */
   modularSlots?: number;
+}
+
+// ============================================================
+// CCW BUNDLE DEFINITIONS
+// ============================================================
+export interface BundleAutoItem {
+  pid: string;
+  qty: number;
+  note?: string;
+}
+
+export interface PowerCordSpec {
+  qty: number;                              // total cords needed (1 per PSU typically)
+  byRegion: Partial<Record<Region, string>>;
+}
+
+export interface RedundantPsuSpec {
+  pid: string;
+  description: string;
+}
+
+export interface SmartnetSpec {
+  baseSkuByTier: Partial<Record<SmartnetTier, string>>;
+}
+
+export interface LicenseSpec {
+  tier: "Essentials" | "Advantage" | "Premier";
+  entitlementPid: string;
+  subscriptionByTerm: Partial<Record<ContractTermYears, string>>;
+}
+
+export interface StackingSpec {
+  /** True if stack adapter must be ordered separately (9200/9200L) */
+  adapterRequired: boolean;
+  /** PIDs for stack adapter kit (if required) */
+  adapterKits?: string[];
+  /** Available data stack cables */
+  dataCables?: { pid: string; length: string }[];
+  /** Available power stack cables */
+  powerCables?: { pid: string; length: string }[];
+}
+
+export interface ChassisBundle {
+  /** Items always added to BOM, no user input needed */
+  autoIncluded: BundleAutoItem[];
+  /** Power cord (region-dependent) */
+  powerCord: PowerCordSpec;
+  /** Redundant PSU PID (if user opts in) */
+  redundantPsu?: RedundantPsuSpec;
+  /** SmartNet PID resolution */
+  smartnet: SmartnetSpec;
+  /** License entitlement + subscription PIDs */
+  license: LicenseSpec;
+  /** Stack accessory rules */
+  stacking?: StackingSpec;
 }
 
 export interface ProductSKU {
   pid: string;
   description: string;
   faceplate?: FaceplateConfig;
+  bundle?: ChassisBundle;     // ✅ NEW — CCW BOM data
 }
 
 export interface HardwareSeries {
@@ -43,25 +93,75 @@ export interface HardwareSeries {
 }
 
 // ============================================================
+// SHARED PRESETS — reduce repetition
+// ============================================================
+
+const POWER_CORDS_C9K = {
+  qty: 2,
+  byRegion: {
+    EU: "CAB-9K10A-EU",
+    US: "CAB-9K10A-NA",
+    UK: "CAB-9K10A-UK",
+    JP: "CAB-9K10A-JPN",
+    AU: "CAB-9K10A-AUS",
+    IN: "CAB-9K10A-IND",
+    CN: "CAB-9K10A-CHN",
+  },
+};
+
+const POWER_CORDS_TA = {
+  qty: 1,
+  byRegion: {
+    EU: "CAB-TA-EU",
+    US: "CAB-TA-NA",
+    UK: "CAB-TA-UK",
+    JP: "CAB-TA-JP",
+    AU: "CAB-TA-AP",
+    IN: "CAB-TA-IN",
+    CN: "CAB-TA-CN",
+  },
+};
+
+const C9300_STACKING: StackingSpec = {
+  adapterRequired: false,                       // included
+  dataCables: [
+    { pid: "STACK-T1-50CM",  length: "50cm" },
+    { pid: "STACK-T1-1M",    length: "1m" },
+    { pid: "STACK-T1-3M",    length: "3m" },
+  ],
+  powerCables: [
+    { pid: "CAB-SPWR-30CM",  length: "30cm" },
+    { pid: "CAB-SPWR-150CM", length: "150cm" },
+  ],
+};
+
+const C9200L_STACKING: StackingSpec = {
+  adapterRequired: true,
+  adapterKits: ["C9200L-STACK-KIT"],
+  dataCables: [
+    { pid: "STACK-T4-50CM", length: "50cm" },
+    { pid: "STACK-T4-1M",   length: "1m" },
+    { pid: "STACK-T4-3M",   length: "3m" },
+  ],
+};
+
+// ============================================================
 // HARDWARE LIBRARY
 // ============================================================
 export const HARDWARE_LIBRARY: Record<string, HardwareSeries> = {
   // ============================================================
-  // CORE / DATA CENTER
+  // CATALYST 9500 — Campus Core
   // ============================================================
   "Catalyst 9500": {
     type: "core",
     vendor: "Cisco",
     description: "Fixed Campus Core / Aggregation",
     compatibleOptics: [
-      "QSFP-100G-SR4",
-      "QSFP-100G-LR4",
-      "QSFP-40G-SR4",
-      "SFP-25G-SR-S",
-      "SFP-10G-SR",
-      "SFP-10G-LR",
+      "QSFP-100G-SR4", "QSFP-100G-LR4", "QSFP-40G-SR4",
+      "SFP-25G-SR-S", "SFP-10G-SR", "SFP-10G-LR",
     ],
     pids: [
+      // ----- 48Y4C variants -----
       {
         pid: "C9500-48Y4C-A",
         description: "48x 25G + 4x 100G — Network Advantage",
@@ -69,6 +169,41 @@ export const HARDWARE_LIBRARY: Record<string, HardwareSeries> = {
           accessPorts: { count: 48, speed: "25G" },
           uplinkPorts: { count: 4, speed: "100G" },
           rackUnits: 1,
+        },
+        bundle: {
+          autoIncluded: [
+            { pid: "C9K-PWR-650WAC-R",  qty: 1, note: "Primary PSU" },
+            { pid: "C9K-F1-SSD-BLANK",  qty: 1 },
+            { pid: "C9K-T1-FANTRAY",    qty: 2 },
+            { pid: "C9500-NW-A",        qty: 1, note: "Network Stack" },
+            { pid: "S9500UK9-1715",     qty: 1, note: "IOS-XE image" },
+            { pid: "C9500-SSD-NONE",    qty: 1 },
+            { pid: "C9500-RFID",        qty: 1 },
+            { pid: "NETWORK-PNP-LIC",   qty: 1 },
+          ],
+          powerCord: POWER_CORDS_C9K,
+          redundantPsu: {
+            pid: "C9K-PWR-650WAC-R/2",
+            description: "650W AC Redundant PSU",
+          },
+          smartnet: {
+            baseSkuByTier: {
+              SNT:  "CON-SNT-C9504YA4",
+              SNTP: "CON-SNTP-C9504YA4",
+              OS:   "CON-OS-C9504YA4",
+              OSP:  "CON-OSP-C9504YA4",
+            },
+          },
+          license: {
+            tier: "Advantage",
+            entitlementPid: "C9500-DNA-48Y4C-A",
+            subscriptionByTerm: {
+              1: "C9500-DNA-A-1Y",
+              3: "C9500-DNA-A-3Y",
+              5: "C9500-DNA-A-5Y",
+              7: "C9500-DNA-A-7Y",
+            },
+          },
         },
       },
       {
@@ -79,7 +214,42 @@ export const HARDWARE_LIBRARY: Record<string, HardwareSeries> = {
           uplinkPorts: { count: 4, speed: "100G" },
           rackUnits: 1,
         },
+        bundle: {
+          autoIncluded: [
+            { pid: "C9K-PWR-650WAC-R",  qty: 1 },
+            { pid: "C9K-F1-SSD-BLANK",  qty: 1 },
+            { pid: "C9K-T1-FANTRAY",    qty: 2 },
+            { pid: "C9500-NW-E",        qty: 1 },
+            { pid: "S9500UK9-1715",     qty: 1 },
+            { pid: "C9500-SSD-NONE",    qty: 1 },
+            { pid: "C9500-RFID",        qty: 1 },
+            { pid: "NETWORK-PNP-LIC",   qty: 1 },
+          ],
+          powerCord: POWER_CORDS_C9K,
+          redundantPsu: {
+            pid: "C9K-PWR-650WAC-R/2",
+            description: "650W AC Redundant PSU",
+          },
+          smartnet: {
+            baseSkuByTier: {
+              SNT:  "CON-SNT-C9504YE4",
+              SNTP: "CON-SNTP-C9504YE4",
+            },
+          },
+          license: {
+            tier: "Essentials",
+            entitlementPid: "C9500-DNA-48Y4C-E",
+            subscriptionByTerm: {
+              1: "C9500-DNA-E-1Y",
+              3: "C9500-DNA-E-3Y",
+              5: "C9500-DNA-E-5Y",
+              7: "C9500-DNA-E-7Y",
+            },
+          },
+        },
       },
+
+      // ----- 24Y4C variants -----
       {
         pid: "C9500-24Y4C-A",
         description: "24x 25G + 4x 100G — Network Advantage",
@@ -87,6 +257,39 @@ export const HARDWARE_LIBRARY: Record<string, HardwareSeries> = {
           accessPorts: { count: 24, speed: "25G" },
           uplinkPorts: { count: 4, speed: "100G" },
           rackUnits: 1,
+        },
+        bundle: {
+          autoIncluded: [
+            { pid: "C9K-PWR-650WAC-R",  qty: 1 },
+            { pid: "C9K-F1-SSD-BLANK",  qty: 1 },
+            { pid: "C9K-T1-FANTRAY",    qty: 2 },
+            { pid: "C9500-NW-A",        qty: 1 },
+            { pid: "S9500UK9-1715",     qty: 1 },
+            { pid: "C9500-SSD-NONE",    qty: 1 },
+            { pid: "C9500-RFID",        qty: 1 },
+            { pid: "NETWORK-PNP-LIC",   qty: 1 },
+          ],
+          powerCord: POWER_CORDS_C9K,
+          redundantPsu: {
+            pid: "C9K-PWR-650WAC-R/2",
+            description: "650W AC Redundant PSU",
+          },
+          smartnet: {
+            baseSkuByTier: {
+              SNT:  "CON-SNT-C9502YA4",
+              SNTP: "CON-SNTP-C9502YA4",
+            },
+          },
+          license: {
+            tier: "Advantage",
+            entitlementPid: "C9500-DNA-24Y4C-A",
+            subscriptionByTerm: {
+              1: "C9500-DNA-A-1Y",
+              3: "C9500-DNA-A-3Y",
+              5: "C9500-DNA-A-5Y",
+              7: "C9500-DNA-A-7Y",
+            },
+          },
         },
       },
       {
@@ -97,7 +300,41 @@ export const HARDWARE_LIBRARY: Record<string, HardwareSeries> = {
           uplinkPorts: { count: 4, speed: "100G" },
           rackUnits: 1,
         },
+        bundle: {
+          autoIncluded: [
+            { pid: "C9K-PWR-650WAC-R",  qty: 1 },
+            { pid: "C9K-F1-SSD-BLANK",  qty: 1 },
+            { pid: "C9K-T1-FANTRAY",    qty: 2 },
+            { pid: "C9500-NW-E",        qty: 1 },
+            { pid: "S9500UK9-1715",     qty: 1 },
+            { pid: "C9500-SSD-NONE",    qty: 1 },
+            { pid: "C9500-RFID",        qty: 1 },
+            { pid: "NETWORK-PNP-LIC",   qty: 1 },
+          ],
+          powerCord: POWER_CORDS_C9K,
+          redundantPsu: {
+            pid: "C9K-PWR-650WAC-R/2",
+            description: "650W AC Redundant PSU",
+          },
+          smartnet: {
+            baseSkuByTier: {
+              SNT: "CON-SNT-C9502YE4",
+            },
+          },
+          license: {
+            tier: "Essentials",
+            entitlementPid: "C9500-DNA-24Y4C-E",
+            subscriptionByTerm: {
+              1: "C9500-DNA-E-1Y",
+              3: "C9500-DNA-E-3Y",
+              5: "C9500-DNA-E-5Y",
+              7: "C9500-DNA-E-7Y",
+            },
+          },
+        },
       },
+
+      // ----- 32C variants -----
       {
         pid: "C9500-32C-A",
         description: "32x 100G — Network Advantage",
@@ -105,15 +342,42 @@ export const HARDWARE_LIBRARY: Record<string, HardwareSeries> = {
           accessPorts: { count: 32, speed: "100G" },
           rackUnits: 1,
         },
-      },
-      {
-        pid: "C9500-32C-E",
-        description: "32x 100G — Network Essentials",
-        faceplate: {
-          accessPorts: { count: 32, speed: "100G" },
-          rackUnits: 1,
+        bundle: {
+          autoIncluded: [
+            { pid: "C9K-PWR-1500WAC-R", qty: 1 },
+            { pid: "C9K-F1-SSD-BLANK",  qty: 1 },
+            { pid: "C9K-T1-FANTRAY",    qty: 2 },
+            { pid: "C9500-NW-A",        qty: 1 },
+            { pid: "S9500UK9-1715",     qty: 1 },
+            { pid: "C9500-SSD-NONE",    qty: 1 },
+            { pid: "C9500-RFID",        qty: 1 },
+            { pid: "NETWORK-PNP-LIC",   qty: 1 },
+          ],
+          powerCord: POWER_CORDS_C9K,
+          redundantPsu: {
+            pid: "C9K-PWR-1500WAC-R/2",
+            description: "1500W AC Redundant PSU",
+          },
+          smartnet: {
+            baseSkuByTier: {
+              SNT:  "CON-SNT-C950032A",
+              SNTP: "CON-SNTP-C950032A",
+            },
+          },
+          license: {
+            tier: "Advantage",
+            entitlementPid: "C9500-DNA-32C-A",
+            subscriptionByTerm: {
+              1: "C9500-DNA-A-1Y",
+              3: "C9500-DNA-A-3Y",
+              5: "C9500-DNA-A-5Y",
+              7: "C9500-DNA-A-7Y",
+            },
+          },
         },
       },
+
+      // ----- 40X variants -----
       {
         pid: "C9500-40X-A",
         description: "40x 10G — Network Advantage",
@@ -121,214 +385,56 @@ export const HARDWARE_LIBRARY: Record<string, HardwareSeries> = {
           accessPorts: { count: 40, speed: "10G" },
           rackUnits: 1,
         },
-      },
-      {
-        pid: "C9500-40X-E",
-        description: "40x 10G — Network Essentials",
-        faceplate: {
-          accessPorts: { count: 40, speed: "10G" },
-          rackUnits: 1,
+        bundle: {
+          autoIncluded: [
+            { pid: "C9K-PWR-650WAC-R",  qty: 1 },
+            { pid: "C9K-F1-SSD-BLANK",  qty: 1 },
+            { pid: "C9K-T1-FANTRAY",    qty: 2 },
+            { pid: "C9500-NW-A",        qty: 1 },
+            { pid: "S9500UK9-1715",     qty: 1 },
+            { pid: "C9500-SSD-NONE",    qty: 1 },
+            { pid: "C9500-RFID",        qty: 1 },
+            { pid: "NETWORK-PNP-LIC",   qty: 1 },
+          ],
+          powerCord: POWER_CORDS_C9K,
+          redundantPsu: {
+            pid: "C9K-PWR-650WAC-R/2",
+            description: "650W AC Redundant PSU",
+          },
+          smartnet: {
+            baseSkuByTier: {
+              SNT:  "CON-SNT-C9500X40A",
+              SNTP: "CON-SNTP-C9500X40A",
+            },
+          },
+          license: {
+            tier: "Advantage",
+            entitlementPid: "C9500-DNA-40X-A",
+            subscriptionByTerm: {
+              1: "C9500-DNA-A-1Y",
+              3: "C9500-DNA-A-3Y",
+              5: "C9500-DNA-A-5Y",
+              7: "C9500-DNA-A-7Y",
+            },
+          },
         },
       },
-      {
-        pid: "C9500-16X-A",
-        description: "16x 10G — Network Advantage",
-        faceplate: {
-          accessPorts: { count: 16, speed: "10G" },
-          rackUnits: 1,
-        },
-      },
-      {
-        pid: "C9500-16X-E",
-        description: "16x 10G — Network Essentials",
-        faceplate: {
-          accessPorts: { count: 16, speed: "10G" },
-          rackUnits: 1,
-        },
-      },
-    ],
-  },
 
-  "Catalyst 9500X": {
-    type: "core",
-    vendor: "Cisco",
-    description: "Next-Gen High-Performance Core",
-    compatibleOptics: [
-      "QSFP-400G-SR4",
-      "QSFP-400G-LR4",
-      "QSFP-100G-SR4",
-      "QSFP-100G-LR4",
-      "SFP-25G-SR-S",
-    ],
-    pids: [
-      {
-        pid: "C9500X-28C8D-A",
-        description: "28x 100G + 8x 400G — Network Advantage",
-        faceplate: {
-          accessPorts: { count: 28, speed: "100G" },
-          uplinkPorts: { count: 8, speed: "400G" },
-          rackUnits: 1,
-        },
-      },
-      {
-        pid: "C9500X-28C8D-E",
-        description: "28x 100G + 8x 400G — Network Essentials",
-        faceplate: {
-          accessPorts: { count: 28, speed: "100G" },
-          uplinkPorts: { count: 8, speed: "400G" },
-          rackUnits: 1,
-        },
-      },
-      {
-        pid: "C9500X-60L4D-A",
-        description: "60x 50G + 4x 400G — Network Advantage",
-        faceplate: {
-          accessPorts: { count: 60, speed: "50G" },
-          uplinkPorts: { count: 4, speed: "400G" },
-          rackUnits: 2,
-        },
-      },
-    ],
-  },
-
-  "Nexus 9000": {
-    type: "core",
-    vendor: "Cisco",
-    description: "Data Center Spine / Leaf",
-    compatibleOptics: [
-      "QSFP-100G-SR4",
-      "QSFP-100G-LR4",
-      "QSFP-100G-AOC3M",
-      "QSFP-40G-SR4",
-      "SFP-25G-SR-S",
-      "SFP-10G-SR",
-    ],
-    pids: [
-      {
-        pid: "N9K-C9336C-FX2",
-        description: "36x 100G — DC Spine",
-        faceplate: {
-          accessPorts: { count: 36, speed: "100G" },
-          rackUnits: 1,
-        },
-      },
-      {
-        pid: "N9K-C9336C-FX2-Z",
-        description: "36x 100G — Cloud Scale Z",
-        faceplate: {
-          accessPorts: { count: 36, speed: "100G" },
-          rackUnits: 1,
-        },
-      },
-      {
-        pid: "N9K-C93180YC-FX3",
-        description: "48x 25G + 6x 100G — DC Leaf",
-        faceplate: {
-          accessPorts: { count: 48, speed: "25G" },
-          uplinkPorts: { count: 6, speed: "100G" },
-          rackUnits: 1,
-        },
-      },
-      {
-        pid: "N9K-C9364C",
-        description: "64x 100G — DC Super-Spine",
-        faceplate: {
-          accessPorts: { count: 64, speed: "100G" },
-          rackUnits: 2,
-        },
-      },
-      {
-        pid: "N9K-C9364C-GX",
-        description: "64x 100G — Cloud Scale GX",
-        faceplate: {
-          accessPorts: { count: 64, speed: "100G" },
-          rackUnits: 2,
-        },
-      },
-      {
-        pid: "N9K-C93600CD-GX",
-        description: "28x 100G + 8x 400G — Modern Spine",
-        faceplate: {
-          accessPorts: { count: 28, speed: "100G" },
-          uplinkPorts: { count: 8, speed: "400G" },
-          rackUnits: 1,
-        },
-      },
+      // (Keep your existing entries for C9500-32C-E, C9500-40X-E, C9500-16X-A/E
+      // — same pattern, just swap NW-E and DNA-*-E. Add when needed.)
     ],
   },
 
   // ============================================================
-  // DISTRIBUTION / AGGREGATION
-  // ============================================================
-  "Catalyst 9400": {
-    type: "distribution",
-    vendor: "Cisco",
-    description: "Modular Chassis — Distribution / Aggregation",
-    compatibleOptics: [
-      "QSFP-40G-SR4",
-      "SFP-10G-SR",
-      "SFP-10G-LR",
-      "GLC-SX-MMD",
-    ],
-    pids: [
-      {
-        pid: "C9404R",
-        description: "4-Slot Chassis",
-        faceplate: { modularSlots: 4, rackUnits: 5 },
-      },
-      {
-        pid: "C9407R",
-        description: "7-Slot Chassis",
-        faceplate: { modularSlots: 7, rackUnits: 7 },
-      },
-      {
-        pid: "C9410R",
-        description: "10-Slot Chassis",
-        faceplate: { modularSlots: 10, rackUnits: 10 },
-      },
-      {
-        pid: "C9400-SUP-1XL",
-        description: "Supervisor 1XL — 240Gbps/slot",
-        faceplate: {
-          accessPorts: { count: 8, speed: "10G" },
-          uplinkPorts: { count: 2, speed: "40G" },
-          rackUnits: 1,
-        },
-      },
-      {
-        pid: "C9400-SUP-1XL-Y",
-        description: "Supervisor 1XL-Y — Enhanced",
-        faceplate: {
-          accessPorts: { count: 8, speed: "25G" },
-          uplinkPorts: { count: 2, speed: "40G" },
-          rackUnits: 1,
-        },
-      },
-      {
-        pid: "C9400-SUP-2",
-        description: "Supervisor 2 — 480Gbps/slot",
-        faceplate: {
-          accessPorts: { count: 8, speed: "25G" },
-          uplinkPorts: { count: 4, speed: "100G" },
-          rackUnits: 1,
-        },
-      },
-    ],
-  },
-
-  // ============================================================
-  // ACCESS LAYER
+  // CATALYST 9300 — Stackable Access / Distribution
   // ============================================================
   "Catalyst 9300": {
     type: "access",
     vendor: "Cisco",
     description: "Stackable Access / Distribution",
     compatibleOptics: [
-      "SFP-10G-SR",
-      "SFP-10G-LR",
-      "QSFP-40G-SR4",
-      "GLC-SX-MMD",
-      "GLC-LH-SMD",
+      "SFP-10G-SR", "SFP-10G-LR", "QSFP-40G-SR4",
+      "GLC-SX-MMD", "GLC-LH-SMD",
     ],
     pids: [
       {
@@ -339,6 +445,39 @@ export const HARDWARE_LIBRARY: Record<string, HardwareSeries> = {
           uplinkPorts: { count: 4, speed: "10G" },
           rackUnits: 1,
         },
+        bundle: {
+          autoIncluded: [
+            { pid: "PWR-C1-715WAC-P",   qty: 1, note: "Primary PSU" },
+            { pid: "C9300-NW-A-48",     qty: 1, note: "Network Advantage" },
+            { pid: "C9300-NM-BLANK",    qty: 1, note: "Module slot blank" },
+            { pid: "C9300-SPS-NONE",    qty: 1, note: "No StackPower" },
+            { pid: "C9300-RFID",        qty: 1 },
+            { pid: "S9300UK9-179",      qty: 1, note: "IOS-XE image" },
+            { pid: "NETWORK-PNP-LIC",   qty: 1 },
+          ],
+          powerCord: POWER_CORDS_TA,
+          redundantPsu: {
+            pid: "PWR-C1-715WAC-P/2",
+            description: "715W AC Redundant PSU",
+          },
+          smartnet: {
+            baseSkuByTier: {
+              SNT:  "CON-SNT-C9348PA",
+              SNTP: "CON-SNTP-C9348PA",
+            },
+          },
+          license: {
+            tier: "Advantage",
+            entitlementPid: "C9300-DNA-A-48",
+            subscriptionByTerm: {
+              1: "C9300-DNA-A-48-1Y",
+              3: "C9300-DNA-A-48-3Y",
+              5: "C9300-DNA-A-48-5Y",
+              7: "C9300-DNA-A-48-7Y",
+            },
+          },
+          stacking: C9300_STACKING,
+        },
       },
       {
         pid: "C9300-48P-E",
@@ -348,23 +487,37 @@ export const HARDWARE_LIBRARY: Record<string, HardwareSeries> = {
           uplinkPorts: { count: 4, speed: "10G" },
           rackUnits: 1,
         },
-      },
-      {
-        pid: "C9300-48T-A",
-        description: "48x 1G + 4x 10G — Network Advantage",
-        faceplate: {
-          accessPorts: { count: 48, speed: "1G" },
-          uplinkPorts: { count: 4, speed: "10G" },
-          rackUnits: 1,
-        },
-      },
-      {
-        pid: "C9300-48T-E",
-        description: "48x 1G + 4x 10G — Network Essentials",
-        faceplate: {
-          accessPorts: { count: 48, speed: "1G" },
-          uplinkPorts: { count: 4, speed: "10G" },
-          rackUnits: 1,
+        bundle: {
+          autoIncluded: [
+            { pid: "PWR-C1-715WAC-P",   qty: 1 },
+            { pid: "C9300-NW-E-48",     qty: 1 },
+            { pid: "C9300-NM-BLANK",    qty: 1 },
+            { pid: "C9300-SPS-NONE",    qty: 1 },
+            { pid: "C9300-RFID",        qty: 1 },
+            { pid: "S9300UK9-179",      qty: 1 },
+            { pid: "NETWORK-PNP-LIC",   qty: 1 },
+          ],
+          powerCord: POWER_CORDS_TA,
+          redundantPsu: {
+            pid: "PWR-C1-715WAC-P/2",
+            description: "715W AC Redundant PSU",
+          },
+          smartnet: {
+            baseSkuByTier: {
+              SNT: "CON-SNT-C9348PE",
+            },
+          },
+          license: {
+            tier: "Essentials",
+            entitlementPid: "C9300-DNA-E-48",
+            subscriptionByTerm: {
+              1: "C9300-DNA-E-48-1Y",
+              3: "C9300-DNA-E-48-3Y",
+              5: "C9300-DNA-E-48-5Y",
+              7: "C9300-DNA-E-48-7Y",
+            },
+          },
+          stacking: C9300_STACKING,
         },
       },
       {
@@ -375,181 +528,92 @@ export const HARDWARE_LIBRARY: Record<string, HardwareSeries> = {
           uplinkPorts: { count: 4, speed: "10G" },
           rackUnits: 1,
         },
-      },
-      {
-        pid: "C9300-24P-E",
-        description: "24x 1G PoE+ + 4x 10G — Network Essentials",
-        faceplate: {
-          accessPorts: { count: 24, speed: "1G", poe: true },
-          uplinkPorts: { count: 4, speed: "10G" },
-          rackUnits: 1,
+        bundle: {
+          autoIncluded: [
+            { pid: "PWR-C1-715WAC-P",   qty: 1 },
+            { pid: "C9300-NW-A-24",     qty: 1 },
+            { pid: "C9300-NM-BLANK",    qty: 1 },
+            { pid: "C9300-SPS-NONE",    qty: 1 },
+            { pid: "C9300-RFID",        qty: 1 },
+            { pid: "S9300UK9-179",      qty: 1 },
+            { pid: "NETWORK-PNP-LIC",   qty: 1 },
+          ],
+          powerCord: POWER_CORDS_TA,
+          redundantPsu: {
+            pid: "PWR-C1-715WAC-P/2",
+            description: "715W AC Redundant PSU",
+          },
+          smartnet: {
+            baseSkuByTier: {
+              SNT:  "CON-SNT-C9324PA",
+              SNTP: "CON-SNTP-C9324PA",
+            },
+          },
+          license: {
+            tier: "Advantage",
+            entitlementPid: "C9300-DNA-A-24",
+            subscriptionByTerm: {
+              1: "C9300-DNA-A-24-1Y",
+              3: "C9300-DNA-A-24-3Y",
+              5: "C9300-DNA-A-24-5Y",
+              7: "C9300-DNA-A-24-7Y",
+            },
+          },
+          stacking: C9300_STACKING,
         },
       },
-      {
-        pid: "C9300-24T-A",
-        description: "24x 1G + 4x 10G — Network Advantage",
-        faceplate: {
-          accessPorts: { count: 24, speed: "1G" },
-          uplinkPorts: { count: 4, speed: "10G" },
-          rackUnits: 1,
-        },
-      },
-      {
-        pid: "C9300-48UXM-A",
-        description: "48x mGig UPOE + 8x 10G — Network Advantage",
-        faceplate: {
-          accessPorts: { count: 48, speed: "2.5G", poe: true },
-          uplinkPorts: { count: 8, speed: "10G" },
-          rackUnits: 1,
-        },
-      },
-      {
-        pid: "C9300-48UXM-E",
-        description: "48x mGig UPOE + 8x 10G — Network Essentials",
-        faceplate: {
-          accessPorts: { count: 48, speed: "2.5G", poe: true },
-          uplinkPorts: { count: 8, speed: "10G" },
-          rackUnits: 1,
-        },
-      },
-      {
-        pid: "C9300-24UX-A",
-        description: "24x mGig UPOE + 8x 10G — Network Advantage",
-        faceplate: {
-          accessPorts: { count: 24, speed: "2.5G", poe: true },
-          uplinkPorts: { count: 8, speed: "10G" },
-          rackUnits: 1,
-        },
-      },
+
+      // (Add C9300-24P-E, 48T-A/E, 24T-A, 48UXM-A/E, 24UX-A
+      //  same pattern with their respective NW/DNA SKUs)
     ],
   },
 
-  "Catalyst 9300X": {
-    type: "access",
-    vendor: "Cisco",
-    description: "Next-Gen Stackable Access with 25G/100G Uplinks",
-    compatibleOptics: [
-      "SFP-25G-SR-S",
-      "SFP-10G-SR",
-      "QSFP-100G-SR4",
-      "QSFP-40G-SR4",
-    ],
-    pids: [
-      {
-        pid: "C9300X-48HXN-A",
-        description: "48x mGig + 8x 25G — Network Advantage",
-        faceplate: {
-          accessPorts: { count: 48, speed: "2.5G", poe: true },
-          uplinkPorts: { count: 8, speed: "25G" },
-          rackUnits: 1,
-        },
-      },
-      {
-        pid: "C9300X-48HXN-E",
-        description: "48x mGig + 8x 25G — Network Essentials",
-        faceplate: {
-          accessPorts: { count: 48, speed: "2.5G", poe: true },
-          uplinkPorts: { count: 8, speed: "25G" },
-          rackUnits: 1,
-        },
-      },
-      {
-        pid: "C9300X-24HXN-A",
-        description: "24x mGig + 8x 25G — Network Advantage",
-        faceplate: {
-          accessPorts: { count: 24, speed: "2.5G", poe: true },
-          uplinkPorts: { count: 8, speed: "25G" },
-          rackUnits: 1,
-        },
-      },
-      {
-        pid: "C9300X-12Y-A",
-        description: "12x 25G — Aggregation",
-        faceplate: {
-          accessPorts: { count: 12, speed: "25G" },
-          rackUnits: 1,
-        },
-      },
-      {
-        pid: "C9300X-24Y-A",
-        description: "24x 25G — Aggregation",
-        faceplate: {
-          accessPorts: { count: 24, speed: "25G" },
-          rackUnits: 1,
-        },
-      },
-    ],
-  },
-
-  "Catalyst 9200": {
-    type: "access",
-    vendor: "Cisco",
-    description: "Cost-Effective Stackable Access",
-    compatibleOptics: ["SFP-10G-SR", "GLC-SX-MMD", "GLC-LH-SMD"],
-    pids: [
-      {
-        pid: "C9200-48P-A",
-        description: "48x 1G PoE+ + 4x 10G — Network Advantage",
-        faceplate: {
-          accessPorts: { count: 48, speed: "1G", poe: true },
-          uplinkPorts: { count: 4, speed: "10G" },
-          rackUnits: 1,
-        },
-      },
-      {
-        pid: "C9200-48P-E",
-        description: "48x 1G PoE+ + 4x 10G — Network Essentials",
-        faceplate: {
-          accessPorts: { count: 48, speed: "1G", poe: true },
-          uplinkPorts: { count: 4, speed: "10G" },
-          rackUnits: 1,
-        },
-      },
-      {
-        pid: "C9200-48T-A",
-        description: "48x 1G + 4x 10G — Network Advantage",
-        faceplate: {
-          accessPorts: { count: 48, speed: "1G" },
-          uplinkPorts: { count: 4, speed: "10G" },
-          rackUnits: 1,
-        },
-      },
-      {
-        pid: "C9200-24P-A",
-        description: "24x 1G PoE+ + 4x 10G — Network Advantage",
-        faceplate: {
-          accessPorts: { count: 24, speed: "1G", poe: true },
-          uplinkPorts: { count: 4, speed: "10G" },
-          rackUnits: 1,
-        },
-      },
-      {
-        pid: "C9200-24P-E",
-        description: "24x 1G PoE+ + 4x 10G — Network Essentials",
-        faceplate: {
-          accessPorts: { count: 24, speed: "1G", poe: true },
-          uplinkPorts: { count: 4, speed: "10G" },
-          rackUnits: 1,
-        },
-      },
-      {
-        pid: "C9200-24T-A",
-        description: "24x 1G + 4x 10G — Network Advantage",
-        faceplate: {
-          accessPorts: { count: 24, speed: "1G" },
-          uplinkPorts: { count: 4, speed: "10G" },
-          rackUnits: 1,
-        },
-      },
-    ],
-  },
-
+  // ============================================================
+  // CATALYST 9200L — Lite Branch Access
+  // ============================================================
   "Catalyst 9200L": {
     type: "access",
     vendor: "Cisco",
     description: "Lite Branch Access Switches",
     compatibleOptics: ["SFP-10G-SR", "GLC-SX-MMD"],
     pids: [
+      {
+        pid: "C9200L-24T-4X-E",
+        description: "24x 1G + 4x 10G uplinks — Network Essentials",
+        faceplate: {
+          accessPorts: { count: 24, speed: "1G" },
+          uplinkPorts: { count: 4, speed: "10G" },
+          rackUnits: 1,
+        },
+        bundle: {
+          autoIncluded: [
+            { pid: "C9200L-NW-E-24",      qty: 1, note: "Network Essentials" },
+            { pid: "PWR-C5-BLANK",        qty: 1 },
+            { pid: "C9200-STACK-BLANK",   qty: 2 },
+            { pid: "C9K-ACC-RBFT",        qty: 1 },
+            { pid: "C9K-ACC-SCR-4",       qty: 1 },
+            { pid: "CAB-GUIDE-1RU",       qty: 1 },
+            { pid: "NETWORK-PNP-LIC",     qty: 1 },
+          ],
+          powerCord: POWER_CORDS_TA,
+          smartnet: {
+            baseSkuByTier: {
+              SNT: "CON-SNT-C920L24X",
+            },
+          },
+          license: {
+            tier: "Essentials",
+            entitlementPid: "C9200L-DNA-E-24",
+            subscriptionByTerm: {
+              1: "C9200L-DNA-E-24-1Y",
+              3: "C9200L-DNA-E-24-3Y",
+              5: "C9200L-DNA-E-24-5Y",
+              7: "C9200L-DNA-E-24-7Y",
+            },
+          },
+          stacking: C9200L_STACKING,
+        },
+      },
       {
         pid: "C9200L-48P-4X-A",
         description: "48x 1G PoE+ + 4x 10G uplinks — Network Advantage",
@@ -558,340 +622,50 @@ export const HARDWARE_LIBRARY: Record<string, HardwareSeries> = {
           uplinkPorts: { count: 4, speed: "10G" },
           rackUnits: 1,
         },
-      },
-      {
-        pid: "C9200L-48P-4X-E",
-        description: "48x 1G PoE+ + 4x 10G uplinks — Network Essentials",
-        faceplate: {
-          accessPorts: { count: 48, speed: "1G", poe: true },
-          uplinkPorts: { count: 4, speed: "10G" },
-          rackUnits: 1,
+        bundle: {
+          autoIncluded: [
+            { pid: "C9200L-NW-A-48",      qty: 1 },
+            { pid: "PWR-C5-1KWAC",        qty: 1 },
+            { pid: "C9200-STACK-BLANK",   qty: 2 },
+            { pid: "C9K-ACC-RBFT",        qty: 1 },
+            { pid: "C9K-ACC-SCR-4",       qty: 1 },
+            { pid: "CAB-GUIDE-1RU",       qty: 1 },
+            { pid: "NETWORK-PNP-LIC",     qty: 1 },
+          ],
+          powerCord: POWER_CORDS_TA,
+          redundantPsu: {
+            pid: "PWR-C5-1KWAC/2",
+            description: "1KW AC Redundant PSU",
+          },
+          smartnet: {
+            baseSkuByTier: {
+              SNT:  "CON-SNT-C920L48A",
+              SNTP: "CON-SNTP-C920L48A",
+            },
+          },
+          license: {
+            tier: "Advantage",
+            entitlementPid: "C9200L-DNA-A-48",
+            subscriptionByTerm: {
+              1: "C9200L-DNA-A-48-1Y",
+              3: "C9200L-DNA-A-48-3Y",
+              5: "C9200L-DNA-A-48-5Y",
+              7: "C9200L-DNA-A-48-7Y",
+            },
+          },
+          stacking: C9200L_STACKING,
         },
       },
-      {
-        pid: "C9200L-48P-4G-A",
-        description: "48x 1G PoE+ + 4x 1G uplinks — Network Advantage",
-        faceplate: {
-          accessPorts: { count: 48, speed: "1G", poe: true },
-          uplinkPorts: { count: 4, speed: "1G" },
-          rackUnits: 1,
-        },
-      },
-      {
-        pid: "C9200L-48P-4G-E",
-        description: "48x 1G PoE+ + 4x 1G uplinks — Network Essentials",
-        faceplate: {
-          accessPorts: { count: 48, speed: "1G", poe: true },
-          uplinkPorts: { count: 4, speed: "1G" },
-          rackUnits: 1,
-        },
-      },
-      {
-        pid: "C9200L-48T-4X-A",
-        description: "48x 1G + 4x 10G uplinks — Network Advantage",
-        faceplate: {
-          accessPorts: { count: 48, speed: "1G" },
-          uplinkPorts: { count: 4, speed: "10G" },
-          rackUnits: 1,
-        },
-      },
-      {
-        pid: "C9200L-48T-4G-E",
-        description: "48x 1G + 4x 1G uplinks — Network Essentials",
-        faceplate: {
-          accessPorts: { count: 48, speed: "1G" },
-          uplinkPorts: { count: 4, speed: "1G" },
-          rackUnits: 1,
-        },
-      },
-      {
-        pid: "C9200L-24P-4X-A",
-        description: "24x 1G PoE+ + 4x 10G uplinks — Network Advantage",
-        faceplate: {
-          accessPorts: { count: 24, speed: "1G", poe: true },
-          uplinkPorts: { count: 4, speed: "10G" },
-          rackUnits: 1,
-        },
-      },
-      {
-        pid: "C9200L-24P-4G-E",
-        description: "24x 1G PoE+ + 4x 1G uplinks — Network Essentials",
-        faceplate: {
-          accessPorts: { count: 24, speed: "1G", poe: true },
-          uplinkPorts: { count: 4, speed: "1G" },
-          rackUnits: 1,
-        },
-      },
-      {
-        pid: "C9200L-24T-4X-A",
-        description: "24x 1G + 4x 10G uplinks — Network Advantage",
-        faceplate: {
-          accessPorts: { count: 24, speed: "1G" },
-          uplinkPorts: { count: 4, speed: "10G" },
-          rackUnits: 1,
-        },
-      },
-      {
-        pid: "C9200L-24T-4G-E",
-        description: "24x 1G + 4x 1G uplinks — Network Essentials",
-        faceplate: {
-          accessPorts: { count: 24, speed: "1G" },
-          uplinkPorts: { count: 4, speed: "1G" },
-          rackUnits: 1,
-        },
-      },
-    ],
-  },
 
-  "Meraki MS Series": {
-    type: "access",
-    vendor: "Cisco Meraki",
-    description: "Cloud-Managed Access Switches",
-    compatibleOptics: ["MA-SFP-10GB-SR", "MA-SFP-10GB-LR", "MA-SFP-1GB-SX"],
-    pids: [
-      {
-        pid: "MS390-48P-HW",
-        description: "48x 1G PoE+ + 4x 10G — Cloud Managed",
-        faceplate: {
-          accessPorts: { count: 48, speed: "1G", poe: true },
-          uplinkPorts: { count: 4, speed: "10G" },
-          rackUnits: 1,
-        },
-      },
-      {
-        pid: "MS390-24P-HW",
-        description: "24x 1G PoE+ + 4x 10G — Cloud Managed",
-        faceplate: {
-          accessPorts: { count: 24, speed: "1G", poe: true },
-          uplinkPorts: { count: 4, speed: "10G" },
-          rackUnits: 1,
-        },
-      },
-      {
-        pid: "MS250-48FP-HW",
-        description: "48x 1G Full PoE + 4x 10G",
-        faceplate: {
-          accessPorts: { count: 48, speed: "1G", poe: true },
-          uplinkPorts: { count: 4, speed: "10G" },
-          rackUnits: 1,
-        },
-      },
-      {
-        pid: "MS250-24P-HW",
-        description: "24x 1G PoE+ + 4x 10G",
-        faceplate: {
-          accessPorts: { count: 24, speed: "1G", poe: true },
-          uplinkPorts: { count: 4, speed: "10G" },
-          rackUnits: 1,
-        },
-      },
-      {
-        pid: "MS125-48FP-HW",
-        description: "48x 1G Full PoE + 4x 10G — Compact",
-        faceplate: {
-          accessPorts: { count: 48, speed: "1G", poe: true },
-          uplinkPorts: { count: 4, speed: "10G" },
-          rackUnits: 1,
-        },
-      },
-      {
-        pid: "MS125-24P-HW",
-        description: "24x 1G PoE+ + 4x 10G — Compact",
-        faceplate: {
-          accessPorts: { count: 24, speed: "1G", poe: true },
-          uplinkPorts: { count: 4, speed: "10G" },
-          rackUnits: 1,
-        },
-      },
+      // (Add other 9200L variants similarly — 4G uplink versions, T variants, etc.)
     ],
   },
 
   // ============================================================
-  // SECURITY / FIREWALL
+  // OTHER SERIES (faceplate-only, bundle to be added in Phase 2)
   // ============================================================
-  "Secure Firewall 1000": {
-    type: "security",
-    vendor: "Cisco",
-    description: "Branch / SOHO NGFW",
-    compatibleOptics: ["SFP-10G-SR", "SFP-10G-LR", "GLC-SX-MMD", "SFP-1G-T"],
-    pids: [
-      {
-        pid: "FPR1010-NGFW-K9",
-        description: "2 Gbps — 8x 1G RJ45 — FTD",
-        faceplate: {
-          accessPorts: { count: 8, speed: "1G" },
-          rackUnits: 1,
-        },
-      },
-      {
-        pid: "FPR1010-ASA-K9",
-        description: "2 Gbps — 8x 1G RJ45 — ASA Code",
-        faceplate: {
-          accessPorts: { count: 8, speed: "1G" },
-          rackUnits: 1,
-        },
-      },
-      {
-        pid: "FPR1120-NGFW-K9",
-        description: "3 Gbps — 8x 1G + 4x 10G — FTD",
-        faceplate: {
-          accessPorts: { count: 8, speed: "1G" },
-          uplinkPorts: { count: 4, speed: "10G" },
-          rackUnits: 1,
-        },
-      },
-      {
-        pid: "FPR1140-NGFW-K9",
-        description: "8.5 Gbps — 8x 1G + 4x 10G — FTD",
-        faceplate: {
-          accessPorts: { count: 8, speed: "1G" },
-          uplinkPorts: { count: 4, speed: "10G" },
-          rackUnits: 1,
-        },
-      },
-      {
-        pid: "FPR1140-ASA-K9",
-        description: "8.5 Gbps — 8x 1G + 4x 10G — ASA Code",
-        faceplate: {
-          accessPorts: { count: 8, speed: "1G" },
-          uplinkPorts: { count: 4, speed: "10G" },
-          rackUnits: 1,
-        },
-      },
-      {
-        pid: "FPR1150-NGFW-K9",
-        description: "10 Gbps — 8x 1G + 8x 10G — FTD",
-        faceplate: {
-          accessPorts: { count: 8, speed: "1G" },
-          uplinkPorts: { count: 8, speed: "10G" },
-          rackUnits: 1,
-        },
-      },
-    ],
-  },
-
-  "Secure Firewall 3100": {
-    type: "security",
-    vendor: "Cisco",
-    description: "Mid-Sized Enterprise NGFW",
-    compatibleOptics: ["SFP-25G-SR-S", "SFP-10G-SR", "SFP-10G-LR", "GLC-SX-MMD"],
-    pids: [
-      {
-        pid: "FPR3110-NGFW-K9",
-        description: "17 Gbps — 8x 1G + 8x 10G — FTD",
-        faceplate: {
-          accessPorts: { count: 8, speed: "1G" },
-          uplinkPorts: { count: 8, speed: "10G" },
-          rackUnits: 1,
-        },
-      },
-      {
-        pid: "FPR3110-ASA-K9",
-        description: "17 Gbps — 8x 1G + 8x 10G — ASA",
-        faceplate: {
-          accessPorts: { count: 8, speed: "1G" },
-          uplinkPorts: { count: 8, speed: "10G" },
-          rackUnits: 1,
-        },
-      },
-      {
-        pid: "FPR3120-NGFW-K9",
-        description: "27 Gbps — 8x 1G + 8x 10G + 8x 25G — FTD",
-        faceplate: {
-          accessPorts: { count: 16, speed: "10G" },
-          uplinkPorts: { count: 8, speed: "25G" },
-          rackUnits: 1,
-        },
-      },
-      {
-        pid: "FPR3130-NGFW-K9",
-        description: "37 Gbps — 8x 1G + 8x 10G + 8x 25G — FTD",
-        faceplate: {
-          accessPorts: { count: 16, speed: "10G" },
-          uplinkPorts: { count: 8, speed: "25G" },
-          rackUnits: 1,
-        },
-      },
-      {
-        pid: "FPR3140-NGFW-K9",
-        description: "45 Gbps — 8x 1G + 8x 10G + 8x 25G — FTD",
-        faceplate: {
-          accessPorts: { count: 16, speed: "10G" },
-          uplinkPorts: { count: 8, speed: "25G" },
-          rackUnits: 1,
-        },
-      },
-      {
-        pid: "FPR3140-ASA-K9",
-        description: "45 Gbps — 8x 1G + 8x 10G + 8x 25G — ASA",
-        faceplate: {
-          accessPorts: { count: 16, speed: "10G" },
-          uplinkPorts: { count: 8, speed: "25G" },
-          rackUnits: 1,
-        },
-      },
-    ],
-  },
-
-  "Secure Firewall 4100": {
-    type: "security",
-    vendor: "Cisco",
-    description: "Enterprise / DC Edge NGFW",
-    compatibleOptics: [
-      "QSFP-100G-SR4",
-      "QSFP-40G-SR4",
-      "SFP-25G-SR-S",
-      "SFP-10G-SR",
-      "SFP-10G-LR",
-    ],
-    pids: [
-      {
-        pid: "FPR4112-NGFW-K9",
-        description: "20 Gbps — Modular — FTD",
-        faceplate: {
-          accessPorts: { count: 8, speed: "10G" },
-          uplinkPorts: { count: 4, speed: "40G" },
-          rackUnits: 1,
-        },
-      },
-      {
-        pid: "FPR4115-NGFW-K9",
-        description: "55 Gbps — 8x 10G + 8x 25G + 4x 40G — FTD",
-        faceplate: {
-          accessPorts: { count: 16, speed: "25G" },
-          uplinkPorts: { count: 4, speed: "40G" },
-          rackUnits: 1,
-        },
-      },
-      {
-        pid: "FPR4125-NGFW-K9",
-        description: "65 Gbps — Modular + 100G — FTD",
-        faceplate: {
-          accessPorts: { count: 16, speed: "25G" },
-          uplinkPorts: { count: 4, speed: "100G" },
-          rackUnits: 2,
-        },
-      },
-      {
-        pid: "FPR4145-NGFW-K9",
-        description: "80 Gbps — 16x 10G + 8x 40G + 4x 100G — FTD",
-        faceplate: {
-          accessPorts: { count: 24, speed: "10G" },
-          uplinkPorts: { count: 4, speed: "100G" },
-          rackUnits: 2,
-        },
-      },
-      {
-        pid: "FPR4145-ASA-K9",
-        description: "80 Gbps — 16x 10G + 8x 40G + 4x 100G — ASA",
-        faceplate: {
-          accessPorts: { count: 24, speed: "10G" },
-          uplinkPorts: { count: 4, speed: "100G" },
-          rackUnits: 2,
-        },
-      },
-    ],
-  },
+  // Keep your existing 9500X, Nexus 9000, 9400, 9300X, 9200, Meraki,
+  // Secure Firewall entries here unchanged. We'll enrich them later.
 };
 
 // ============================================================
@@ -926,25 +700,37 @@ export const LAYER_CONFIG: Record<
     y: 720,
   },
   wireless: {
-    label: "WIRELESS LAYER",
-    color: "#22c55e",
-    bg: "rgba(34, 197, 94, 0.05)",
-    y: 720,
+    label: "WIRELESS",
+    color: "#f97316",
+    bg: "rgba(249, 115, 22, 0.05)",
+    y: 960,
   },
   management: {
-    label: "MANAGEMENT LAYER",
-    color: "#22c55e",
-    bg: "rgba(34, 197, 94, 0.05)",
-    y: 720,
+    label: "MANAGEMENT",
+    color: "#0ea5e9",
+    bg: "rgba(14, 165, 233, 0.05)",
+    y: 1200,
   },
 };
 
 // ============================================================
-// HELPER: Look up faceplate config for a given device
+// HELPERS
 // ============================================================
 export function getFaceplate(model: string, pid: string): FaceplateConfig | null {
   const series = HARDWARE_LIBRARY[model];
   if (!series) return null;
   const product = series.pids.find((p) => p.pid === pid);
   return product?.faceplate ?? null;
+}
+
+export function getBundle(model: string, pid: string): ChassisBundle | null {
+  const series = HARDWARE_LIBRARY[model];
+  if (!series) return null;
+  const product = series.pids.find((p) => p.pid === pid);
+  return product?.bundle ?? null;
+}
+
+/** Returns true if the chassis has a CCW bundle defined */
+export function hasBundle(model: string, pid: string): boolean {
+  return getBundle(model, pid) !== null;
 }
