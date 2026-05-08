@@ -734,3 +734,67 @@ export function getBundle(model: string, pid: string): ChassisBundle | null {
 export function hasBundle(model: string, pid: string): boolean {
   return getBundle(model, pid) !== null;
 }
+
+
+// ============================================================
+// LOCALSTORAGE OVERRIDES (for catalog testing without code changes)
+// ============================================================
+
+const OVERRIDES_KEY = "ka-bom-catalog-overrides-v1";
+
+export interface CatalogOverride {
+  /** Series name → PID → partial ProductSKU patch */
+  bundles: Record<string, Record<string, Partial<ProductSKU>>>;
+}
+
+function loadOverrides(): CatalogOverride {
+  if (typeof window === "undefined") return { bundles: {} };
+  try {
+    const raw = localStorage.getItem(OVERRIDES_KEY);
+    if (!raw) return { bundles: {} };
+    return JSON.parse(raw);
+  } catch {
+    return { bundles: {} };
+  }
+}
+
+export function saveOverrides(overrides: CatalogOverride) {
+  if (typeof window === "undefined") return;
+  localStorage.setItem(OVERRIDES_KEY, JSON.stringify(overrides));
+}
+
+export function clearOverrides() {
+  if (typeof window === "undefined") return;
+  localStorage.removeItem(OVERRIDES_KEY);
+}
+
+/**
+ * Returns the catalog merged with any localStorage overrides.
+ * Components should use this instead of HARDWARE_LIBRARY directly
+ * when they want to honor user-supplied bundle data.
+ */
+export function getEffectiveCatalog(): typeof HARDWARE_LIBRARY {
+  const overrides = loadOverrides();
+  if (Object.keys(overrides.bundles).length === 0) return HARDWARE_LIBRARY;
+
+  const merged: typeof HARDWARE_LIBRARY = JSON.parse(
+    JSON.stringify(HARDWARE_LIBRARY)
+  );
+
+  for (const [seriesName, pidPatches] of Object.entries(overrides.bundles)) {
+    const series = merged[seriesName];
+    if (!series) continue;
+    for (const [pid, patch] of Object.entries(pidPatches)) {
+      const product = series.pids.find((p) => p.pid === pid);
+      if (product) {
+        Object.assign(product, patch);
+      }
+    }
+  }
+
+  return merged;
+}
+
+export function loadCatalogOverrides(): CatalogOverride {
+  return loadOverrides();
+}

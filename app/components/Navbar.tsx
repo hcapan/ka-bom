@@ -10,7 +10,7 @@ type Props = {
 const NAV_ITEMS = [
   { href: "/", label: "Home" },
   { href: "/canvas", label: "Topology Builder" },
-  { href: "/library", label: "Hardware Library" },
+  { href: "/hardwarelib", label: "Hardware Library" },
   { href: "/about", label: "About" },
 ];
 

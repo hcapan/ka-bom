@@ -1,11 +1,11 @@
 "use client";
 
-import Sidebar from "./SideBar";
-import TopologyCanvas from "./TopologyCanvas";
+import { useCallback, useState } from "react";
 import { useProject } from "../lib/storage/useProject";
-import { useCallback } from "react";
-
-const SCHEMA_VERSION = 3;
+import Toolbar from "./Toolbar";
+import DeviceListPanel from "./DeviceListPanel";
+import TopologyCanvas from "./TopologyCanvas";
+import ConfigurePanel from "./ConfigurePanel";
 
 export default function TopologyApp() {
   const {
@@ -16,13 +16,14 @@ export default function TopologyApp() {
     setDevices,
     setLinks,
     setGlobalDefaults,
+    updateDevice,
     resetProject,
     importProject,
     exportProject,
   } = useProject();
 
-  // CCW-bound export will replace this in Chunk 6.
-  // For now, keep JSON export working.
+  const [configureDeviceId, setConfigureDeviceId] = useState<string | null>(null);
+
   const exportTopology = useCallback(async () => {
     if (devices.length === 0) {
       alert("Nothing to export — add some devices first.");
@@ -62,32 +63,56 @@ export default function TopologyApp() {
     );
   }
 
+  const configureDevice =
+    configureDeviceId !== null
+      ? devices.find((d) => d.id === configureDeviceId) ?? null
+      : null;
+
   return (
-    <main className="min-h-screen flex flex-col lg:flex-row gap-4 p-4 bg-slate-50">
-      <aside className="w-full lg:w-72 lg:shrink-0">
-        <Sidebar
+    <>
+      <main className="h-[calc(100vh-56px)] flex flex-col gap-3 p-3 bg-slate-50">
+        {/* ===== TOP TOOLBAR ===== */}
+        <Toolbar
           devices={devices}
           links={links}
-          setDevices={setDevices}
-          setLinks={setLinks}
-          defaultLinkSku={globalDefaults.defaultOptic}
-          setDefaultLinkSku={(opt) => setGlobalDefaults({ defaultOptic: opt })}
+          globalDefaults={globalDefaults}
+          setGlobalDefaults={setGlobalDefaults}
           onExport={exportTopology}
           onImport={handleImport}
           onReset={resetProject}
         />
-      </aside>
 
-      <section className="flex-1 min-w-0 max-h-screen">
-        <TopologyCanvas
-          devices={devices}
-          links={links}
-          setDevices={setDevices}
-          setLinks={setLinks}
-          defaultLinkSku={globalDefaults.defaultOptic}
-          onExport={exportTopology}
-        />
-      </section>
-    </main>
+        {/* ===== MAIN ROW: Device list + Canvas ===== */}
+        <div className="flex-1 grid grid-cols-1 lg:grid-cols-[260px_1fr] gap-3 min-h-0">
+          <DeviceListPanel
+            devices={devices}
+            links={links}
+            setDevices={setDevices}
+            setLinks={setLinks}
+            onConfigureDevice={setConfigureDeviceId}
+          />
+
+          <section className="min-w-0 min-h-0">
+            <TopologyCanvas
+              devices={devices}
+              links={links}
+              setDevices={setDevices}
+              setLinks={setLinks}
+              defaultLinkSku={globalDefaults.defaultOptic}
+              onExport={exportTopology}
+              onNodeClick={setConfigureDeviceId}
+            />
+          </section>
+        </div>
+      </main>
+
+      {/* ===== CONFIGURE DRAWER (right side) ===== */}
+      <ConfigurePanel
+        device={configureDevice}
+        globalDefaults={globalDefaults}
+        onClose={() => setConfigureDeviceId(null)}
+        onUpdate={updateDevice}
+      />
+    </>
   );
 }

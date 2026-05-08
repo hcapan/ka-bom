@@ -25,6 +25,7 @@ import { Device, Link } from "../lib/types";
 import { LAYER_CONFIG, DeviceType } from "../lib/hardware";
 import { ConfiguredDevice } from "../lib/types";
 
+
 const nodeTypes = { device: DeviceNode };
 const edgeTypes = { custom: CustomEdge };
 
@@ -35,6 +36,7 @@ type Props = {
   setLinks: (l: Link[]) => void;
   defaultLinkSku: string;
   onExport?: () => void;
+  onNodeClick?: (deviceId: string) => void;
 };
 
 // ============================================================
@@ -115,6 +117,7 @@ function CanvasInner({
   setLinks,
   defaultLinkSku,
   onExport,
+  onNodeClick,
 }: Props) {
   // React Flow owns live state during interaction
   const [nodes, setNodes] = useNodesState(devicesToNodes(devices));
@@ -293,7 +296,7 @@ function CanvasInner({
   );
 
   return (
-    <div className="w-full h-[80vh] bg-slate-100 rounded-xl shadow-inner border-2 border-slate-300 overflow-hidden relative">
+    <div className="w-full h-full bg-slate-100 rounded-xl shadow-inner border-2 border-slate-300 overflow-hidden relative">
       <ReactFlow
         nodes={nodes}
         edges={edges}
@@ -302,6 +305,7 @@ function CanvasInner({
         onConnect={onConnect}
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}
+        onNodeClick={(_, node) => onNodeClick?.(node.id)}  //
         fitView
         fitViewOptions={{ padding: 0.3 }}
         proOptions={{ hideAttribution: true }}
@@ -331,18 +335,9 @@ function CanvasInner({
         ))}
       </div>
 
-      <div className="absolute top-2 right-35 z-10">
-        <span className="bg-white/90 px-3 py-1 rounded-full text-[12px] font-bold text-slate-500 shadow-sm border">
-          DRAG NODES • CONNECT HANDLES • DEL TO REMOVE
-        </span>
-      </div>
       <div className="absolute top-2 right-5 z-10">
-        <span className="text-[12px] font-bold bg-white/90 px-3 py-1 rounded-full text-slate-500 shadow-sm border">
-          {
-            <button onClick={onExport} title="Export topology as JSON">
-              ⬇ Export BOM
-            </button>
-          }
+        <span className="bg-white/90 px-3 py-1 rounded-full text-[10px] font-bold text-slate-500 shadow-sm border">
+          DRAG NODES • CONNECT HANDLES • DEL TO REMOVE
         </span>
       </div>
     </div>
