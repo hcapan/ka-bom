@@ -3,14 +3,18 @@ import React, { useRef, useState } from "react";
 import { GlobalDefaults, ConfiguredDevice, Link } from "../lib/types";
 import FloatingPanel from "./FloatingPanel";
 import GlobalDefaultsPanel from "./GlobalDefaultsPanel";
-import InventoryPanel from "./InventoryPanel";
+import BomPreviewPanel from "./BomPreviewPanel";
+import { Project } from "../lib/types";
+import { useProject } from "../lib/storage/useProject";
 
 type Props = {
+  project: Project;
   devices: ConfiguredDevice[];
   links: Link[];
   globalDefaults: GlobalDefaults;
   setGlobalDefaults: (patch: Partial<GlobalDefaults>) => void;
-  onExport: () => void;
+  onExportBOM: () => void;
+  onExportJSON: () => void;
   onImport: (file: File) => void;
   onReset: () => void;
 };
@@ -18,16 +22,18 @@ type Props = {
 type PanelKey = "defaults" | "inventory" | "file" | null;
 
 export default function Toolbar({
+  project,
   devices,
   links,
   globalDefaults,
   setGlobalDefaults,
-  onExport,
+  onExportBOM,
+  onExportJSON,
   onImport,
   onReset,
 }: Props) {
   const [openPanel, setOpenPanel] = useState<PanelKey>(null);
-
+  const { ui, toggleBundleEdges, collapseAllBundles } = useProject();
   const defaultsRef = useRef<HTMLButtonElement>(null);
   const inventoryRef = useRef<HTMLButtonElement>(null);
   const fileRef = useRef<HTMLButtonElement>(null);
@@ -77,7 +83,7 @@ export default function Toolbar({
         <ToolbarButton
           ref={inventoryRef}
           icon="📋"
-          label={`Inventory (${devices.length})`}
+          label={`BOM (${devices.length})`}
           active={openPanel === "inventory"}
           onClick={() => handleToggle("inventory")}
         />
@@ -88,14 +94,62 @@ export default function Toolbar({
           active={openPanel === "file"}
           onClick={() => handleToggle("file")}
         />
+          <div className="flex items-center gap-2">
+      {/* ...your existing toolbar buttons (Defaults / BOM / File)... */}
+
+      {/* ✨ NEW — Bundle toggle */}
+      <button
+        onClick={toggleBundleEdges}
+        className={`flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-sm font-medium transition ${
+          ui.bundleEdges
+            ? "border-blue-300 bg-blue-50 text-blue-700 hover:bg-blue-100"
+            : "border-slate-300 bg-white text-slate-700 hover:bg-slate-50"
+        }`}
+        title={
+          ui.bundleEdges
+            ? "Bundling ON — parallel links collapse into one edge"
+            : "Bundling OFF — every link rendered individually"
+        }
+      >
+        <span className="text-base leading-none">
+          {ui.bundleEdges ? "🔗" : "≡"}
+        </span>
+        <span>{ui.bundleEdges ? "Bundled" : "Expanded"}</span>
+      </button>
+
+      {/* ✨ Show "Collapse all" only when at least one bundle is expanded */}
+      {ui.bundleEdges && ui.expandedBundles.length > 0 && (
+        <button
+          onClick={collapseAllBundles}
+          className="rounded-md border border-amber-300 bg-amber-50 px-3 py-1.5 text-sm font-medium text-amber-700 hover:bg-amber-100"
+          title="Collapse all manually-expanded bundles"
+        >
+          ⤴ Collapse all ({ui.expandedBundles.length})
+        </button>
+      )}
+    </div>
 
         <div className="flex-1" />
-
+        {/* CCW Excel Export */}
         <button
-          onClick={onExport}
-          className="text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1"
+          onClick={() => {
+            onExportBOM();
+            setOpenPanel(null);
+          }}
+          className="w-72 text-xs py-2 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded font-bold transition-colors flex items-center justify-center gap-2"
         >
-          ⬇ Export BOM
+          📊 Export BOM (CCW Excel)
+        </button>
+
+        {/* JSON Backup Export */}
+        <button
+          onClick={() => {
+            onExportJSON();
+            setOpenPanel(null);
+          }}
+          className="w-72 text-xs py-2 bg-slate-100 hover:bg-slate-200 rounded font-bold transition-colors flex items-center justify-center gap-2"
+        >
+          💾 Export Topology (JSON Backup)
         </button>
 
         <input
@@ -126,11 +180,14 @@ export default function Toolbar({
         onClose={handleClose}
         anchorRef={inventoryRef}
         title="Inventory"
-        width={400}
+        width={520}
         maxHeight="80vh"
       >
-        <InventoryPanel devices={devices} links={links} />
+        <BomPreviewPanel project={project} />
+        
       </FloatingPanel>
+
+      
 
       <FloatingPanel
         open={openPanel === "file"}
@@ -142,12 +199,12 @@ export default function Toolbar({
         <div className="space-y-2">
           <button
             onClick={() => {
-              onExport();
+              onExportJSON(); 
               setOpenPanel(null);
             }}
-            className="w-full text-xs py-2 bg-slate-100 hover:bg-slate-200 rounded font-bold transition-colors"
+            className="..."
           >
-            ⬇ Export Topology (JSON)
+            💾 Export Topology (JSON Backup)
           </button>
           <button
             onClick={handleImportClick}

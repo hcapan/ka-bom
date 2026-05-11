@@ -100,9 +100,6 @@ export default function SwitchFaceplate({
         </text>
       </g>
 
-      {/* Status LED */}
-      <circle cx={PADDING + 5} cy={10} r={2} fill="#22c55e" />
-
       {/* Access ports — 2 rows */}
       <g
         transform={`translate(${BRAND_W + PADDING}, ${

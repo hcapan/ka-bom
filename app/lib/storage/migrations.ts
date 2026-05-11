@@ -26,7 +26,7 @@ export function migrateProject(raw: unknown): Project {
     return raw as Project;
   }
 
-  // Legacy flat shape (from old localStorage)
+  // Legacy flat shape (from old localStorage)ƒ
   if (raw && typeof raw === "object" && "legacy" in raw) {
     const legacy = raw as {
       legacy: true;
@@ -98,6 +98,10 @@ function buildFreshProject(seed?: {
     schemaVersion: SCHEMA_VERSION,
     metadata: {
       name: "Untitled Topology",
+      naming: {
+        autoEnabled: false,
+        pattern: "{LAYER}-{NN}",
+      },
     },
     topology: {
       devices: seed?.devices ?? [],
@@ -106,11 +110,12 @@ function buildFreshProject(seed?: {
     globalDefaults: {
       region: "EU",
       smartnetTier: "SNT",
-      smartnetTermYears: 1, // CCW typically renews annually
+      smartnetTermYears: 3, // CCW typically renews annually
       licenseTermYears: 3, // your standard
       defaultOptic: seed?.defaultOptic ?? "SFP-10G-SR-S",
     },
     createdAt: now,
     updatedAt: now,
+    ui: { bundleEdges: true, expandedBundles: [] }
   };
 }

@@ -1,15 +1,16 @@
 "use client";
 
 import { useEffect, useState, useCallback, useRef } from "react";
-import { Project, ConfiguredDevice, Link, GlobalDefaults } from "../types";
+import {
+  Project,
+  ConfiguredDevice,
+  Link,
+  GlobalDefaults,
+  NamingConfig,
+  UISettings,                    // ✨ import from types
+} from "../types";
 import { storage } from "./index";
 
-/**
- * Single React hook for the entire project.
- *
- * Components don't need to know about adapters or persistence —
- * just read and call the setters.
- */
 export function useProject() {
   const [project, setProject] = useState<Project | null>(null);
   const [isLoaded, setIsLoaded] = useState(false);
@@ -23,7 +24,6 @@ export function useProject() {
       if (loaded) {
         setProject(loaded);
       } else {
-        // Fresh project — persist a default empty one
         const fresh = await initializeFreshProject();
         setProject(fresh);
       }
@@ -34,7 +34,7 @@ export function useProject() {
     };
   }, []);
 
-  // Auto-save on every change (debounced via ref to avoid double-writes)
+  // Auto-save (debounced)
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
     if (!project || !isLoaded) return;
@@ -75,24 +75,69 @@ export function useProject() {
     []
   );
 
-  const setGlobalDefaults = useCallback(
-    (patch: Partial<GlobalDefaults>) => {
-      setProject((p) =>
-        p ? { ...p, globalDefaults: { ...p.globalDefaults, ...patch } } : p
-      );
-    },
-    []
-  );
+  const setGlobalDefaults = useCallback((patch: Partial<GlobalDefaults>) => {
+    setProject((p) =>
+      p ? { ...p, globalDefaults: { ...p.globalDefaults, ...patch } } : p
+    );
+  }, []);
 
-  const setMetadata = useCallback(
-    (patch: Partial<Project["metadata"]>) => {
-      setProject((p) =>
-        p ? { ...p, metadata: { ...p.metadata, ...patch } } : p
-      );
-    },
-    []
-  );
+  const setMetadata = useCallback((patch: Partial<Project["metadata"]>) => {
+    setProject((p) =>
+      p ? { ...p, metadata: { ...p.metadata, ...patch } } : p
+    );
+  }, []);
 
+  const setNaming = useCallback((naming: NamingConfig) => {
+    setProject((p) =>
+      p ? { ...p, metadata: { ...p.metadata, naming } } : p
+    );
+  }, []);
+
+  // ✨ NEW: UI setters
+  const setUI = useCallback((patch: Partial<UISettings>) => {
+    setProject((p) =>
+      p ? { ...p, ui: { ...p.ui, ...patch } } : p
+    );
+  }, []);
+
+  const toggleBundleEdges = useCallback(() => {
+    setProject((p) =>
+      p ? { ...p, ui: { ...p.ui, bundleEdges: !p.ui.bundleEdges } } : p
+    );
+  }, []);
+
+  const expandBundle = useCallback((bundleId: string) => {
+    setProject((p) => {
+      if (!p) return p;
+      if (p.ui.expandedBundles.includes(bundleId)) return p;
+      return {
+        ...p,
+        ui: { ...p.ui, expandedBundles: [...p.ui.expandedBundles, bundleId] },
+      };
+    });
+  }, []);
+
+  const collapseBundle = useCallback((bundleId: string) => {
+    setProject((p) =>
+      p
+        ? {
+            ...p,
+            ui: {
+              ...p.ui,
+              expandedBundles: p.ui.expandedBundles.filter((id) => id !== bundleId),
+            },
+          }
+        : p
+    );
+  }, []);
+
+  const collapseAllBundles = useCallback(() => {
+    setProject((p) =>
+      p ? { ...p, ui: { ...p.ui, expandedBundles: [] } } : p
+    );
+  }, []);
+
+  // ----- Project actions -----
   const resetProject = useCallback(async () => {
     await storage.resetProject();
     const fresh = await initializeFreshProject();
@@ -117,6 +162,12 @@ export function useProject() {
     links: project?.topology.links ?? [],
     globalDefaults: project?.globalDefaults,
     metadata: project?.metadata,
+    naming: project?.metadata.naming ?? {
+      autoEnabled: false,
+      pattern: "{LAYER}-{NN}",
+    },
+    // ✨ UI state
+    ui: project?.ui ?? { bundleEdges: true, expandedBundles: [] },
 
     // Setters
     setDevices,
@@ -124,6 +175,13 @@ export function useProject() {
     updateDevice,
     setGlobalDefaults,
     setMetadata,
+    setNaming,
+    // ✨ UI setters
+    setUI,
+    toggleBundleEdges,
+    expandBundle,
+    collapseBundle,
+    collapseAllBundles,
 
     // Project actions
     resetProject,
@@ -133,7 +191,6 @@ export function useProject() {
 }
 
 async function initializeFreshProject(): Promise<Project> {
-  // Forces a migration that returns a fresh empty project
   const fresh = (await import("./migrations")).migrateProject({});
   await storage.saveProject(fresh);
   return fresh;

@@ -2,6 +2,7 @@
 
 import { useCallback, useState } from "react";
 import { useProject } from "../lib/storage/useProject";
+import { buildBOM, downloadCCWExcel } from "../lib/bom";
 import Toolbar from "./Toolbar";
 import DeviceListPanel from "./DeviceListPanel";
 import TopologyCanvas from "./TopologyCanvas";
@@ -10,21 +11,68 @@ import ConfigurePanel from "./ConfigurePanel";
 export default function TopologyApp() {
   const {
     isLoaded,
+    project,
     devices,
     links,
     globalDefaults,
+    naming,
     setDevices,
     setLinks,
     setGlobalDefaults,
+    setNaming,
     updateDevice,
     resetProject,
     importProject,
     exportProject,
+    ui,                    // ✨ MUST be here
+    expandBundle,
   } = useProject();
 
   const [configureDeviceId, setConfigureDeviceId] = useState<string | null>(null);
 
-  const exportTopology = useCallback(async () => {
+  // ============================================================
+  // EXPORT BOM AS CCW EXCEL  ← primary action
+  // ============================================================
+  const exportBOM = useCallback(() => {
+    if (!project) return;
+    if (devices.length === 0) {
+      alert("Nothing to export — add some devices first.");
+      return;
+    }
+
+    try {
+      const result = buildBOM(project);
+
+      if (result.lines.length === 0) {
+        alert(
+          "No BOM lines could be generated. Check that your devices have CCW bundle data defined."
+        );
+        return;
+      }
+
+      // If there are warnings, give user a chance to abort
+      if (result.warnings.length > 0) {
+        const proceed = confirm(
+          `BOM generated with ${result.warnings.length} warning(s).\n\n` +
+            `${result.stats.devicesWithoutBundle} device(s) skipped (no bundle).\n` +
+            `Total lines: ${result.stats.totalLines}\n\n` +
+            `Continue with export?`
+        );
+        if (!proceed) return;
+      }
+
+      downloadCCWExcel(result.lines, project);
+    } catch (err) {
+      alert(
+        `Export failed: ${err instanceof Error ? err.message : "Unknown error"}`
+      );
+    }
+  }, [project, devices.length]);
+
+  // ============================================================
+  // EXPORT JSON (kept as backup option in File menu)
+  // ============================================================
+  const exportJSON = useCallback(async () => {
     if (devices.length === 0) {
       alert("Nothing to export — add some devices first.");
       return;
@@ -55,7 +103,7 @@ export default function TopologyApp() {
     [importProject]
   );
 
-  if (!isLoaded || !globalDefaults) {
+  if (!isLoaded || !globalDefaults || !project) {
     return (
       <main className="min-h-screen flex items-center justify-center bg-slate-50">
         <div className="text-slate-500 text-sm">Loading topology…</div>
@@ -71,24 +119,28 @@ export default function TopologyApp() {
   return (
     <>
       <main className="h-[calc(100vh-56px)] flex flex-col gap-3 p-3 bg-slate-50">
-        {/* ===== TOP TOOLBAR ===== */}
         <Toolbar
+          project={project}
           devices={devices}
           links={links}
           globalDefaults={globalDefaults}
           setGlobalDefaults={setGlobalDefaults}
-          onExport={exportTopology}
+          onExportBOM={exportBOM}        // ✅ Excel BOM
+          onExportJSON={exportJSON}      // ✅ JSON backup
           onImport={handleImport}
           onReset={resetProject}
         />
 
-        {/* ===== MAIN ROW: Device list + Canvas ===== */}
         <div className="flex-1 grid grid-cols-1 lg:grid-cols-[260px_1fr] gap-3 min-h-0">
           <DeviceListPanel
             devices={devices}
             links={links}
             setDevices={setDevices}
             setLinks={setLinks}
+             naming={naming}                        // ✅ NEW
+            setNaming={setNaming}  
+            defaultLinkSku={globalDefaults.defaultOptic}                       
+            setDefaultLinkSku={(sku) => setGlobalDefaults({ defaultOptic: sku })} 
             onConfigureDevice={setConfigureDeviceId}
           />
 
@@ -99,14 +151,15 @@ export default function TopologyApp() {
               setDevices={setDevices}
               setLinks={setLinks}
               defaultLinkSku={globalDefaults.defaultOptic}
-              onExport={exportTopology}
+              onExport={exportBOM}        // ✅ canvas FAB also runs CCW export
               onNodeClick={setConfigureDeviceId}
+               ui={ui}                        // ✨ MUST forward
+    onExpandBundle={expandBundle}
             />
           </section>
         </div>
       </main>
 
-      {/* ===== CONFIGURE DRAWER (right side) ===== */}
       <ConfigurePanel
         device={configureDevice}
         globalDefaults={globalDefaults}

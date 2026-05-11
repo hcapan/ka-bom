@@ -37,6 +37,13 @@ export type Region = "EU" | "US" | "UK" | "JP" | "AU" | "IN" | "CN";
 // ============================================================
 // PROJECT — Top-level container
 // ============================================================
+
+export interface UISettings {
+  bundleEdges: boolean;          
+  expandedBundles: string[];     
+}
+
+
 export interface Project {
   id: string;
   schemaVersion: number;
@@ -45,7 +52,9 @@ export interface Project {
   globalDefaults: GlobalDefaults;
   createdAt: string;
   updatedAt: string;
+  ui: UISettings; 
 }
+
 
 export interface ProjectMetadata {
   name: string;
@@ -55,11 +64,19 @@ export interface ProjectMetadata {
   owner?: string;
   description?: string;
   tags?: string[];
+  naming?: NamingConfig;
 }
 
 export interface Topology {
   devices: ConfiguredDevice[];
   links: Link[];
+}
+
+export interface NamingConfig {
+  /** When true, auto-fill hostname from pattern */
+  autoEnabled: boolean;
+  /** Pattern with tokens like {LAYER}, {nn} */
+  pattern: string;
 }
 
 export interface GlobalDefaults {
