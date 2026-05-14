@@ -2,7 +2,7 @@
 // HARDWARE LIBRARY — Cisco Enterprise Catalog (CCW-Aware)
 // ============================================================
 
-import { Region, SmartnetTier, ContractTermYears } from "./types";
+import { Region, SmartnetTier, ContractTermYears } from "../types";
 
 export type DeviceType = "core" | "distribution" | "access" | "security" | "wireless" | "management";
 

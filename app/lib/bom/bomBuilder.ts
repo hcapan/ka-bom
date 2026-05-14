@@ -1,5 +1,5 @@
 import { Project, Link } from "../types";
-import { getBundle } from "../hardware";
+import { getBundle } from "../hardware/catalog";
 import {
   BOMLine,
   BOMBuildResult,

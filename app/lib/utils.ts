@@ -1,5 +1,5 @@
 import { Device } from "./types";
-import { DeviceType } from "./hardware";
+import { DeviceType } from "./hardware/catalog";
 
 const TYPE_PREFIX: Record<DeviceType, string> = {
   core: "CORE",

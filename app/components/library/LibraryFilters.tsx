@@ -1,5 +1,5 @@
 "use client";
-import { DeviceType } from "../../lib/hardware";
+import { DeviceType } from "../../lib/hardware/catalog";
 import { BundleStatus } from "./BundleStatusBadge";
 
 export type LibraryFilterState = {

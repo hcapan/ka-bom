@@ -1,5 +1,5 @@
 "use client";
-import { ProductSKU, HARDWARE_LIBRARY } from "../../lib/hardware";
+import { ProductSKU, HARDWARE_LIBRARY } from "../../lib/hardware/catalog";
 import BundleStatusBadge from "./BundleStatusBadge";
 
 type Props = {

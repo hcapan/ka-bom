@@ -1,5 +1,6 @@
 import {
   Project,
+  DeviceGroup,
   ConfiguredDevice,
   Link,
   SCHEMA_VERSION,
@@ -8,15 +9,18 @@ import {
 } from "../types";
 
 /**
- * Generates a v3-compliant project from any input.
+ * Generates a current-schema-compliant project from any input.
  * Handles:
  * - Brand new (empty)
  * - Legacy localStorage (devices/links as separate keys)
  * - Older v1/v2 single-blob projects
- * - Already-v3 projects (no-op)
+ * - v3 forward migration (adds groups, groupId)
+ * - Already-current projects (no-op)
  */
 export function migrateProject(raw: unknown): Project {
-  // Already v3
+  // ────────────────────────────────────────────────
+  // 1. Already current schema — no-op
+  // ────────────────────────────────────────────────
   if (
     raw &&
     typeof raw === "object" &&
@@ -26,7 +30,35 @@ export function migrateProject(raw: unknown): Project {
     return raw as Project;
   }
 
-  // Legacy flat shape (from old localStorage)ƒ
+  // ────────────────────────────────────────────────
+  // 2. v3 → v4 forward migration
+  //    Adds: topology.groups, ConfiguredDevice.groupId, ui (if missing)
+  // ────────────────────────────────────────────────
+  if (
+    raw &&
+    typeof raw === "object" &&
+    "schemaVersion" in raw &&
+    (raw as { schemaVersion: number }).schemaVersion === 3
+  ) {
+    const v3 = raw as Project;
+    return {
+      ...v3,
+      schemaVersion: SCHEMA_VERSION,
+      topology: {
+        ...v3.topology,
+        devices: v3.topology.devices.map(normalizeDevice),
+        links: v3.topology.links,
+        groups:
+          (v3.topology as { groups?: DeviceGroup[] }).groups ?? [],
+      },
+      ui: v3.ui ?? { bundleEdges: true, expandedBundles: [] },
+      updatedAt: new Date().toISOString(), // mark migration moment
+    };
+  }
+
+  // ────────────────────────────────────────────────
+  // 3. Legacy flat shape (devices/links as separate keys)
+  // ────────────────────────────────────────────────
   if (raw && typeof raw === "object" && "legacy" in raw) {
     const legacy = raw as {
       legacy: true;
@@ -41,7 +73,9 @@ export function migrateProject(raw: unknown): Project {
     });
   }
 
-  // Older v1/v2 export with `devices` and `links` arrays
+  // ────────────────────────────────────────────────
+  // 4. Older v1/v2 single-blob export
+  // ────────────────────────────────────────────────
   if (
     raw &&
     typeof raw === "object" &&
@@ -55,8 +89,25 @@ export function migrateProject(raw: unknown): Project {
     });
   }
 
-  // Unknown — start fresh
+  // ────────────────────────────────────────────────
+  // 5. Unknown — start fresh
+  // ────────────────────────────────────────────────
   return buildFreshProject();
+}
+
+// ============================================================
+// HELPERS
+// ============================================================
+
+/**
+ * Ensures a device has all v4 fields. Use null (not undefined) for optional
+ * group membership so the field survives JSON serialization.
+ */
+function normalizeDevice(d: ConfiguredDevice): ConfiguredDevice {
+  return {
+    ...d,
+    groupId: d.groupId ?? null,
+  };
 }
 
 function migrateLegacyDevice(d: LegacyDevice): ConfiguredDevice {
@@ -69,7 +120,7 @@ function migrateLegacyDevice(d: LegacyDevice): ConfiguredDevice {
       series: d.model,
       chassisPid: d.pid,
     },
-    // License & SmartNet will be applied from globalDefaults at config time
+    groupId: null, // ✨ explicit
   };
 }
 
@@ -81,9 +132,7 @@ function migrateLegacyLink(l: LegacyLink): Link {
     sourceHandle: l.sourceHandle,
     targetHandle: l.targetHandle,
     isLateral: l.isLateral,
-    optic: {
-      pid: l.sku,
-    },
+    optic: { pid: l.sku },
   };
 }
 
@@ -104,18 +153,19 @@ function buildFreshProject(seed?: {
       },
     },
     topology: {
-      devices: seed?.devices ?? [],
+      devices: (seed?.devices ?? []).map(normalizeDevice),
       links: seed?.links ?? [],
+      groups: [],
     },
     globalDefaults: {
       region: "EU",
       smartnetTier: "SNT",
-      smartnetTermYears: 3, // CCW typically renews annually
-      licenseTermYears: 3, // your standard
+      smartnetTermYears: 3,
+      licenseTermYears: 3,
       defaultOptic: seed?.defaultOptic ?? "SFP-10G-SR-S",
     },
     createdAt: now,
     updatedAt: now,
-    ui: { bundleEdges: true, expandedBundles: [] }
+    ui: { bundleEdges: true, expandedBundles: [] },
   };
 }

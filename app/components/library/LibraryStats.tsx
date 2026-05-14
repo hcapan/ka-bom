@@ -1,4 +1,4 @@
-import { HARDWARE_LIBRARY } from "../../lib/hardware";
+import { HARDWARE_LIBRARY } from "../../lib/hardware/catalog";
 import { getBundleStatus } from "./BundleStatusBadge";
 
 export default function LibraryStats() {

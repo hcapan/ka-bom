@@ -1,11 +1,11 @@
 "use client";
 import React, { useRef, useState } from "react";
-import { GlobalDefaults, ConfiguredDevice, Link } from "../lib/types";
-import FloatingPanel from "./FloatingPanel";
-import GlobalDefaultsPanel from "./GlobalDefaultsPanel";
-import BomPreviewPanel from "./BomPreviewPanel";
-import { Project } from "../lib/types";
-import { useProject } from "../lib/storage/useProject";
+import { GlobalDefaults, ConfiguredDevice, Link } from "../../lib/types";
+import FloatingPanel from "../ui/FloatingPanel";
+import GlobalDefaultsPanel from "../panels/GlobalDefaultsPanel";
+import BomPreviewPanel from "../panels/BomPreviewPanel";
+import { Project } from "../../lib/types";
+import { useProject } from "../../lib/storage/useProject";
 
 type Props = {
   project: Project;
@@ -17,6 +17,11 @@ type Props = {
   onExportJSON: () => void;
   onImport: (file: File) => void;
   onReset: () => void;
+  bundleEdges: boolean;
+  expandedBundleCount: number;
+  onToggleBundleEdges: () => void;
+  onCollapseAllBundles: () => void;
+ 
 };
 
 type PanelKey = "defaults" | "inventory" | "file" | null;
@@ -31,6 +36,8 @@ export default function Toolbar({
   onExportJSON,
   onImport,
   onReset,
+  bundleEdges,
+  onToggleBundleEdges
 }: Props) {
   const [openPanel, setOpenPanel] = useState<PanelKey>(null);
   const { ui, toggleBundleEdges, collapseAllBundles } = useProject();
@@ -97,7 +104,7 @@ export default function Toolbar({
           <div className="flex items-center gap-2">
       {/* ...your existing toolbar buttons (Defaults / BOM / File)... */}
 
-      {/* ✨ NEW — Bundle toggle */}
+  {/* ✨ NEW — Bundle toggle */}
       <button
         onClick={toggleBundleEdges}
         className={`flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-sm font-medium transition ${
@@ -126,7 +133,10 @@ export default function Toolbar({
         >
           ⤴ Collapse all ({ui.expandedBundles.length})
         </button>
+
+        
       )}
+
     </div>
 
         <div className="flex-1" />

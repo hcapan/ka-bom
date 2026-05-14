@@ -1,4 +1,4 @@
-import { ProductSKU } from "../../lib/hardware";
+import { ProductSKU } from "../../lib/hardware/catalog";
 
 type Props = {
   pid: ProductSKU;

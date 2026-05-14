@@ -1,7 +1,7 @@
 "use client";
 import { useState } from "react";
-import { HARDWARE_LIBRARY, DeviceType } from "../lib/hardware";
-import { ConfiguredDevice } from "../lib/types";
+import { HARDWARE_LIBRARY, DeviceType } from "../../lib/hardware/catalog";
+import { ConfiguredDevice } from "../../lib/types";
 
 type Props = {
   devices: ConfiguredDevice[];
@@ -18,7 +18,10 @@ const TYPE_PREFIX: Record<DeviceType, string> = {
   management: "MGT",
 };
 
-function generateDeviceId(type: DeviceType, existing: ConfiguredDevice[]): string {
+function generateDeviceId(
+  type: DeviceType,
+  existing: ConfiguredDevice[],
+): string {
   const prefix = TYPE_PREFIX[type] ?? "DEV";
   const nums = existing
     .filter((d) => d.id.startsWith(`${prefix}-`))
@@ -30,7 +33,11 @@ function generateDeviceId(type: DeviceType, existing: ConfiguredDevice[]): strin
   return `${prefix}-${String(next).padStart(2, "0")}`;
 }
 
-export default function AddDevicePanel({ devices, setDevices, onAdded }: Props) {
+export default function AddDevicePanel({
+  devices,
+  setDevices,
+  onAdded,
+}: Props) {
   const firstSeries = Object.keys(HARDWARE_LIBRARY)[0];
   const [newNode, setNewNode] = useState({
     name: "",
@@ -42,6 +49,7 @@ export default function AddDevicePanel({ devices, setDevices, onAdded }: Props) 
   const currentPidObj = currentSeries.pids.find((p) => p.pid === newNode.pid);
   const previewType = currentSeries.type;
   const previewId = generateDeviceId(previewType, devices);
+
 
   const handleSeriesChange = (series: string) => {
     setNewNode({

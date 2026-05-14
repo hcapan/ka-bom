@@ -1,7 +1,7 @@
 "use client";
 import dynamic from "next/dynamic";
 
-const TopologyApp = dynamic(() => import("../components/TopologyApp"), {
+const TopologyApp = dynamic(() => import("../components/chrome/TopologyApp"), {
   ssr: false,
   loading: () => (
     <main className="min-h-screen flex items-center justify-center bg-slate-50">

@@ -2,7 +2,7 @@ import {
   HARDWARE_LIBRARY,
   ChassisBundle,
   getBundle,
-} from "../hardware";
+} from "../hardware/catalog";
 import {
   ConfiguredDevice,
   GlobalDefaults,

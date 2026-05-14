@@ -1,9 +1,19 @@
 "use client";
 import { useMemo, useState } from "react";
-import { ConfiguredDevice, Link, DeviceType, NamingConfig } from "../lib/types";
-import { LAYER_CONFIG, HARDWARE_LIBRARY } from "../lib/hardware";
-import { generateHostname, PATTERN_TOKENS } from "../lib/utils/nameGenerator";
-import { createBulkDevices } from "../lib/utils/bulkCreate";
+import {
+  ConfiguredDevice,
+  Link,
+  DeviceType,
+  NamingConfig,
+  DeviceGroup,
+} from "../../lib/types";
+import { LAYER_CONFIG, HARDWARE_LIBRARY } from "../../lib/hardware/catalog";
+import {
+  generateHostname,
+  PATTERN_TOKENS,
+} from "../../lib/utils/nameGenerator";
+import { createBulkDevices } from "../../lib/utils/bulkCreate";
+import { getAncestorChain, generateGroupId } from "../../lib/utils/groupHelpers";
 
 type Props = {
   devices: ConfiguredDevice[];
@@ -15,6 +25,18 @@ type Props = {
   naming: NamingConfig;
   setNaming: (cfg: NamingConfig) => void;
   onConfigureDevice?: (id: string) => void;
+  onCreateGroup?: (
+    label: string,
+    options?: {
+      parentGroupId?: string;
+      position?: { x: number; y: number };
+      color?: string;
+    }
+  ) => string;
+
+  // ✨ Sprint 3 — Group props
+  groups: DeviceGroup[];
+  setGroups: (groups: DeviceGroup[]) => void;
 };
 
 const TYPE_PREFIX: Record<DeviceType, string> = {
@@ -28,7 +50,7 @@ const TYPE_PREFIX: Record<DeviceType, string> = {
 
 function generateDeviceId(
   type: DeviceType,
-  existing: ConfiguredDevice[],
+  existing: ConfiguredDevice[]
 ): string {
   const prefix = TYPE_PREFIX[type] ?? "DEV";
   const nums = existing
@@ -41,6 +63,11 @@ function generateDeviceId(
   return `${prefix}-${String(next).padStart(2, "0")}`;
 }
 
+function indentGroupLabel(g: DeviceGroup, all: DeviceGroup[]): string {
+  const depth = getAncestorChain(all, g.id).length - 1;
+  return `${"·  ".repeat(depth)}${g.label}`;
+}
+
 export default function DeviceListPanel({
   devices,
   links,
@@ -51,6 +78,9 @@ export default function DeviceListPanel({
   naming,
   setNaming,
   onConfigureDevice,
+  onCreateGroup,
+  groups,
+  setGroups,
 }: Props) {
   // ============================================================
   // ADD DEVICE STATE
@@ -71,20 +101,23 @@ export default function DeviceListPanel({
     Map<string, { linkCount: number; opticPid: string }>
   >(new Map());
 
+  // ✨ Sprint 3 — Group inputs
+  const [groupName, setGroupName] = useState("");
+  const [parentGroupId, setParentGroupId] = useState<string>("");
+
   const [showPatternHelp, setShowPatternHelp] = useState(false);
 
   const currentSeries = HARDWARE_LIBRARY[newNode.series];
   const currentPidObj = currentSeries.pids.find((p) => p.pid === newNode.pid);
   const previewType = currentSeries.type;
-  const previewId = generateDeviceId(previewType, devices);
+  //const previewId = generateDeviceId(previewType, devices);
 
-  // ✅ Live auto-generated hostname (when enabled)
   const autoName = useMemo(
     () =>
       naming.autoEnabled
         ? generateHostname(naming.pattern, previewType, newNode.series, devices)
         : "",
-    [naming, previewType, newNode.series, devices],
+    [naming, previewType, newNode.series, devices]
   );
 
   const handleSeriesChange = (series: string) => {
@@ -102,17 +135,49 @@ export default function DeviceListPanel({
       if (!finalName) return;
 
       const series = HARDWARE_LIBRARY[newNode.series];
+
+      // ✨ Sprint 3 — single-device can also opt into a group
+      const trimmedGroupName = bulkMode ? groupName.trim() : "";
+      let newGroupForSingle: DeviceGroup | undefined;
+      let assignedGroupId: string | null = parentGroupId || null;
+
+      if (trimmedGroupName && bulkMode) {
+        const conflict = groups.some(
+          (g) =>
+            g.label.toLowerCase() === trimmedGroupName.toLowerCase() &&
+            (g.parentGroupId ?? "") === (parentGroupId || "")
+        );
+        if (conflict) {
+          alert(
+            `A group named "${trimmedGroupName}" already exists at this level.`
+          );
+          return;
+        }
+        const newId = generateGroupId(groups);
+        newGroupForSingle = {
+          id: newId,
+          label: trimmedGroupName,
+          parentGroupId: parentGroupId || undefined,
+          collapsed: false,
+          position: { x: 200, y: 200 },
+        };
+        assignedGroupId = newId;
+      }
+
       const device: ConfiguredDevice = {
         id: generateDeviceId(series.type, devices),
         name: finalName,
         type: series.type,
+        position: assignedGroupId
+          ? { x: 24, y: 60 } // relative to group container
+          : undefined, // canvas will assign default
         hardware: {
           series: newNode.series,
           chassisPid: newNode.pid,
         },
+        groupId: assignedGroupId,
       };
 
-      // If bulkMode is on and there are uplinks, create those too
       const bulkLinks: Link[] = [];
       if (bulkMode && uplinkTargets.size > 0) {
         for (const [targetId, cfg] of uplinkTargets) {
@@ -121,14 +186,20 @@ export default function DeviceListPanel({
               id: `LNK-${Date.now()}-${i}-${targetId}-${Math.random()
                 .toString(36)
                 .slice(2, 6)}`,
-              from: device.id,
-              to: targetId,
+              from: targetId, // parent (CORE) is source
+              to: device.id,
+              sourceHandle: "b",
+              targetHandle: "t",
               optic: { pid: cfg.opticPid },
             });
           }
         }
       }
 
+      // Apply changes — group first
+      if (newGroupForSingle) {
+        setGroups([...groups, newGroupForSingle]);
+      }
       setDevices([...devices, device]);
       if (bulkLinks.length > 0) {
         setLinks([...links, ...bulkLinks]);
@@ -137,11 +208,30 @@ export default function DeviceListPanel({
       if (!naming.autoEnabled) {
         setNewNode({ ...newNode, name: "" });
       }
+      // Reset group inputs after success
+      setGroupName("");
+      setParentGroupId("");
       return;
     }
 
     // === Bulk path (qty > 1, requires auto-name) ===
     if (!naming.autoEnabled) return;
+
+    // ✨ Validate group name uniqueness
+    const trimmedGroupName = groupName.trim();
+    if (trimmedGroupName) {
+      const conflict = groups.some(
+        (g) =>
+          g.label.toLowerCase() === trimmedGroupName.toLowerCase() &&
+          (g.parentGroupId ?? "") === (parentGroupId || "")
+      );
+      if (conflict) {
+        alert(
+          `A group named "${trimmedGroupName}" already exists at this level. Please choose a different name.`
+        );
+        return;
+      }
+    }
 
     const series = HARDWARE_LIBRARY[newNode.series];
     const result = createBulkDevices(
@@ -155,16 +245,28 @@ export default function DeviceListPanel({
           opticPid: cfg.opticPid,
           linkCount: cfg.linkCount,
         })),
+        // ✨ NEW
+        groupName: trimmedGroupName || undefined,
+        parentGroupId: parentGroupId || undefined,
       },
       devices,
       links,
-      naming,
+      groups, // ✨ pass existing groups for ID collision check
+      naming
     );
 
+    // Apply changes — group FIRST so device.groupId references resolve
+    if (result.newGroup) {
+      setGroups([...groups, result.newGroup]);
+    }
     setDevices([...devices, ...result.newDevices]);
     if (result.newLinks.length > 0) {
       setLinks([...links, ...result.newLinks]);
     }
+
+    // Reset bulk inputs after success
+    setGroupName("");
+    setParentGroupId("");
   };
 
   const groupedSeries = Object.entries(HARDWARE_LIBRARY).reduce<
@@ -250,25 +352,16 @@ export default function DeviceListPanel({
     });
   };
 
-  // Devices that can be uplink targets (not the layer being added to)
   const availableUplinkTargets = devices.filter(
-    (d) => d.type !== currentSeries.type,
+    (d) => d.type !== currentSeries.type
   );
 
   const totalLinks = Array.from(uplinkTargets.values()).reduce(
     (sum, u) => sum + u.linkCount,
-    0,
+    0
   );
   const grandTotalLinks = quantity * totalLinks;
 
-  // Check if bulk mode requirements are met
-  const canSubmitBulk =
-    bulkMode &&
-    naming.autoEnabled &&
-    quantity >= 1 &&
-    (quantity === 1 || naming.autoEnabled);
-
-  // Determine if Add button should be disabled
   const canAdd = naming.autoEnabled
     ? autoName.trim().length > 0
     : newNode.name.trim().length > 0;
@@ -278,15 +371,13 @@ export default function DeviceListPanel({
   // ============================================================
   return (
     <aside className="bg-white border border-slate-200 rounded-xl shadow-sm flex flex-col h-full overflow-hidden">
-      {/* ============================================ */}
-      {/* SECTION 1: ADD DEVICE                        */}
-      {/* ============================================ */}
+      {/* SECTION 1: ADD DEVICE */}
       <div className="p-3 border-b border-slate-200 bg-slate-50">
         <p className="text-[10px] uppercase font-bold text-slate-500 tracking-wider mb-2">
           Add Device
         </p>
         <div className="space-y-2">
-          {/* Hostname input (read-only when auto-name enabled) */}
+          {/* Hostname input */}
           <input
             placeholder={
               naming.autoEnabled ? autoName || "Pattern preview…" : "HOSTNAME"
@@ -330,7 +421,6 @@ export default function DeviceListPanel({
             )}
           </div>
 
-          {/* Pattern editor (visible when auto-name is on) */}
           {naming.autoEnabled && (
             <>
               <input
@@ -363,7 +453,7 @@ export default function DeviceListPanel({
             </>
           )}
 
-          {/* Series selector */}
+          {/* Series & PID */}
           <select
             className="w-full border border-slate-200 p-1.5 rounded text-xs"
             value={newNode.series}
@@ -382,7 +472,6 @@ export default function DeviceListPanel({
               ))}
           </select>
 
-          {/* PID selector */}
           <select
             className="w-full border border-slate-200 p-1.5 rounded text-xs font-mono"
             value={newNode.pid}
@@ -401,9 +490,7 @@ export default function DeviceListPanel({
             </p>
           )}
 
-          {/* ============================================ */}
-          {/* BULK MODE TOGGLE                             */}
-          {/* ============================================ */}
+          {/* BULK MODE TOGGLE */}
           <div className="border-t border-slate-200 pt-2 mt-2">
             <label className="flex items-center gap-1.5 text-[10px] text-slate-600 cursor-pointer">
               <input
@@ -414,6 +501,8 @@ export default function DeviceListPanel({
                   if (!e.target.checked) {
                     setQuantity(1);
                     setUplinkTargets(new Map());
+                    setGroupName("");
+                    setParentGroupId("");
                   }
                 }}
                 className="cursor-pointer"
@@ -459,6 +548,42 @@ export default function DeviceListPanel({
                     ⚠ Enable Auto-name above to add multiple devices
                   </p>
                 )}
+              </div>
+
+              {/* ✨ Sprint 3 — Group fields */}
+              <div className="space-y-1.5 bg-purple-50/60 border border-purple-200 rounded p-2">
+                <div className="flex items-center gap-1 text-[10px] font-bold text-purple-700 uppercase tracking-wider">
+                  <span>📦</span>
+                  <span>Group (optional)</span>
+                </div>
+                <input
+                  type="text"
+                  value={groupName}
+                  onChange={(e) => setGroupName(e.target.value)}
+                  placeholder="e.g. ACC Pod 1"
+                  className="w-full border border-slate-200 p-1.5 rounded text-xs"
+                />
+                {groups.length > 0 && (
+                  <select
+                    value={parentGroupId}
+                    onChange={(e) => setParentGroupId(e.target.value)}
+                    className="w-full border border-slate-200 p-1.5 rounded text-xs"
+                  >
+                    <option value="">— Top level —</option>
+                    {groups.map((g) => (
+                      <option key={g.id} value={g.id}>
+                        {indentGroupLabel(g, groups)}
+                      </option>
+                    ))}
+                  </select>
+                )}
+                <p className="text-[10px] text-slate-500 italic leading-tight">
+                  {groupName.trim()
+                    ? `Will create new group "${groupName.trim()}"${parentGroupId ? " (nested)" : ""}.`
+                    : parentGroupId
+                      ? "Devices will be added to the selected group."
+                      : "Leave blank to create devices at top level."}
+                </p>
               </div>
 
               {/* Uplinks */}
@@ -508,7 +633,7 @@ export default function DeviceListPanel({
                                 onChange={(e) =>
                                   updateUplinkCount(
                                     target.id,
-                                    parseInt(e.target.value) || 1,
+                                    parseInt(e.target.value) || 1
                                   )
                                 }
                                 className="w-10 border border-slate-200 rounded p-0.5 text-center text-[10px] font-mono"
@@ -523,10 +648,13 @@ export default function DeviceListPanel({
                 )}
               </div>
 
-              {/* Live preview of what'll happen */}
-              {(quantity > 1 || uplinkTargets.size > 0) && (
+              {/* Live preview */}
+              {(quantity > 1 || uplinkTargets.size > 0 || groupName.trim()) && (
                 <div className="text-[10px] text-slate-700 bg-white border border-slate-200 rounded p-2 leading-tight">
                   <p className="font-semibold mb-0.5">Will create:</p>
+                  {groupName.trim() && (
+                    <p>• 1 group: 📦 {groupName.trim()}</p>
+                  )}
                   <p>
                     • {quantity} device{quantity !== 1 ? "s" : ""}
                   </p>
@@ -541,6 +669,23 @@ export default function DeviceListPanel({
             </div>
           )}
 
+          {onCreateGroup && (
+            <button
+              onClick={() => {
+                const label = prompt("Group name?", "Test Pod");
+                if (label?.trim()) {
+                  onCreateGroup(label.trim(), {
+                    position: { x: 200, y: 200 },
+                  });
+                }
+              }}
+              className="w-full bg-purple-600 hover:bg-purple-700 text-white py-1.5 rounded text-xs font-bold transition-colors"
+              title="Create empty group"
+            >
+              + Empty Group
+            </button>
+          )}
+
           <button
             onClick={addNode}
             disabled={
@@ -552,13 +697,12 @@ export default function DeviceListPanel({
             {bulkMode && grandTotalLinks > 0
               ? ` + ${grandTotalLinks} Links`
               : ""}
+            {bulkMode && groupName.trim() ? " (in group)" : ""}
           </button>
         </div>
       </div>
 
-      {/* ============================================ */}
-      {/* SECTION 1B: DEFAULT LINK OPTIC               */}
-      {/* ============================================ */}
+      {/* SECTION 1B: DEFAULT LINK OPTIC */}
       <div className="p-3 border-b border-slate-200 bg-white">
         <div className="flex items-center justify-between mb-1.5">
           <p className="text-[10px] uppercase font-bold text-slate-500 tracking-wider">
@@ -595,9 +739,7 @@ export default function DeviceListPanel({
         </p>
       </div>
 
-      {/* ============================================ */}
-      {/* SECTION 2: DEVICE LIST                       */}
-      {/* ============================================ */}
+      {/* SECTION 2: DEVICE LIST */}
       <div className="p-3 border-b border-slate-200 bg-slate-50">
         <div className="flex justify-between items-center mb-2">
           <p className="text-[10px] uppercase font-bold text-slate-500 tracking-wider">
@@ -644,9 +786,7 @@ export default function DeviceListPanel({
         </div>
       </div>
 
-      {/* ============================================ */}
-      {/* SECTION 3: SCROLLABLE DEVICE LIST            */}
-      {/* ============================================ */}
+      {/* SECTION 3: SCROLLABLE DEVICE LIST */}
       <div className="flex-1 overflow-y-auto custom-scrollbar p-2">
         {devices.length === 0 ? (
           <div className="text-center py-8">
@@ -663,6 +803,9 @@ export default function DeviceListPanel({
           <div className="space-y-1">
             {filtered.map((d) => {
               const cfg = LAYER_CONFIG[d.type];
+              const groupOf = d.groupId
+                ? groups.find((g) => g.id === d.groupId)
+                : null;
               return (
                 <div
                   key={d.id}
@@ -679,6 +822,11 @@ export default function DeviceListPanel({
                     </span>
                     <span className="text-[10px] text-slate-400 font-mono truncate">
                       {d.id} · {d.hardware.chassisPid}
+                      {groupOf && (
+                        <span className="ml-1 text-purple-600">
+                          · 📦 {groupOf.label}
+                        </span>
+                      )}
                     </span>
                   </div>
                   <div className="flex flex-col gap-0.5 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -714,7 +862,7 @@ export default function DeviceListPanel({
 }
 
 // ============================================================
-// SPEED BADGE — visual indicator matching canvas edge color
+// SPEED BADGE
 // ============================================================
 function SpeedBadge({ sku }: { sku: string }) {
   const { label, color } = getSpeedInfo(sku);

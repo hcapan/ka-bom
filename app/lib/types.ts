@@ -2,7 +2,7 @@
 // SCHEMA — Project-centric, DB-migration-ready
 // ============================================================
 
-export const SCHEMA_VERSION = 3;
+export const SCHEMA_VERSION = 4;
 
 // ============================================================
 // LAYERS
@@ -44,6 +44,17 @@ export interface UISettings {
 }
 
 
+export interface DeviceGroup {
+  id: string;
+  label: string;
+  parentGroupId?: string;        // ← nesting
+  collapsed: boolean;
+  position: { x: number; y: number };
+  size?: { width: number; height: number };
+  color?: string;
+}
+
+
 export interface Project {
   id: string;
   schemaVersion: number;
@@ -53,6 +64,8 @@ export interface Project {
   createdAt: string;
   updatedAt: string;
   ui: UISettings; 
+  
+ 
 }
 
 
@@ -70,6 +83,7 @@ export interface ProjectMetadata {
 export interface Topology {
   devices: ConfiguredDevice[];
   links: Link[];
+  groups: DeviceGroup[];
 }
 
 export interface NamingConfig {
@@ -102,6 +116,7 @@ export interface ConfiguredDevice {
 
   notes?: string;
   customFields?: Record<string, string>;
+  groupId?: string | null;
 }
 
 export interface HardwareConfig {

@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 type Props = {
   /** Optional: shown on the right (e.g., "12 devices · 8 links") */
   stats?: string;
+  
 };
 
 const NAV_ITEMS = [

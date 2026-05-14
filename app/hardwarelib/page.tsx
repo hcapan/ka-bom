@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { HARDWARE_LIBRARY, ProductSKU, DeviceType } from "../lib/hardware";
+import { HARDWARE_LIBRARY, ProductSKU, DeviceType } from "../lib/hardware/catalog";
 import LibraryStats from "../components/library/LibraryStats";
 import LibraryFilters, {
   LibraryFilterState,

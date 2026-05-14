@@ -6,8 +6,8 @@ import {
   SmartnetTier,
   ContractTermYears,
   GlobalDefaults,
-} from "../lib/types";
-import { HARDWARE_LIBRARY, getBundle } from "../lib/hardware";
+} from "../../lib/types";
+import { HARDWARE_LIBRARY, getBundle } from "../../lib/hardware/catalog";
 
 type Props = {
   device: ConfiguredDevice | null;

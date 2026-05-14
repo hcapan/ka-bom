@@ -1,12 +1,12 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import { useProject } from "../lib/storage/useProject";
-import { buildBOM, downloadCCWExcel } from "../lib/bom";
+import { useProject } from "../../lib/storage/useProject";
+import { buildBOM, downloadCCWExcel } from "../../lib/bom";
 import Toolbar from "./Toolbar";
-import DeviceListPanel from "./DeviceListPanel";
-import TopologyCanvas from "./TopologyCanvas";
-import ConfigurePanel from "./ConfigurePanel";
+import DeviceListPanel from "../panels/DeviceListPanel";
+import TopologyCanvas from "../canvas/TopologyCanvas";
+import ConfigurePanel from "../panels/ConfigurePanel";
 
 export default function TopologyApp() {
   const {
@@ -24,11 +24,21 @@ export default function TopologyApp() {
     resetProject,
     importProject,
     exportProject,
-    ui,                    // ✨ MUST be here
+    ui, // ✨ MUST be here
     expandBundle,
+    toggleBundleEdges,
+    collapseAllBundles,
+    groups,
+    toggleGroupCollapse,
+    renameGroup,
+    removeGroup,
+    addGroup,
+     setGroups, 
   } = useProject();
 
-  const [configureDeviceId, setConfigureDeviceId] = useState<string | null>(null);
+  const [configureDeviceId, setConfigureDeviceId] = useState<string | null>(
+    null,
+  );
 
   // ============================================================
   // EXPORT BOM AS CCW EXCEL  ← primary action
@@ -45,7 +55,7 @@ export default function TopologyApp() {
 
       if (result.lines.length === 0) {
         alert(
-          "No BOM lines could be generated. Check that your devices have CCW bundle data defined."
+          "No BOM lines could be generated. Check that your devices have CCW bundle data defined.",
         );
         return;
       }
@@ -56,7 +66,7 @@ export default function TopologyApp() {
           `BOM generated with ${result.warnings.length} warning(s).\n\n` +
             `${result.stats.devicesWithoutBundle} device(s) skipped (no bundle).\n` +
             `Total lines: ${result.stats.totalLines}\n\n` +
-            `Continue with export?`
+            `Continue with export?`,
         );
         if (!proceed) return;
       }
@@ -64,7 +74,7 @@ export default function TopologyApp() {
       downloadCCWExcel(result.lines, project);
     } catch (err) {
       alert(
-        `Export failed: ${err instanceof Error ? err.message : "Unknown error"}`
+        `Export failed: ${err instanceof Error ? err.message : "Unknown error"}`,
       );
     }
   }, [project, devices.length]);
@@ -96,11 +106,11 @@ export default function TopologyApp() {
         await importProject(text);
       } catch (err) {
         alert(
-          `Could not import: ${err instanceof Error ? err.message : "error"}`
+          `Could not import: ${err instanceof Error ? err.message : "error"}`,
         );
       }
     },
-    [importProject]
+    [importProject],
   );
 
   if (!isLoaded || !globalDefaults || !project) {
@@ -113,7 +123,7 @@ export default function TopologyApp() {
 
   const configureDevice =
     configureDeviceId !== null
-      ? devices.find((d) => d.id === configureDeviceId) ?? null
+      ? (devices.find((d) => d.id === configureDeviceId) ?? null)
       : null;
 
   return (
@@ -125,10 +135,14 @@ export default function TopologyApp() {
           links={links}
           globalDefaults={globalDefaults}
           setGlobalDefaults={setGlobalDefaults}
-          onExportBOM={exportBOM}        // ✅ Excel BOM
-          onExportJSON={exportJSON}      // ✅ JSON backup
+          onExportBOM={exportBOM} // ✅ Excel BOM
+          onExportJSON={exportJSON} // ✅ JSON backup
           onImport={handleImport}
           onReset={resetProject}
+          bundleEdges={ui.bundleEdges}
+          expandedBundleCount={ui.expandedBundles.length}
+          onToggleBundleEdges={toggleBundleEdges}
+          onCollapseAllBundles={collapseAllBundles}
         />
 
         <div className="flex-1 grid grid-cols-1 lg:grid-cols-[260px_1fr] gap-3 min-h-0">
@@ -137,11 +151,16 @@ export default function TopologyApp() {
             links={links}
             setDevices={setDevices}
             setLinks={setLinks}
-             naming={naming}                        // ✅ NEW
-            setNaming={setNaming}  
-            defaultLinkSku={globalDefaults.defaultOptic}                       
-            setDefaultLinkSku={(sku) => setGlobalDefaults({ defaultOptic: sku })} 
+            naming={naming} // ✅ NEW
+            setNaming={setNaming}
+            defaultLinkSku={globalDefaults.defaultOptic}
+            setDefaultLinkSku={(sku) =>
+              setGlobalDefaults({ defaultOptic: sku })
+            }
             onConfigureDevice={setConfigureDeviceId}
+            onCreateGroup={addGroup}
+            groups={groups}
+            setGroups={setGroups}
           />
 
           <section className="min-w-0 min-h-0">
@@ -151,10 +170,15 @@ export default function TopologyApp() {
               setDevices={setDevices}
               setLinks={setLinks}
               defaultLinkSku={globalDefaults.defaultOptic}
-              onExport={exportBOM}        // ✅ canvas FAB also runs CCW export
+              onExport={exportBOM} // ✅ canvas FAB also runs CCW export
               onNodeClick={setConfigureDeviceId}
-               ui={ui}                        // ✨ MUST forward
-    onExpandBundle={expandBundle}
+              ui={ui} // ✨ MUST forward
+              onExpandBundle={expandBundle}
+              groups={groups}
+              onToggleGroupCollapse={toggleGroupCollapse}
+              onRenameGroup={renameGroup}
+              onRemoveGroup={removeGroup}
+              setGroups={setGroups}  
             />
           </section>
         </div>

@@ -7,13 +7,163 @@ import {
   Link,
   GlobalDefaults,
   NamingConfig,
-  UISettings,                    // ✨ import from types
+  UISettings,
+  DeviceGroup,
 } from "../types";
 import { storage } from "./index";
+import {
+  generateGroupId,
+  isCircularReparent,
+  getDescendantGroupIds,
+} from "../utils/groupHelpers";
 
 export function useProject() {
   const [project, setProject] = useState<Project | null>(null);
   const [isLoaded, setIsLoaded] = useState(false);
+
+  const setGroups = useCallback((groups: DeviceGroup[]) => {
+    setProject((p) => (p ? { ...p, topology: { ...p.topology, groups } } : p));
+  }, []);
+
+  const addGroup = useCallback(
+    (
+      label: string,
+      options?: {
+        parentGroupId?: string;
+        position?: { x: number; y: number };
+        color?: string;
+      },
+    ): string => {
+      let newId = "";
+      setProject((p) => {
+        if (!p) return p;
+        newId = generateGroupId(p.topology.groups);
+        const newGroup: DeviceGroup = {
+          id: newId,
+          label,
+          parentGroupId: options?.parentGroupId,
+          collapsed: false, // expanded by default per spec
+          position: options?.position ?? { x: 100, y: 100 },
+          color: options?.color,
+        };
+        return {
+          ...p,
+          topology: {
+            ...p.topology,
+            groups: [...p.topology.groups, newGroup],
+          },
+        };
+      });
+      return newId;
+    },
+    [],
+  );
+
+  const removeGroup = useCallback((id: string) => {
+    setProject((p) => {
+      if (!p) return p;
+      // Detach: orphan all descendant groups (re-parent to undefined)
+      // and remove devices' groupId references
+      const descendantIds = new Set(
+        getDescendantGroupIds(p.topology.groups, id),
+      );
+      return {
+        ...p,
+        topology: {
+          ...p.topology,
+          groups: p.topology.groups.filter((g) => !descendantIds.has(g.id)),
+          devices: p.topology.devices.map((d) =>
+            d.groupId && descendantIds.has(d.groupId)
+              ? { ...d, groupId: undefined }
+              : d,
+          ),
+        },
+      };
+    });
+  }, []);
+
+  const renameGroup = useCallback((id: string, label: string) => {
+    setProject((p) =>
+      p
+        ? {
+            ...p,
+            topology: {
+              ...p.topology,
+              groups: p.topology.groups.map((g) =>
+                g.id === id ? { ...g, label } : g,
+              ),
+            },
+          }
+        : p,
+    );
+  }, []);
+
+  const toggleGroupCollapse = useCallback((id: string) => {
+    setProject((p) =>
+      p
+        ? {
+            ...p,
+            topology: {
+              ...p.topology,
+              groups: p.topology.groups.map((g) =>
+                g.id === id ? { ...g, collapsed: !g.collapsed } : g,
+              ),
+            },
+          }
+        : p,
+    );
+  }, []);
+
+  const moveDeviceToGroup = useCallback(
+    (deviceId: string, groupId: string | null) => {
+      setProject((p) =>
+        p
+          ? {
+              ...p,
+              topology: {
+                ...p.topology,
+                devices: p.topology.devices.map((d) =>
+                  d.id === deviceId
+                    ? { ...d, groupId: groupId ?? undefined }
+                    : d,
+                ),
+              },
+            }
+          : p,
+      );
+    },
+    [],
+  );
+
+  const moveGroupToParent = useCallback(
+    (groupId: string, newParentId: string | null): boolean => {
+      let success = false;
+      setProject((p) => {
+        if (!p) return p;
+        // Safety: prevent cycles
+        if (isCircularReparent(p.topology.groups, groupId, newParentId)) {
+          console.warn(
+            `[useProject] Circular reparent blocked: ${groupId} → ${newParentId}`,
+          );
+          return p;
+        }
+        success = true;
+        return {
+          ...p,
+          topology: {
+            ...p.topology,
+            groups: p.topology.groups.map((g) =>
+              g.id === groupId
+                ? { ...g, parentGroupId: newParentId ?? undefined }
+                : g,
+            ),
+          },
+        };
+      });
+      return success;
+    },
+    [],
+  );
 
   // Load on mount
   useEffect(() => {
@@ -65,44 +215,40 @@ export function useProject() {
               topology: {
                 ...p.topology,
                 devices: p.topology.devices.map((d) =>
-                  d.id === id ? { ...d, ...patch } : d
+                  d.id === id ? { ...d, ...patch } : d,
                 ),
               },
             }
-          : p
+          : p,
       );
     },
-    []
+    [],
   );
 
   const setGlobalDefaults = useCallback((patch: Partial<GlobalDefaults>) => {
     setProject((p) =>
-      p ? { ...p, globalDefaults: { ...p.globalDefaults, ...patch } } : p
+      p ? { ...p, globalDefaults: { ...p.globalDefaults, ...patch } } : p,
     );
   }, []);
 
   const setMetadata = useCallback((patch: Partial<Project["metadata"]>) => {
     setProject((p) =>
-      p ? { ...p, metadata: { ...p.metadata, ...patch } } : p
+      p ? { ...p, metadata: { ...p.metadata, ...patch } } : p,
     );
   }, []);
 
   const setNaming = useCallback((naming: NamingConfig) => {
-    setProject((p) =>
-      p ? { ...p, metadata: { ...p.metadata, naming } } : p
-    );
+    setProject((p) => (p ? { ...p, metadata: { ...p.metadata, naming } } : p));
   }, []);
 
   // ✨ NEW: UI setters
   const setUI = useCallback((patch: Partial<UISettings>) => {
-    setProject((p) =>
-      p ? { ...p, ui: { ...p.ui, ...patch } } : p
-    );
+    setProject((p) => (p ? { ...p, ui: { ...p.ui, ...patch } } : p));
   }, []);
 
   const toggleBundleEdges = useCallback(() => {
     setProject((p) =>
-      p ? { ...p, ui: { ...p.ui, bundleEdges: !p.ui.bundleEdges } } : p
+      p ? { ...p, ui: { ...p.ui, bundleEdges: !p.ui.bundleEdges } } : p,
     );
   }, []);
 
@@ -124,17 +270,17 @@ export function useProject() {
             ...p,
             ui: {
               ...p.ui,
-              expandedBundles: p.ui.expandedBundles.filter((id) => id !== bundleId),
+              expandedBundles: p.ui.expandedBundles.filter(
+                (id) => id !== bundleId,
+              ),
             },
           }
-        : p
+        : p,
     );
   }, []);
 
   const collapseAllBundles = useCallback(() => {
-    setProject((p) =>
-      p ? { ...p, ui: { ...p.ui, expandedBundles: [] } } : p
-    );
+    setProject((p) => (p ? { ...p, ui: { ...p.ui, expandedBundles: [] } } : p));
   }, []);
 
   // ----- Project actions -----
@@ -187,6 +333,14 @@ export function useProject() {
     resetProject,
     importProject,
     exportProject,
+    groups: project?.topology.groups ?? [],
+    setGroups,
+    addGroup,
+    removeGroup,
+    renameGroup,
+    toggleGroupCollapse,
+    moveDeviceToGroup,
+    moveGroupToParent,
   };
 }
 

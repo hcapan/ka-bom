@@ -5,7 +5,7 @@ import {
   saveOverrides,
   clearOverrides,
   CatalogOverride,
-} from "../../lib/hardware";
+} from "../../lib/hardware/catalog";
 
 type Props = {
   open: boolean;

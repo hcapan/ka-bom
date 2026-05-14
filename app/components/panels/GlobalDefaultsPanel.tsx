@@ -4,7 +4,7 @@ import {
   Region,
   SmartnetTier,
   ContractTermYears,
-} from "../lib/types";
+} from "../../lib/types";
 
 type Props = {
   defaults: GlobalDefaults;

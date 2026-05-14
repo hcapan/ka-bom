@@ -1,5 +1,5 @@
 import { Project } from "../types";
-
+import { SCHEMA_VERSION } from "../types";
 /**
  * Abstract storage interface.
  * Today: LocalStorageAdapter

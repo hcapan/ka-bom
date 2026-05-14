@@ -1,7 +1,7 @@
 "use client";
 import { useMemo, useState } from "react";
-import { buildBOM, sortBOMLines, BOMLine,downloadCCWExcel,getExportFilename } from "../lib/bom";
-import { Project } from "../lib/types";
+import { buildBOM, sortBOMLines, BOMLine,downloadCCWExcel,getExportFilename } from "../../lib/bom";
+import { Project } from "../../lib/types";
 
 type Props = {
   project: Project;
