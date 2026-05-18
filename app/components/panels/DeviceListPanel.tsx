@@ -1,5 +1,5 @@
 "use client";
-import { useMemo, useState } from "react";
+import { useMemo, useState, useCallback } from "react";
 import {
   ConfiguredDevice,
   Link,
@@ -7,13 +7,19 @@ import {
   NamingConfig,
   DeviceGroup,
 } from "../../lib/types";
-import { LAYER_CONFIG, HARDWARE_LIBRARY } from "../../lib/hardware/catalog";
+import { LAYER_CONFIG, getEffectiveCatalog } from "../../lib/hardware/catalog";
 import {
   generateHostname,
   PATTERN_TOKENS,
 } from "../../lib/utils/nameGenerator";
 import { createBulkDevices } from "../../lib/utils/bulkCreate";
-import { getAncestorChain, generateGroupId } from "../../lib/utils/groupHelpers";
+import {
+  getAncestorChain,
+  generateGroupId,
+} from "../../lib/utils/groupHelpers";
+import { getAddableSeriesNames } from "../../lib/hardware/catalog";
+import { validateStackComposition } from "@/app/lib/utils/stackValidation";
+import { useProject } from "@/app/lib/storage";
 
 type Props = {
   devices: ConfiguredDevice[];
@@ -31,7 +37,7 @@ type Props = {
       parentGroupId?: string;
       position?: { x: number; y: number };
       color?: string;
-    }
+    },
   ) => string;
 
   // ✨ Sprint 3 — Group props
@@ -50,7 +56,7 @@ const TYPE_PREFIX: Record<DeviceType, string> = {
 
 function generateDeviceId(
   type: DeviceType,
-  existing: ConfiguredDevice[]
+  existing: ConfiguredDevice[],
 ): string {
   const prefix = TYPE_PREFIX[type] ?? "DEV";
   const nums = existing
@@ -82,14 +88,18 @@ export default function DeviceListPanel({
   groups,
   setGroups,
 }: Props) {
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const { createStackFromDevices } = useProject();
+
   // ============================================================
   // ADD DEVICE STATE
   // ============================================================
-  const firstSeries = Object.keys(HARDWARE_LIBRARY)[0];
+  const catalog = useMemo(() => getEffectiveCatalog(), []);
+  const firstSeries = Object.keys(catalog)[0];
   const [newNode, setNewNode] = useState({
     name: "",
     series: firstSeries,
-    pid: HARDWARE_LIBRARY[firstSeries].pids[0].pid,
+    pid: catalog[firstSeries].pids[0].pid,
   });
 
   // ============================================================
@@ -107,24 +117,72 @@ export default function DeviceListPanel({
 
   const [showPatternHelp, setShowPatternHelp] = useState(false);
 
-  const currentSeries = HARDWARE_LIBRARY[newNode.series];
+  const currentSeries = catalog[newNode.series];
   const currentPidObj = currentSeries.pids.find((p) => p.pid === newNode.pid);
   const previewType = currentSeries.type;
   //const previewId = generateDeviceId(previewType, devices);
+
+  const selectedDevices = useMemo(() => {
+  const found = selectedIds
+    .map(id => devices.find(d => d.id === id))
+    .filter((d): d is ConfiguredDevice => d !== undefined);
+  
+  console.log('[Stack Debug]', {
+    selectedIds,
+    deviceIds: devices.map(d => d.id),
+    matched: found.length,
+  });
+  
+  return found;
+}, [selectedIds, devices]);
+
+  const canStackSelection = useMemo(() => {
+    if (selectedDevices.length < 2) return false;
+    const v = validateStackComposition(selectedDevices);
+    return v.canStack;
+  }, [selectedDevices]);
 
   const autoName = useMemo(
     () =>
       naming.autoEnabled
         ? generateHostname(naming.pattern, previewType, newNode.series, devices)
         : "",
-    [naming, previewType, newNode.series, devices]
+    [naming, previewType, newNode.series, devices],
   );
 
+  const handleGroupAsStack = useCallback(() => {
+  if (selectedIds.length < 2) {
+    alert('Select at least 2 devices to create a stack');
+    return;
+  }
+  
+  // ✅ Pass IDs directly — they're already strings
+  createStackFromDevices(selectedIds, `Stack-${Date.now().toString().slice(-4)}`);
+  
+  // Clear selection after grouping
+  setSelectedIds([]);
+}, [selectedIds, createStackFromDevices]);
+
+
+  const toggleDeviceSelection = (id: string, e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    setSelectedIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
+    );
+  };
+
+  const clearSelection = () => setSelectedIds([]);
+
   const handleSeriesChange = (series: string) => {
+    const seriesData = getEffectiveCatalog()[series];
+    if (!seriesData || seriesData.pids.length === 0) {
+      console.warn(`Series "${series}" has no PIDs available.`);
+      return;
+    }
     setNewNode({
       ...newNode,
       series,
-      pid: HARDWARE_LIBRARY[series].pids[0].pid,
+      pid: seriesData.pids[0].pid,
     });
   };
 
@@ -134,7 +192,7 @@ export default function DeviceListPanel({
       const finalName = naming.autoEnabled ? autoName : newNode.name.trim();
       if (!finalName) return;
 
-      const series = HARDWARE_LIBRARY[newNode.series];
+      const series = catalog[newNode.series];
 
       // ✨ Sprint 3 — single-device can also opt into a group
       const trimmedGroupName = bulkMode ? groupName.trim() : "";
@@ -145,11 +203,11 @@ export default function DeviceListPanel({
         const conflict = groups.some(
           (g) =>
             g.label.toLowerCase() === trimmedGroupName.toLowerCase() &&
-            (g.parentGroupId ?? "") === (parentGroupId || "")
+            (g.parentGroupId ?? "") === (parentGroupId || ""),
         );
         if (conflict) {
           alert(
-            `A group named "${trimmedGroupName}" already exists at this level.`
+            `A group named "${trimmedGroupName}" already exists at this level.`,
           );
           return;
         }
@@ -223,17 +281,17 @@ export default function DeviceListPanel({
       const conflict = groups.some(
         (g) =>
           g.label.toLowerCase() === trimmedGroupName.toLowerCase() &&
-          (g.parentGroupId ?? "") === (parentGroupId || "")
+          (g.parentGroupId ?? "") === (parentGroupId || ""),
       );
       if (conflict) {
         alert(
-          `A group named "${trimmedGroupName}" already exists at this level. Please choose a different name.`
+          `A group named "${trimmedGroupName}" already exists at this level. Please choose a different name.`,
         );
         return;
       }
     }
 
-    const series = HARDWARE_LIBRARY[newNode.series];
+    const series = catalog[newNode.series];
     const result = createBulkDevices(
       {
         series: newNode.series,
@@ -252,7 +310,7 @@ export default function DeviceListPanel({
       devices,
       links,
       groups, // ✨ pass existing groups for ID collision check
-      naming
+      naming,
     );
 
     // Apply changes — group FIRST so device.groupId references resolve
@@ -269,14 +327,17 @@ export default function DeviceListPanel({
     setParentGroupId("");
   };
 
-  const groupedSeries = Object.entries(HARDWARE_LIBRARY).reduce<
-    Record<string, string[]>
-  >((acc, [name, s]) => {
-    const key = s.type.toUpperCase();
-    acc[key] = acc[key] || [];
-    acc[key].push(name);
-    return acc;
-  }, {});
+  const addableSeries = getAddableSeriesNames();
+
+  const groupedSeries = addableSeries
+    .map((name) => [name, catalog[name]] as const) // ⭐ was: catalog[name]
+    .reduce<Record<string, string[]>>((acc, [name, s]) => {
+      if (!s) return acc; // ⭐ defensive guard
+      const key = s.type.toUpperCase();
+      acc[key] = acc[key] || [];
+      acc[key].push(name);
+      return acc;
+    }, {});
 
   const layerOrder: DeviceType[] = [
     "security",
@@ -353,12 +414,12 @@ export default function DeviceListPanel({
   };
 
   const availableUplinkTargets = devices.filter(
-    (d) => d.type !== currentSeries.type
+    (d) => d.type !== currentSeries.type,
   );
 
   const totalLinks = Array.from(uplinkTargets.values()).reduce(
     (sum, u) => sum + u.linkCount,
-    0
+    0,
   );
   const grandTotalLinks = quantity * totalLinks;
 
@@ -633,7 +694,7 @@ export default function DeviceListPanel({
                                 onChange={(e) =>
                                   updateUplinkCount(
                                     target.id,
-                                    parseInt(e.target.value) || 1
+                                    parseInt(e.target.value) || 1,
                                   )
                                 }
                                 className="w-10 border border-slate-200 rounded p-0.5 text-center text-[10px] font-mono"
@@ -652,9 +713,7 @@ export default function DeviceListPanel({
               {(quantity > 1 || uplinkTargets.size > 0 || groupName.trim()) && (
                 <div className="text-[10px] text-slate-700 bg-white border border-slate-200 rounded p-2 leading-tight">
                   <p className="font-semibold mb-0.5">Will create:</p>
-                  {groupName.trim() && (
-                    <p>• 1 group: 📦 {groupName.trim()}</p>
-                  )}
+                  {groupName.trim() && <p>• 1 group: 📦 {groupName.trim()}</p>}
                   <p>
                     • {quantity} device{quantity !== 1 ? "s" : ""}
                   </p>
@@ -739,6 +798,45 @@ export default function DeviceListPanel({
         </p>
       </div>
 
+      {selectedIds.length > 0 && (
+        <div className="mt-2 rounded border border-purple-300 bg-purple-50 p-2">
+          <div className="flex items-center justify-between mb-1.5">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-purple-700">
+              {selectedIds.length} selected
+            </span>
+            <button
+              onClick={clearSelection}
+              className="text-[10px] text-slate-500 hover:text-slate-700"
+            >
+              Clear
+            </button>
+          </div>
+
+          {selectedIds.length >= 2 ? (
+            <button
+              onClick={handleGroupAsStack}
+              disabled={!canStackSelection}
+              className={`w-full rounded py-1.5 text-[11px] font-bold transition-colors ${
+                canStackSelection
+                  ? "bg-purple-600 text-white hover:bg-purple-700"
+                  : "cursor-not-allowed bg-slate-200 text-slate-400"
+              }`}
+              title={
+                !canStackSelection
+                  ? "Selection cannot form a stack — must be same series, stackable, ≤8 members"
+                  : `Group ${selectedIds.length} devices into a stack`
+              }
+            >
+              📚 Group as Stack ({selectedIds.length})
+            </button>
+          ) : (
+            <p className="text-[10px] italic text-slate-500">
+              Select 1+ more to enable stacking
+            </p>
+          )}
+        </div>
+      )}
+
       {/* SECTION 2: DEVICE LIST */}
       <div className="p-3 border-b border-slate-200 bg-slate-50">
         <div className="flex justify-between items-center mb-2">
@@ -806,12 +904,32 @@ export default function DeviceListPanel({
               const groupOf = d.groupId
                 ? groups.find((g) => g.id === d.groupId)
                 : null;
+              const isSelected = selectedIds.includes(d.id);
+
               return (
                 <div
                   key={d.id}
-                  className="group flex items-center gap-2 p-2 hover:bg-slate-50 rounded border border-transparent hover:border-slate-200 transition-colors cursor-pointer"
+                  className={`group flex items-center gap-2 p-2 rounded border transition-colors cursor-pointer ${
+                    isSelected
+                      ? "bg-purple-50 border-purple-300"
+                      : "border-transparent hover:bg-slate-50 hover:border-slate-200"
+                  }`}
                   onClick={() => onConfigureDevice?.(d.id)}
                 >
+                  {/* ✨ STACK: selection checkbox */}
+                  <input
+                    type="checkbox"
+                    checked={isSelected}
+                    onChange={(e) =>
+                      toggleDeviceSelection(
+                        d.id,
+                        e as unknown as React.MouseEvent,
+                      )
+                    }
+                    onClick={(e) => e.stopPropagation()}
+                    className="cursor-pointer shrink-0"
+                    title="Select for bulk action"
+                  />
                   <span
                     className="w-1.5 h-8 rounded-full shrink-0"
                     style={{ background: cfg.color }}
@@ -824,7 +942,8 @@ export default function DeviceListPanel({
                       {d.id} · {d.hardware.chassisPid}
                       {groupOf && (
                         <span className="ml-1 text-purple-600">
-                          · 📦 {groupOf.label}
+                          · {groupOf.groupKind === "stack" ? "📚" : "📦"}{" "}
+                          {groupOf.label}
                         </span>
                       )}
                     </span>

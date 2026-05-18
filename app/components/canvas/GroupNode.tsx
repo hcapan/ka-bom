@@ -2,7 +2,9 @@
 
 import { memo, useState, useRef, useEffect } from "react";
 import { Handle, Position, NodeProps, Node } from "@xyflow/react";
+import { StackSettingsPopover } from "./StackSettingsPopover";
 
+// ⭐ STACK: data shape now carries optional stack metadata
 export interface GroupNodeData extends Record<string, unknown> {
   label: string;
   collapsed: boolean;
@@ -10,9 +12,29 @@ export interface GroupNodeData extends Record<string, unknown> {
   childGroupCount: number;
   depth: number;
   color?: string;
+
+  // ⭐ STACK fields (only present when groupKind === "stack")
+  groupKind?: "logical" | "stack";
+  stackingCablePid?: string;
+  stackingCableQty?: number;
+  stackPowerCablePid?: string;
+  stackPowerCableQty?: number;
+  stackSeries?: string;
+  stackMaxSize?: number;
+
+  // Callbacks
   onToggleCollapse: (id: string) => void;
   onRename: (id: string, newLabel: string) => void;
   onDelete: (id: string) => void;
+  onUpdateStack?: (id: string, patch: Partial<StackPatch>) => void;
+  onConvertToLogical?: (id: string) => void;
+}
+
+export interface StackPatch {
+  stackingCablePid?: string;
+  stackingCableQty?: number;
+  stackPowerCablePid?: string | null;
+  stackPowerCableQty?: number;
 }
 
 export type GroupNodeType = Node<GroupNodeData, "group">;
@@ -25,16 +47,26 @@ const DEPTH_PALETTES = [
   { bg: "rgba(244, 63, 94, 0.05)", border: "#f43f5e", header: "#ffe4e6" },
 ];
 
+// ⭐ STACK: a stack always uses a distinct purple palette for instant recognition
+const STACK_PALETTE = {
+  bg: "rgba(168, 85, 247, 0.08)",
+  border: "#9333ea",
+  header: "#f3e8ff",
+};
+
 function GroupNode({ id, data, selected }: NodeProps<GroupNodeType>) {
-  const palette = DEPTH_PALETTES[Math.min(data.depth, DEPTH_PALETTES.length - 1)];
+  const isStack = data.groupKind === "stack";
+  const palette = isStack
+    ? STACK_PALETTE
+    : DEPTH_PALETTES[Math.min(data.depth, DEPTH_PALETTES.length - 1)];
   const accent = data.color ?? palette.border;
   const [editing, setEditing] = useState(false);
 
-  // ✨ Just track the input element; read its value when needed.
-  // Don't mirror data.label into a useState + useEffect.
+  // ⭐ STACK: popover state
+  const [showStackPopover, setShowStackPopover] = useState(false);
+
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Auto-focus when entering edit mode
   useEffect(() => {
     if (editing && inputRef.current) {
       inputRef.current.focus();
@@ -55,6 +87,22 @@ function GroupNode({ id, data, selected }: NodeProps<GroupNodeType>) {
     setEditing(false);
   };
 
+  // ⭐ STACK: icon + count badge for stacks
+  const icon = isStack ? "📚" : "📦";
+  const stackBadge = isStack ? (
+    <span
+      className="rounded-full border bg-white/80 px-2 py-0.5 text-[10px] font-bold"
+      style={{ color: STACK_PALETTE.border, borderColor: STACK_PALETTE.border }}
+    >
+      {data.childDeviceCount}/{data.stackMaxSize ?? 8}
+    </span>
+  ) : (
+    <span className="rounded-full border bg-white/80 px-2 py-0.5 text-[10px] font-bold text-slate-600">
+      {data.childDeviceCount} dev
+      {data.childGroupCount > 0 && ` · ${data.childGroupCount} sub`}
+    </span>
+  );
+
   // ─────────────────────────────────────
   // COLLAPSED VIEW
   // ─────────────────────────────────────
@@ -67,7 +115,7 @@ function GroupNode({ id, data, selected }: NodeProps<GroupNodeType>) {
         style={{
           background: palette.header,
           borderColor: accent,
-          minWidth: 260,
+          minWidth: 280,
           padding: "10px 14px",
         }}
       >
@@ -84,15 +132,48 @@ function GroupNode({ id, data, selected }: NodeProps<GroupNodeType>) {
           >
             ▶
           </button>
-          <span className="text-base">📦</span>
+          <span className="text-base">{icon}</span>
           <span className="flex-1 truncate font-semibold text-slate-800">
             {data.label}
           </span>
-          <span className="rounded-full border bg-white/80 px-2 py-0.5 text-[10px] font-bold text-slate-600">
-            {data.childDeviceCount} dev
-            {data.childGroupCount > 0 && ` · ${data.childGroupCount} sub`}
-          </span>
+
+          {/* ⭐ STACK: settings cog (only for stacks) */}
+          {isStack && (
+            <button
+              className="flex h-5 w-5 items-center justify-center rounded text-slate-600 hover:bg-white/70"
+              onClick={(e) => {
+                e.stopPropagation();
+                setShowStackPopover((v) => !v);
+              }}
+              title="Stack settings"
+            >
+              ⚙
+            </button>
+          )}
+
+          {stackBadge}
         </div>
+
+        {/* ⭐ STACK: popover */}
+        {isStack && showStackPopover && data.onUpdateStack && data.onConvertToLogical && (
+          <StackSettingsPopover
+            groupId={id}
+            label={data.label}
+            series={data.stackSeries ?? "Unknown series"}
+            memberCount={data.childDeviceCount}
+            maxSize={data.stackMaxSize ?? 8}
+            stackingCablePid={data.stackingCablePid}
+            stackingCableQty={data.stackingCableQty}
+            stackPowerCablePid={data.stackPowerCablePid}
+            stackPowerCableQty={data.stackPowerCableQty}
+            onUpdate={(patch) => data.onUpdateStack!(id, patch)}
+            onConvertToLogical={() => {
+              data.onConvertToLogical!(id);
+              setShowStackPopover(false);
+            }}
+            onClose={() => setShowStackPopover(false)}
+          />
+        )}
       </div>
     );
   }
@@ -132,11 +213,9 @@ function GroupNode({ id, data, selected }: NodeProps<GroupNodeType>) {
           ▼
         </button>
 
-        <span className="text-sm leading-none">📦</span>
+        <span className="text-sm leading-none">{icon}</span>
 
         {editing ? (
-          // ✨ Uncontrolled input — `key` forces fresh mount when data.label
-          //    changes externally. defaultValue seeds it once.
           <input
             key={data.label}
             ref={inputRef}
@@ -158,10 +237,21 @@ function GroupNode({ id, data, selected }: NodeProps<GroupNodeType>) {
           </button>
         )}
 
-        <span className="rounded-full border bg-white/70 px-2 py-0.5 text-[10px] font-bold text-slate-600">
-          {data.childDeviceCount} dev
-          {data.childGroupCount > 0 && ` · ${data.childGroupCount} sub`}
-        </span>
+        {/* ⭐ STACK: cog button */}
+        {isStack && (
+          <button
+            className="flex h-5 w-5 items-center justify-center rounded text-slate-600 hover:bg-white/70"
+            onClick={(e) => {
+              e.stopPropagation();
+              setShowStackPopover((v) => !v);
+            }}
+            title="Stack settings"
+          >
+            ⚙
+          </button>
+        )}
+
+        {stackBadge}
 
         <button
           className="ml-1 flex h-5 w-5 items-center justify-center rounded text-slate-400 hover:bg-white/70 hover:text-rose-600"
@@ -180,6 +270,27 @@ function GroupNode({ id, data, selected }: NodeProps<GroupNodeType>) {
           ×
         </button>
       </div>
+
+      {/* ⭐ STACK: popover (anchored above the header) */}
+      {isStack && showStackPopover && data.onUpdateStack && data.onConvertToLogical && (
+        <StackSettingsPopover
+          groupId={id}
+          label={data.label}
+          series={data.stackSeries ?? "Unknown series"}
+          memberCount={data.childDeviceCount}
+          maxSize={data.stackMaxSize ?? 8}
+          stackingCablePid={data.stackingCablePid}
+          stackingCableQty={data.stackingCableQty}
+          stackPowerCablePid={data.stackPowerCablePid}
+          stackPowerCableQty={data.stackPowerCableQty}
+          onUpdate={(patch) => data.onUpdateStack!(id, patch)}
+          onConvertToLogical={() => {
+            data.onConvertToLogical!(id);
+            setShowStackPopover(false);
+          }}
+          onClose={() => setShowStackPopover(false)}
+        />
+      )}
     </div>
   );
 }

@@ -1,6 +1,8 @@
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import Image from "next/image";
+import Logo from "../../images/Cisco_Logo_no_TM_Black-RGB.png"
 
 type Props = {
   /** Optional: shown on the right (e.g., "12 devices · 8 links") */
@@ -12,6 +14,7 @@ const NAV_ITEMS = [
   { href: "/", label: "Home" },
   { href: "/canvas", label: "Topology Builder" },
   { href: "/hardwarelib", label: "Hardware Library" },
+  { href: "/import", label: "SKU Importer" },
   { href: "/about", label: "About" },
 ];
 
@@ -19,13 +22,18 @@ export default function Navbar({ stats }: Props) {
   const pathname = usePathname();
 
   return (
-    <nav className="bg-white/ border-b border-slate-200 sticky top-0 z-50 backdrop-blur-md ">
+    <nav className="bg-white border-b border-slate-200 sticky top-0 z-50 backdrop-blur-md ">
       <div className="max-w-480 mx-auto px-4 lg:px-6">
         <div className="flex items-center justify-between h-14">
           {/* ============ LEFT: LOGO ============ */}
           <Link href="/" className="flex items-center gap-2 group">
-            <div className="w-8 h-8 rounded-lg bg-linear-to-br from-blue-600 to-violet-600 flex items-center justify-center text-white font-bold text-sm shadow-sm group-hover:shadow-md transition-shadow">
-              KB
+            <div className="w-8 h-8 rounded-lg bg-linear-to-br flex items-center justify-center text-white font-bold text-sm shadow-sm group-hover:shadow-md transition-shadow">
+               <Image
+            src={Logo}
+            width={1440}
+            height={1440}
+            alt="Picture of the author"
+          />
             </div>
             <div className="flex flex-col leading-tight">
               <span className="font-bold text-slate-800 text-sm">KA-BOM</span>

@@ -33,7 +33,9 @@ export default function TopologyApp() {
     renameGroup,
     removeGroup,
     addGroup,
-     setGroups, 
+    setGroups,
+    updateStackSettings,
+    convertStackToLogical,
   } = useProject();
 
   const [configureDeviceId, setConfigureDeviceId] = useState<string | null>(
@@ -178,7 +180,9 @@ export default function TopologyApp() {
               onToggleGroupCollapse={toggleGroupCollapse}
               onRenameGroup={renameGroup}
               onRemoveGroup={removeGroup}
-              setGroups={setGroups}  
+              setGroups={setGroups}
+              onUpdateStack={updateStackSettings}
+              onConvertStackToLogical={convertStackToLogical}
             />
           </section>
         </div>

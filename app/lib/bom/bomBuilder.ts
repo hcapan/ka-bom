@@ -1,10 +1,6 @@
-import { Project, Link } from "../types";
+import { Project, Link, ConfiguredDevice } from "../types";
 import { getBundle } from "../hardware/catalog";
-import {
-  BOMLine,
-  BOMBuildResult,
-  BOMWarning,
-} from "./types";
+import { BOMLine, BOMBuildResult, BOMWarning } from "./types";
 import {
   buildChassisLines,
   buildPsuLines,
@@ -12,14 +8,16 @@ import {
   buildLicenseLines,
   buildSmartnetLines,
   buildStackingLines,
+  // ⭐ M2 imports
+  buildSlotLines,
+  buildModularPowerCordLines,
+  buildGroupStackingLines,
+  hasModularPsus,
+  isStackMember,
 } from "./skuResolver";
 
 const STARTING_GROUP_ID = 100000000;
 
-/**
- * Builds a complete BOM from a Project.
- * Returns flat lines, warnings, and stats.
- */
 export function buildBOM(project: Project): BOMBuildResult {
   const allLines: BOMLine[] = [];
   const warnings: BOMWarning[] = [];
@@ -28,13 +26,15 @@ export function buildBOM(project: Project): BOMBuildResult {
   let devicesWithBundle = 0;
   let devicesWithoutBundle = 0;
 
+  const groups = project.topology.groups ?? [];
+
   // ============================================================
   // 1. Walk every device
   // ============================================================
   for (const device of project.topology.devices) {
     const bundle = getBundle(
       device.hardware.series,
-      device.hardware.chassisPid
+      device.hardware.chassisPid,
     );
 
     if (!bundle) {
@@ -51,14 +51,29 @@ export function buildBOM(project: Project): BOMBuildResult {
     devicesWithBundle++;
     const groupId = ++groupCounter;
 
-    // Build all line groups for this device
+    // ⭐ CHANGE 1: Modular-aware segment selection
+    const isModular = hasModularPsus(device);
+    const inStackGroup = isStackMember(device, groups);
+
     const segments = [
       buildChassisLines(device, bundle, groupId),
-      buildPsuLines(device, bundle),
-      buildPowerCordLines(device, bundle, project.globalDefaults),
-      buildLicenseLines(device, bundle, project.globalDefaults),
       buildSmartnetLines(device, bundle, project.globalDefaults),
-      buildStackingLines(device),
+      buildLicenseLines(device, bundle, project.globalDefaults),
+
+      // PSU + power cord: choose modular or fixed-config path
+      isModular
+        ? { lines: [], warnings: [] } // PSUs come from slots
+        : buildPsuLines(device, bundle),
+
+      isModular
+        ? buildModularPowerCordLines(device, bundle, project.globalDefaults)
+        : buildPowerCordLines(device, bundle, project.globalDefaults),
+
+      // Slot explosion (no-op for fixed-config)
+      buildSlotLines(device),
+
+      // Legacy per-device stacking, only if NOT in a stack group
+      inStackGroup ? { lines: [], warnings: [] } : buildStackingLines(device),
     ];
 
     for (const segment of segments) {
@@ -68,7 +83,22 @@ export function buildBOM(project: Project): BOMBuildResult {
   }
 
   // ============================================================
-  // 2. Walk every link → optics
+  // ⭐ CHANGE 2: Walk stack groups → emit cables once per group
+  // ============================================================
+  for (const group of groups) {
+  if (group.groupKind !== "stack") continue;
+
+  // Count devices whose parentGroupId matches this group's id
+  const memberCount = project.topology.devices.filter(
+    (d) => d.parentGroupId === group.id
+  ).length;
+
+  const stackResult = buildGroupStackingLines(group, memberCount);
+  allLines.push(...stackResult.lines);
+  warnings.push(...stackResult.warnings);
+}
+  // ============================================================
+  // 2. Walk every link → optics  (UNCHANGED)
   // ============================================================
   const opticLines = buildOpticLines(project.topology.links, warnings);
   allLines.push(...opticLines);
@@ -79,7 +109,7 @@ export function buildBOM(project: Project): BOMBuildResult {
   const aggregated = aggregateLines(allLines);
 
   // ============================================================
-  // 4. Compute stats
+  // 4. Stats  (UNCHANGED)
   // ============================================================
   const stats = {
     totalDevices: project.topology.devices.length,
@@ -95,7 +125,7 @@ export function buildBOM(project: Project): BOMBuildResult {
 }
 
 // ============================================================
-// OPTICS — 2 per link, with "=" suffix
+// OPTICS — UNCHANGED
 // ============================================================
 function buildOpticLines(links: Link[], warnings: BOMWarning[]): BOMLine[] {
   const opticCounts = new Map<string, number>();
@@ -109,8 +139,6 @@ function buildOpticLines(links: Link[], warnings: BOMWarning[]): BOMLine[] {
       });
       continue;
     }
-
-    // CCW expects "=" suffix for standalone/spare optics
     const opticPid = basePid.endsWith("=") ? basePid : `${basePid}=`;
     const qty = link.optic.quantityPerLink ?? 2;
     opticCounts.set(opticPid, (opticCounts.get(opticPid) ?? 0) + qty);
@@ -124,20 +152,23 @@ function buildOpticLines(links: Link[], warnings: BOMWarning[]): BOMLine[] {
 }
 
 // ============================================================
-// AGGREGATION — sum identical PIDs
-// (preserves group IDs and durations on first occurrence)
+// ⭐ CHANGE 3: Aggregation now respects slotId
+// Two C9400-SSD-480GB lines in different supervisor slots stay separate,
+// matching CCW's row-preserving behavior.
 // ============================================================
 function aggregateLines(lines: BOMLine[]): BOMLine[] {
   const map = new Map<string, BOMLine>();
 
   for (const line of lines) {
-    // Aggregation key: PID + duration (lines with different durations don't merge)
-    const key = `${line.partNumber}|${line.durationMonths ?? "none"}`;
-    const existing = map.get(key);
+    const key = [
+      line.partNumber,
+      line.durationMonths ?? "none",
+      line.slotId ?? "no-slot", // ← this line should exist
+    ].join("|");
 
+    const existing = map.get(key);
     if (existing) {
       existing.quantity += line.quantity;
-      // Preserve groupId only on the first (chassis) line
     } else {
       map.set(key, { ...line });
     }
@@ -147,7 +178,7 @@ function aggregateLines(lines: BOMLine[]): BOMLine[] {
 }
 
 // ============================================================
-// SORT — for predictable display order
+// SORT — extended with new categories
 // ============================================================
 const CATEGORY_ORDER: Record<BOMLine["category"], number> = {
   chassis: 1,
@@ -156,11 +187,18 @@ const CATEGORY_ORDER: Record<BOMLine["category"], number> = {
   smartnet: 4,
   "power-cord": 5,
   psu: 6,
-  "auto-included": 7,
-  "stack-adapter": 8,
-  "stack-cable": 9,
-  "stack-power": 10,
-  optic: 11,
+  // ⭐ M2 modular components — emitted in CCW export order
+  supervisor: 7,
+  ssd: 8,
+  "fabric-module": 9,
+  linecard: 10,
+  fan: 11,
+  // legacy
+  "auto-included": 12,
+  "stack-adapter": 13,
+  "stack-cable": 14,
+  "stack-power": 15,
+  optic: 16,
   other: 99,
 };
 

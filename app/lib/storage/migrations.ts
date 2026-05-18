@@ -48,8 +48,7 @@ export function migrateProject(raw: unknown): Project {
         ...v3.topology,
         devices: v3.topology.devices.map(normalizeDevice),
         links: v3.topology.links,
-        groups:
-          (v3.topology as { groups?: DeviceGroup[] }).groups ?? [],
+        groups: (v3.topology as { groups?: DeviceGroup[] }).groups ?? [],
       },
       ui: v3.ui ?? { bundleEdges: true, expandedBundles: [] },
       updatedAt: new Date().toISOString(), // mark migration moment
@@ -76,12 +75,7 @@ export function migrateProject(raw: unknown): Project {
   // ────────────────────────────────────────────────
   // 4. Older v1/v2 single-blob export
   // ────────────────────────────────────────────────
-  if (
-    raw &&
-    typeof raw === "object" &&
-    "devices" in raw &&
-    "links" in raw
-  ) {
+  if (raw && typeof raw === "object" && "devices" in raw && "links" in raw) {
     const v2 = raw as { devices: LegacyDevice[]; links: LegacyLink[] };
     return buildFreshProject({
       devices: v2.devices.map(migrateLegacyDevice),
@@ -89,6 +83,29 @@ export function migrateProject(raw: unknown): Project {
     });
   }
 
+  // ✨ NEW — v4 → v5 forward migration
+  // Adds: groupKind defaults, slots field allowed (still undefined for non-modular)
+  if (
+    raw &&
+    typeof raw === "object" &&
+    "schemaVersion" in raw &&
+    (raw as { schemaVersion: number }).schemaVersion === 4
+  ) {
+    const v4 = raw as Project;
+    return {
+      ...v4,
+      schemaVersion: SCHEMA_VERSION,
+      topology: {
+        ...v4.topology,
+        groups: v4.topology.groups.map((g) => ({
+          ...g,
+          groupKind: g.groupKind ?? "logical", // default existing groups to logical
+        })),
+        // devices unchanged — slots field is optional and undefined by default
+      },
+      updatedAt: new Date().toISOString(),
+    };
+  }
   // ────────────────────────────────────────────────
   // 5. Unknown — start fresh
   // ────────────────────────────────────────────────

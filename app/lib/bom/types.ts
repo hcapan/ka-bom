@@ -18,6 +18,10 @@ export interface BOMLine {
   category: BOMLineCategory;
   /** Internal — readable description (not exported to CCW) */
   description?: string;
+  /** ⭐ M2 — slot identifier for modular chassis components.
+   *  Prevents aggregation from merging physically distinct items
+   *  (e.g., two C9400-SSD-480GB in two different supervisor slots). */
+  slotId?: string;
 }
 
 export type BOMLineCategory =
@@ -32,6 +36,12 @@ export type BOMLineCategory =
   | "stack-power"
   | "stack-adapter"
   | "optic"
+  // ⭐ M2 additions — modular chassis components
+  | "supervisor"
+  | "linecard"
+  | "fabric-module"
+  | "ssd"
+  | "fan"
   | "other";
 
 // ============================================================

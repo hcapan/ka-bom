@@ -28,7 +28,11 @@ import {
   ConfiguredDevice,
   DeviceGroup,
 } from "../../lib/types";
-import { LAYER_CONFIG, DeviceType } from "../../lib/hardware/catalog";
+import {
+  LAYER_CONFIG,
+  DeviceType,
+  getEffectiveCatalog,
+} from "../../lib/hardware/catalog";
 import { BundledEdge } from "./BundledEdge";
 import { bundleLinks } from "../../lib/utils/bundleLinks";
 import GroupNode, { GroupNodeData } from "./GroupNode";
@@ -57,6 +61,16 @@ type Props = {
   onToggleGroupCollapse: (id: string) => void;
   onRenameGroup: (id: string, label: string) => void;
   onRemoveGroup: (id: string) => void;
+  onUpdateStack?: (
+    id: string,
+    patch: {
+      stackingCablePid?: string;
+      stackingCableQty?: number;
+      stackPowerCablePid?: string | null;
+      stackPowerCableQty?: number;
+    },
+  ) => void;
+  onConvertStackToLogical?: (id: string) => void;
 };
 
 // ============================================================
@@ -65,7 +79,7 @@ type Props = {
 
 function devicesToNodes(
   devices: ConfiguredDevice[],
-  groups: DeviceGroup[]
+  groups: DeviceGroup[],
 ): Node[] {
   const groupById = new Map(groups.map((g) => [g.id, g]));
 
@@ -106,14 +120,27 @@ function groupsToNodes(
     onToggleCollapse: (id: string) => void;
     onRename: (id: string, label: string) => void;
     onDelete: (id: string) => void;
-  }
+    // ⭐ STACK
+    onUpdateStack?: GroupNodeData["onUpdateStack"];
+    onConvertToLogical?: GroupNodeData["onConvertToLogical"];
+  },
 ): Node[] {
   return groups.map((g) => {
     const childDevices = devices.filter((d) => d.groupId === g.id);
     const childSubgroups = getChildGroups(groups, g.id);
     const depth = getGroupDepth(groups, g.id) - 1;
-    // ✨ Box only for expanded — collapsed groups don't need width/height
     const box = g.collapsed ? null : computeGroupBox(g.id, devices, groups);
+
+    // ⭐ STACK: derive series + maxStackSize from member devices
+    let stackSeries: string | undefined;
+    let stackMaxSize: number | undefined;
+    if (g.groupKind === "stack" && childDevices.length > 0) {
+      stackSeries = childDevices[0].hardware.series;
+      // Look up maxStackSize from the catalog (uses override-aware lookup)
+      const catalog = getEffectiveCatalog();
+      const seriesData = catalog[stackSeries];
+      stackMaxSize = seriesData?.maxStackSize ?? 8;
+    }
 
     const data: GroupNodeData = {
       label: g.label,
@@ -125,12 +152,23 @@ function groupsToNodes(
       onToggleCollapse: handlers.onToggleCollapse,
       onRename: handlers.onRename,
       onDelete: handlers.onDelete,
+
+      // ⭐ STACK fields
+      groupKind: g.groupKind,
+      stackingCablePid: g.stackingCablePid,
+      stackingCableQty: g.stackingCableQty,
+      stackPowerCablePid: g.stackPowerCablePid,
+      stackPowerCableQty: g.stackPowerCableQty,
+      stackSeries,
+      stackMaxSize,
+      onUpdateStack: handlers.onUpdateStack,
+      onConvertToLogical: handlers.onConvertToLogical,
     };
 
     return {
       id: g.id,
       type: "group",
-      position: g.position,                        // ✅ ALWAYS g.position
+      position: g.position,
       width: box?.width,
       height: box?.height,
       data,
@@ -139,7 +177,7 @@ function groupsToNodes(
       zIndex: -1 - depth,
       deletable: false,
       selectable: true,
-      draggable: true,                             // ✅ always draggable
+      draggable: true,
     };
   });
 }
@@ -191,7 +229,7 @@ function linkToEdge(l: Link): Edge {
 function redirectLinksThroughGroups(
   links: Link[],
   devices: ConfiguredDevice[],
-  groups: DeviceGroup[]
+  groups: DeviceGroup[],
 ): Link[] {
   return links
     .map((l) => {
@@ -208,7 +246,7 @@ function buildEdges(
   devices: ConfiguredDevice[],
   groups: DeviceGroup[],
   ui: UISettings | undefined,
-  onExpandBundle: (bundleId: string) => void
+  onExpandBundle: (bundleId: string) => void,
 ): Edge[] {
   const safeUI: UISettings = ui ?? { bundleEdges: false, expandedBundles: [] };
 
@@ -227,9 +265,7 @@ function buildEdges(
     const isExpanded = safeUI.expandedBundles.includes(b.bundleId);
 
     if (b.count === 1 || isExpanded) {
-      const members = hierarchicalLinks.filter((l) =>
-        b.linkIds.includes(l.id)
-      );
+      const members = hierarchicalLinks.filter((l) => b.linkIds.includes(l.id));
       result.push(...members.map(linkToEdge));
     } else {
       result.push({
@@ -270,18 +306,29 @@ function CanvasInner({
   onToggleGroupCollapse,
   onRenameGroup,
   onRemoveGroup,
+  onUpdateStack,                 
+  onConvertStackToLogical, 
 }: Props) {
   const [nodes, setNodes] = useNodesState([
     ...groupsToNodes(groups, devices, {
       onToggleCollapse: onToggleGroupCollapse,
       onRename: onRenameGroup,
       onDelete: onRemoveGroup,
+      onUpdateStack, // ⭐ STACK
+      onConvertToLogical: onConvertStackToLogical, // ⭐ STACK
     }),
     ...devicesToNodes(devices, groups),
   ]);
 
+   console.log('[CANVAS RENDER]', {
+    deviceCount: devices.length,
+    groupCount: groups.length,
+    groupIds: groups.map(g => g.id),
+    devicesInGroups: devices.filter(d => d.groupId).map(d => `${d.id}→${d.groupId}`),
+  });
+
   const [edges, setEdges] = useEdgesState(
-    buildEdges(links, devices, groups, ui, onExpandBundle)
+    buildEdges(links, devices, groups, ui, onExpandBundle),
   );
 
   // Refs for latest values inside event handlers
@@ -291,11 +338,22 @@ function CanvasInner({
   const uiRef = useRef(ui);
   const onExpandBundleRef = useRef(onExpandBundle);
 
-  useEffect(() => { devicesRef.current = devices; }, [devices]);
-  useEffect(() => { linksRef.current = links; }, [links]);
-  useEffect(() => { groupsRef.current = groups; }, [groups]);
-  useEffect(() => { uiRef.current = ui; }, [ui]);
-  useEffect(() => { onExpandBundleRef.current = onExpandBundle; }, [onExpandBundle]);
+  useEffect(() => {
+    devicesRef.current = devices;
+  }, [devices]);
+  useEffect(() => {
+    linksRef.current = links;
+  }, [links]);
+  useEffect(() => {
+    groupsRef.current = groups;
+  }, [groups]);
+  useEffect(() => {
+    uiRef.current = ui;
+  }, [ui]);
+  useEffect(() => {
+    onExpandBundleRef.current = onExpandBundle;
+  }, [onExpandBundle]);
+  
 
   const layerBands = useMemo(
     () =>
@@ -303,7 +361,7 @@ function CanvasInner({
         type: type as DeviceType,
         ...cfg,
       })),
-    []
+    [],
   );
 
   // Sync refs for one-way prop→canvas
@@ -314,45 +372,65 @@ function CanvasInner({
   const lastSyncedCollapseKeyRef = useRef<string>("");
 
   // Re-sync NODES when devices or groups change
-  useEffect(() => {
-    const incomingDeviceIds = devices.map((d) => d.id).sort().join("|");
-    const incomingGroupKey = groups
-      .map(
-        (g) =>
-          `${g.id}:${g.label}:${g.collapsed}:${g.parentGroupId ?? ""}:${
-            g.position.x
-          },${g.position.y}`
-      )
-      .sort()
-      .join("|");
+useEffect(() => {
+  const incomingDeviceIds = devices
+    .map((d) => `${d.id}:${d.groupId ?? "none"}`)  // ⭐ include groupId
+    .sort()
+    .join("|");
+  
+  const incomingGroupKey = groups
+    .map(
+      (g) =>
+        `${g.id}:${g.label}:${g.collapsed}:${g.parentGroupId ?? ""}:${
+          g.position.x
+        },${g.position.y}`,
+    )
+    .sort()
+    .join("|");
 
-    const devicesChanged = incomingDeviceIds !== lastSyncedDeviceIdsRef.current;
-    const groupsChanged = incomingGroupKey !== lastSyncedGroupKeyRef.current;
+  const devicesChanged = incomingDeviceIds !== lastSyncedDeviceIdsRef.current;
+  const groupsChanged = incomingGroupKey !== lastSyncedGroupKeyRef.current;
 
-    if (devicesChanged || groupsChanged) {
-      lastSyncedDeviceIdsRef.current = incomingDeviceIds;
-      lastSyncedGroupKeyRef.current = incomingGroupKey;
+  if (devicesChanged || groupsChanged) {
+    lastSyncedDeviceIdsRef.current = incomingDeviceIds;
+    lastSyncedGroupKeyRef.current = incomingGroupKey;
+    
+    // ⭐ TWO-PHASE UPDATE to force React Flow to re-mount nodes with new parentId
+    
+    // Phase 1: Clear all nodes
+    setNodes([]);
+    
+    // Phase 2: Set fresh nodes on next tick (after React Flow processes the clear)
+    requestAnimationFrame(() => {
       setNodes([
         ...groupsToNodes(groups, devices, {
           onToggleCollapse: onToggleGroupCollapse,
           onRename: onRenameGroup,
           onDelete: onRemoveGroup,
+          onUpdateStack,
+          onConvertToLogical: onConvertStackToLogical,
         }),
         ...devicesToNodes(devices, groups),
       ]);
-    }
-  }, [
-    devices,
-    groups,
-    onToggleGroupCollapse,
-    onRenameGroup,
-    onRemoveGroup,
-    setNodes,
-  ]);
+    });
+  }
+}, [
+  devices,
+  groups,
+  onToggleGroupCollapse,
+  onRenameGroup,
+  onRemoveGroup,
+  onUpdateStack,
+  onConvertStackToLogical,
+  setNodes,
+]);
 
   // Re-sync EDGES when links, devices, groups, or ui change
   useEffect(() => {
-    const incomingLinkIds = links.map((l) => l.id).sort().join("|");
+    const incomingLinkIds = links
+      .map((l) => l.id)
+      .sort()
+      .join("|");
     const safeUI = ui ?? { bundleEdges: false, expandedBundles: [] };
     const incomingUIKey = `${safeUI.bundleEdges}|${[...safeUI.expandedBundles]
       .sort()
@@ -382,7 +460,7 @@ function CanvasInner({
       setNodes(next);
 
       const hasPositionChange = changes.some(
-        (c) => c.type === "position" && !c.dragging
+        (c) => c.type === "position" && !c.dragging,
       );
       const hasRemoval = changes.some((c) => c.type === "remove");
 
@@ -436,7 +514,7 @@ function CanvasInner({
       let finalDevices = updatedDevices;
       if (hasRemoval) {
         const previouslyVisibleIds = new Set(
-          nodes.filter((n) => n.type === "device").map((n) => n.id)
+          nodes.filter((n) => n.type === "device").map((n) => n.id),
         );
         const removedIds = new Set<string>();
         for (const id of previouslyVisibleIds) {
@@ -458,7 +536,7 @@ function CanvasInner({
         if (hasRemoval) {
           const ids = new Set(finalDevices.map((d) => d.id));
           const filtered = linksRef.current.filter(
-            (l) => ids.has(l.from) && ids.has(l.to)
+            (l) => ids.has(l.from) && ids.has(l.to),
           );
           if (filtered.length !== linksRef.current.length) {
             lastSyncedLinkIdsRef.current = filtered
@@ -472,14 +550,14 @@ function CanvasInner({
                 devicesRef.current,
                 groupsRef.current,
                 uiRef.current,
-                onExpandBundleRef.current
-              )
+                onExpandBundleRef.current,
+              ),
             );
           }
         }
       }
     },
-    [nodes, setNodes, setEdges, setDevices, setLinks, setGroups]
+    [nodes, setNodes, setEdges, setDevices, setLinks, setGroups],
   );
 
   const onEdgesChange = useCallback(
@@ -502,7 +580,7 @@ function CanvasInner({
         }
 
         const newLinks = linksRef.current.filter(
-          (l) => !removedLinkIds.has(l.id)
+          (l) => !removedLinkIds.has(l.id),
         );
 
         lastSyncedLinkIdsRef.current = newLinks
@@ -517,14 +595,14 @@ function CanvasInner({
             devicesRef.current,
             groupsRef.current,
             uiRef.current,
-            onExpandBundleRef.current
-          )
+            onExpandBundleRef.current,
+          ),
         );
       } else {
         setEdges(next);
       }
     },
-    [edges, setEdges, setLinks]
+    [edges, setEdges, setLinks],
   );
 
   const onConnect = useCallback(
@@ -563,11 +641,11 @@ function CanvasInner({
           devicesRef.current,
           groupsRef.current,
           uiRef.current,
-          onExpandBundleRef.current
-        )
+          onExpandBundleRef.current,
+        ),
       );
     },
-    [setEdges, setLinks, defaultLinkSku]
+    [setEdges, setLinks, defaultLinkSku],
   );
 
   return (

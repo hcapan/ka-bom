@@ -2,7 +2,21 @@
 // HARDWARE LIBRARY — Cisco Enterprise Catalog (CCW-Aware)
 // ============================================================
 
-import { Region, SmartnetTier, ContractTermYears } from "../types";
+import {
+  Region,
+  SmartnetTier,
+  ContractTermYears,
+  ChassisSlotSpec,
+  SlotKind,
+  ModuleKind,
+} from "../types";
+
+export interface ModuleSpec {
+  pid: string;
+  description: string;
+  kind: SlotKind;
+  compatibleChassis?: string[];
+}
 
 export type DeviceType = "core" | "distribution" | "access" | "security" | "wireless" | "management";
 
@@ -18,7 +32,7 @@ export interface PortGroup {
 export interface FaceplateConfig {
   accessPorts?: PortGroup;
   uplinkPorts?: PortGroup;
-  rackUnits?: 1 | 2 | 3 | 4 | 5 | 7 | 10;
+  rackUnits?: 1 | 2 | 3 | 4 | 5 | 7 | 10 | 13;
   modularSlots?: number;
 }
 
@@ -77,11 +91,22 @@ export interface ChassisBundle {
   stacking?: StackingSpec;
 }
 
+// ✨ M1 — Module port info (for linecards contributing to chassis port aggregation)
+export interface ModulePortGroup {
+  count: number;
+  speed: PortSpeed;
+  poe?: "PoE+" | "UPOE" | "UPOE+" | false;
+}
+
 export interface ProductSKU {
   pid: string;
   description: string;
   faceplate?: FaceplateConfig;
-  bundle?: ChassisBundle;     // ✅ NEW — CCW BOM data
+  bundle?: ChassisBundle;
+  kind?: ModuleKind;             // "supervisor", "linecard", "psu", "fan", "stacking-cable", "stack-power-cable"
+  slotKind?: SlotKind;           // which slot types this PID fits in (for sup/linecard)
+  modulePorts?: ModulePortGroup; // contributed to chassis aggregation
+  compatibleChassis?: string[];
 }
 
 export interface HardwareSeries {
@@ -90,6 +115,19 @@ export interface HardwareSeries {
   description: string;
   pids: ProductSKU[];
   compatibleOptics: string[];
+  compatibleChassis?: string[];
+
+  // ✨ M1 additions
+  /** Modular chassis slot layout — present on series with `slots` */
+  slotLayout?: ChassisSlotSpec[];
+  /** True for 9200, 9300 (and 9300X) */
+  isStackable?: boolean;
+  /** Maximum members in a stack, typically 8 */
+  maxStackSize?: number;
+  /** True for 9300 (stack power supported); false for 9200 */
+  supportsStackPower?: boolean;
+  /** True if this series is a module catalog (not a standalone addable device) */
+  isModuleCatalog?: boolean;
 }
 
 // ============================================================
@@ -123,11 +161,11 @@ const POWER_CORDS_TA = {
 };
 
 const C9300_STACKING: StackingSpec = {
-  adapterRequired: false,                       // included
+  adapterRequired: false,
   dataCables: [
-    { pid: "STACK-T1-50CM",  length: "50cm" },
-    { pid: "STACK-T1-1M",    length: "1m" },
-    { pid: "STACK-T1-3M",    length: "3m" },
+    { pid: "STACK-T1-50CM", length: "50cm" },
+    { pid: "STACK-T1-1M",   length: "1m" },
+    { pid: "STACK-T1-3M",   length: "3m" },
   ],
   powerCables: [
     { pid: "CAB-SPWR-30CM",  length: "30cm" },
@@ -144,6 +182,40 @@ const C9200L_STACKING: StackingSpec = {
     { pid: "STACK-T4-3M",   length: "3m" },
   ],
 };
+
+// ============================================================
+// ✨ M1 — CATALYST 9400 SLOT LAYOUTS
+// ============================================================
+
+const C9404R_LAYOUT: ChassisSlotSpec[] = [
+  { slot: 1, kind: "linecard" },
+  { slot: 2, kind: "linecard" },
+  { slot: 3, kind: "supervisor", required: true, note: "Supervisor required" },
+  { slot: 4, kind: "supervisor", note: "Optional redundant supervisor (HA)" },
+];
+
+const C9407R_LAYOUT: ChassisSlotSpec[] = [
+  { slot: 1, kind: "linecard" },
+  { slot: 2, kind: "linecard" },
+  { slot: 3, kind: "supervisor", required: true, note: "Supervisor required" },
+  { slot: 4, kind: "supervisor", note: "Optional redundant supervisor (HA)" },
+  { slot: 5, kind: "linecard" },
+  { slot: 6, kind: "linecard" },
+  { slot: 7, kind: "linecard" },
+];
+
+const C9410R_LAYOUT: ChassisSlotSpec[] = [
+  { slot: 1, kind: "linecard" },
+  { slot: 2, kind: "linecard" },
+  { slot: 3, kind: "linecard" },
+  { slot: 4, kind: "linecard" },
+  { slot: 5, kind: "supervisor", required: true, note: "Supervisor required" },
+  { slot: 6, kind: "supervisor", note: "Optional redundant supervisor (HA)" },
+  { slot: 7, kind: "linecard" },
+  { slot: 8, kind: "linecard" },
+  { slot: 9, kind: "linecard" },
+  { slot: 10, kind: "linecard" },
+];
 
 // ============================================================
 // HARDWARE LIBRARY
@@ -419,9 +491,193 @@ export const HARDWARE_LIBRARY: Record<string, HardwareSeries> = {
           },
         },
       },
+    ],
+  },
 
-      // (Keep your existing entries for C9500-32C-E, C9500-40X-E, C9500-16X-A/E
-      // — same pattern, just swap NW-E and DNA-*-E. Add when needed.)
+  // ============================================================
+  // ✨ M1 — CATALYST 9400 — Modular Campus Core/Distribution
+  // ============================================================
+  "Catalyst 9400": {
+    type: "core",
+    vendor: "Cisco",
+    description: "Modular Campus Core/Distribution Chassis",
+    compatibleOptics: [
+      "QSFP-100G-SR4", "QSFP-100G-LR4", "QSFP-40G-SR4",
+      "SFP-25G-SR-S", "SFP-10G-SR", "SFP-10G-LR",
+      "GLC-SX-MMD", "GLC-LH-SMD",
+    ],
+    pids: [
+      {
+        pid: "C9404R",
+        description: "Catalyst 9404R 4-slot chassis (2RU). 2 linecard + 2 supervisor slots.",
+        faceplate: {
+          modularSlots: 4,
+          rackUnits: 2,
+        },
+      },
+      {
+        pid: "C9407R",
+        description: "Catalyst 9407R 7-slot chassis (10RU). 5 linecard + 2 supervisor slots.",
+        faceplate: {
+          modularSlots: 7,
+          rackUnits: 10,
+        },
+      },
+      {
+        pid: "C9410R",
+        description: "Catalyst 9410R 10-slot chassis (13RU). 8 linecard + 2 supervisor slots.",
+        faceplate: {
+          modularSlots: 10,
+          rackUnits: 13,
+        },
+      },
+    ],
+    // Note: slotLayout below applies as a fallback when chassis-specific
+    // layout isn't found in CHASSIS_SLOT_LAYOUTS in hardware/index.ts
+    // (We use the index helper because layout is per-PID, not per-series.)
+  },
+
+  // ============================================================
+  // ✨ M1 — CATALYST 9400 SUPERVISORS (module catalog)
+  // ============================================================
+  "Catalyst 9400 Supervisors": {
+    type: "core",
+    vendor: "Cisco",
+    description: "Catalyst 9400 Supervisor Engines",
+    compatibleOptics: [
+      "QSFP-100G-SR4", "QSFP-100G-LR4", "SFP-25G-SR-S",
+      "SFP-10G-SR", "SFP-10G-LR",
+    ],
+    isModuleCatalog: true,
+    pids: [
+      {
+        pid: "C9400-SUP-1",
+        description: "Cat 9400 Supervisor Engine 1 (240Gbps per slot, 80G uplinks).",
+        kind: "supervisor",
+        slotKind: "supervisor",
+      },
+      {
+        pid: "C9400-SUP-1XL",
+        description: "Cat 9400 Supervisor Engine 1XL (480Gbps per slot).",
+        kind: "supervisor",
+        slotKind: "supervisor",
+      },
+      {
+        pid: "C9400-SUP-1XL-Y",
+        description: "Cat 9400 Supervisor 1XL with 25G uplinks.",
+        kind: "supervisor",
+        slotKind: "supervisor",
+      },
+      {
+        pid: "C9400X-SUP-2",
+        description: "Cat 9400X Supervisor Engine 2 (next-gen, recommended for new designs).",
+        kind: "supervisor",
+        slotKind: "supervisor",
+      },
+      {
+        pid: "C9400X-SUP-2XL",
+        description: "Cat 9400X Supervisor Engine 2XL (highest performance).",
+        kind: "supervisor",
+        slotKind: "supervisor",
+      },
+    ],
+  },
+
+  // ============================================================
+  // ✨ M1 — CATALYST 9400 LINECARDS (module catalog)
+  // ============================================================
+  "Catalyst 9400 Linecards": {
+    type: "core",
+    vendor: "Cisco",
+    description: "Catalyst 9400 Linecards",
+    compatibleOptics: [
+      "QSFP-100G-SR4", "QSFP-100G-LR4", "QSFP-40G-SR4",
+      "SFP-10G-SR", "SFP-10G-LR", "GLC-SX-MMD", "GLC-LH-SMD",
+    ],
+    isModuleCatalog: true,
+    pids: [
+      {
+        pid: "C9400-LC-48U",
+        description: "48-port 1G UPOE linecard.",
+        kind: "linecard",
+        slotKind: "linecard",
+        modulePorts: { count: 48, speed: "1G", poe: "UPOE" },
+      },
+      {
+        pid: "C9400-LC-48P",
+        description: "48-port 1G PoE+ linecard.",
+        kind: "linecard",
+        slotKind: "linecard",
+        modulePorts: { count: 48, speed: "1G", poe: "PoE+" },
+      },
+      {
+        pid: "C9400-LC-48T",
+        description: "48-port 1G data-only linecard.",
+        kind: "linecard",
+        slotKind: "linecard",
+        modulePorts: { count: 48, speed: "1G" },
+      },
+      {
+        pid: "C9400-LC-48UX",
+        description: "48-port multigigabit (1/2.5/5/10G) UPOE linecard.",
+        kind: "linecard",
+        slotKind: "linecard",
+        modulePorts: { count: 48, speed: "10G", poe: "UPOE" },
+      },
+      {
+        pid: "C9400-LC-48XS",
+        description: "48-port 10G SFP+ linecard for 10G aggregation.",
+        kind: "linecard",
+        slotKind: "linecard",
+        modulePorts: { count: 48, speed: "10G" },
+      },
+      {
+        pid: "C9400-LC-24XS",
+        description: "24-port 10G SFP+ linecard.",
+        kind: "linecard",
+        slotKind: "linecard",
+        modulePorts: { count: 24, speed: "10G" },
+      },
+      {
+        pid: "C9400-LC-12QC",
+        description: "12-port 40G/100G QSFP linecard for high-speed uplinks.",
+        kind: "linecard",
+        slotKind: "linecard",
+        modulePorts: { count: 12, speed: "100G" },
+      },
+    ],
+  },
+
+  // ============================================================
+  // ✨ M1 — CATALYST 9400 POWER & FANS (module catalog)
+  // ============================================================
+  "Catalyst 9400 Power & Fans": {
+    type: "core",
+    vendor: "Cisco",
+    description: "Catalyst 9400 Power Supplies and Fan Trays",
+    compatibleOptics: [],
+    isModuleCatalog: true,
+    pids: [
+      {
+        pid: "C9400-PWR-2100AC",
+        description: "Cat 9400 2100W AC power supply.",
+        kind: "psu",
+      },
+      {
+        pid: "C9400-PWR-3200AC",
+        description: "Cat 9400 3200W AC power supply.",
+        kind: "psu",
+      },
+      {
+        pid: "C9400-PWR-3200DC",
+        description: "Cat 9400 3200W DC power supply.",
+        kind: "psu",
+      },
+      {
+        pid: "C9400-FAN",
+        description: "Cat 9400 fan tray (model varies by chassis size).",
+        kind: "fan",
+      },
     ],
   },
 
@@ -436,6 +692,12 @@ export const HARDWARE_LIBRARY: Record<string, HardwareSeries> = {
       "SFP-10G-SR", "SFP-10G-LR", "QSFP-40G-SR4",
       "GLC-SX-MMD", "GLC-LH-SMD",
     ],
+
+    // ✨ M1 additions
+    isStackable: true,
+    maxStackSize: 8,
+    supportsStackPower: true,
+
     pids: [
       {
         pid: "C9300-48P-A",
@@ -562,9 +824,6 @@ export const HARDWARE_LIBRARY: Record<string, HardwareSeries> = {
           stacking: C9300_STACKING,
         },
       },
-
-      // (Add C9300-24P-E, 48T-A/E, 24T-A, 48UXM-A/E, 24UX-A
-      //  same pattern with their respective NW/DNA SKUs)
     ],
   },
 
@@ -576,6 +835,12 @@ export const HARDWARE_LIBRARY: Record<string, HardwareSeries> = {
     vendor: "Cisco",
     description: "Lite Branch Access Switches",
     compatibleOptics: ["SFP-10G-SR", "GLC-SX-MMD"],
+
+    // ✨ M1 additions
+    isStackable: true,
+    maxStackSize: 8,
+    supportsStackPower: false,
+
     pids: [
       {
         pid: "C9200L-24T-4X-E",
@@ -656,16 +921,74 @@ export const HARDWARE_LIBRARY: Record<string, HardwareSeries> = {
           stacking: C9200L_STACKING,
         },
       },
-
-      // (Add other 9200L variants similarly — 4G uplink versions, T variants, etc.)
     ],
   },
 
   // ============================================================
-  // OTHER SERIES (faceplate-only, bundle to be added in Phase 2)
+  // ✨ M1 — STACKWISE CABLES (module catalog)
   // ============================================================
-  // Keep your existing 9500X, Nexus 9000, 9400, 9300X, 9200, Meraki,
-  // Secure Firewall entries here unchanged. We'll enrich them later.
+  "StackWise Cables": {
+    type: "access",
+    vendor: "Cisco",
+    description: "StackWise data and power cables",
+    compatibleOptics: [],
+    isModuleCatalog: true,
+    pids: [
+      {
+        pid: "STACK-T1-50CM",
+        description: "StackWise-1T cable, 50cm. For Cat 9300 stacking.",
+        kind: "stacking-cable",
+      },
+      {
+        pid: "STACK-T1-1M",
+        description: "StackWise-1T cable, 1m.",
+        kind: "stacking-cable",
+      },
+      {
+        pid: "STACK-T1-3M",
+        description: "StackWise-1T cable, 3m.",
+        kind: "stacking-cable",
+      },
+      {
+        pid: "STACK-T4-50CM",
+        description: "StackWise-T4 cable, 50cm. For Cat 9200/9200L stacking.",
+        kind: "stacking-cable",
+      },
+      {
+        pid: "STACK-T4-1M",
+        description: "StackWise-T4 cable, 1m.",
+        kind: "stacking-cable",
+      },
+      {
+        pid: "STACK-T4-3M",
+        description: "StackWise-T4 cable, 3m.",
+        kind: "stacking-cable",
+      },
+      {
+        pid: "CAB-SPWR-30CM",
+        description: "StackPower cable, 30cm. Cat 9300 only.",
+        kind: "stack-power-cable",
+      },
+      {
+        pid: "CAB-SPWR-150CM",
+        description: "StackPower cable, 150cm.",
+        kind: "stack-power-cable",
+      },
+    ],
+  },
+
+  
+
+};
+
+// ============================================================
+// ✨ M1 — CHASSIS SLOT LAYOUTS (per-PID, not per-series)
+// ============================================================
+
+const CHASSIS_SLOT_LAYOUTS: Record<string, ChassisSlotSpec[]> = {
+  C9404R: C9404R_LAYOUT,
+  C9407R: C9407R_LAYOUT,
+  C9410R: C9410R_LAYOUT,
 };
 
 // ============================================================
@@ -717,25 +1040,138 @@ export const LAYER_CONFIG: Record<
 // HELPERS
 // ============================================================
 export function getFaceplate(model: string, pid: string): FaceplateConfig | null {
-  const series = HARDWARE_LIBRARY[model];
+  const catalog = getEffectiveCatalog();   // ⭐ honors overrides
+  const series = catalog[model];
   if (!series) return null;
   const product = series.pids.find((p) => p.pid === pid);
   return product?.faceplate ?? null;
 }
 
 export function getBundle(model: string, pid: string): ChassisBundle | null {
-  const series = HARDWARE_LIBRARY[model];
+  const catalog = getEffectiveCatalog();   // ⭐ honors overrides
+  const series = catalog[model];
   if (!series) return null;
   const product = series.pids.find((p) => p.pid === pid);
   return product?.bundle ?? null;
 }
 
-/** Returns true if the chassis has a CCW bundle defined */
 export function hasBundle(model: string, pid: string): boolean {
   return getBundle(model, pid) !== null;
 }
 
+// ============================================================
+// ✨ M1 — MODULAR CHASSIS HELPERS
+// ============================================================
 
+/**
+ * Returns the slot layout for a given chassis PID, or null if not modular.
+ */
+export function getSlotLayout(chassisPid: string): ChassisSlotSpec[] | null {
+  return CHASSIS_SLOT_LAYOUTS[chassisPid] ?? null;
+}
+
+/**
+ * Quick boolean test for whether a PID is a modular chassis.
+ */
+export function isModularChassis(chassisPid: string): boolean {
+  return chassisPid in CHASSIS_SLOT_LAYOUTS;
+}
+
+/**
+ * Boolean test for whether a series supports stacking.
+ */
+export function isStackableSeries(seriesName: string): boolean {
+  const series = HARDWARE_LIBRARY[seriesName];
+  return series?.isStackable === true;
+}
+
+/**
+ * Boolean test for whether a series supports StackPower (only Cat 9300).
+ */
+export function supportsStackPower(seriesName: string): boolean {
+  const series = HARDWARE_LIBRARY[seriesName];
+  return series?.supportsStackPower === true;
+}
+
+/**
+ * Boolean test for whether a series is a module catalog (not addable as a device).
+ */
+export function isModuleCatalogSeries(seriesName: string): boolean {
+  const series = HARDWARE_LIBRARY[seriesName];
+  return series?.isModuleCatalog === true;
+}
+
+/**
+ * Returns all module PIDs across the catalog of a given kind, optionally
+ * filtered by slotKind for compatibility.
+ */
+export function getAvailableModules(
+  kind: ModuleKind,
+  slotKind?: SlotKind
+): { pid: string; description: string; listPrice?: number; modulePorts?: ModulePortGroup }[] {
+  const results: {
+    pid: string;
+    description: string;
+    listPrice?: number;
+    modulePorts?: ModulePortGroup;
+  }[] = [];
+
+  for (const series of Object.values(HARDWARE_LIBRARY)) {
+    for (const sku of series.pids) {
+      if (sku.kind !== kind) continue;
+      if (
+        slotKind &&
+        sku.slotKind &&
+        sku.slotKind !== slotKind &&
+        sku.slotKind !== "blank"
+      ) {
+        continue;
+      }
+      results.push({
+        pid: sku.pid,
+        description: sku.description,
+        modulePorts: sku.modulePorts,
+      });
+    }
+  }
+  return results;
+}
+
+/**
+ * Returns all stacking cable options (with optional StackPower filter).
+ */
+export function getStackingCables(
+  includeStackPower: boolean = false
+): { pid: string; description: string; listPrice?: number }[] {
+  const results: { pid: string; description: string; listPrice?: number }[] = [];
+  for (const series of Object.values(HARDWARE_LIBRARY)) {
+    for (const sku of series.pids) {
+      if (sku.kind === "stacking-cable") {
+        results.push({
+          pid: sku.pid,
+          description: sku.description,
+        });
+      } else if (includeStackPower && sku.kind === "stack-power-cable") {
+        results.push({
+          pid: sku.pid,
+          description: sku.description,
+        });
+      }
+    }
+  }
+  return results;
+}
+
+/**
+ * Returns a list of series names that should appear in the "Add Device"
+ * dropdown — i.e., excludes module catalogs.
+ */
+export function getAddableSeriesNames(): string[] {
+  const catalog = getEffectiveCatalog();   // ⭐ honors overrides
+  return Object.entries(catalog)
+    .filter(([_, series]) => !series.isModuleCatalog)
+    .map(([name]) => name);
+}
 // ============================================================
 // LOCALSTORAGE OVERRIDES (for catalog testing without code changes)
 // ============================================================
@@ -758,6 +1194,22 @@ function loadOverrides(): CatalogOverride {
   }
 }
 
+export function getModule(pid: string): ModuleSpec | null {
+  const catalog = getEffectiveCatalog();   // ⭐ honors overrides
+  for (const series of Object.values(catalog)) {
+    if (!series.isModuleCatalog) continue;
+    const found = series.pids.find((p) => p.pid === pid);
+    if (found) {
+      return {
+        pid: found.pid,
+        description: found.description ?? "",
+        kind: found.slotKind ?? "linecard",
+        compatibleChassis: found.compatibleChassis,
+      };
+    }
+  }
+  return null;
+}
 export function saveOverrides(overrides: CatalogOverride) {
   if (typeof window === "undefined") return;
   localStorage.setItem(OVERRIDES_KEY, JSON.stringify(overrides));
@@ -777,17 +1229,48 @@ export function getEffectiveCatalog(): typeof HARDWARE_LIBRARY {
   const overrides = loadOverrides();
   if (Object.keys(overrides.bundles).length === 0) return HARDWARE_LIBRARY;
 
+  // Deep-clone so we don't mutate the source library.
   const merged: typeof HARDWARE_LIBRARY = JSON.parse(
     JSON.stringify(HARDWARE_LIBRARY)
   );
 
   for (const [seriesName, pidPatches] of Object.entries(overrides.bundles)) {
-    const series = merged[seriesName];
-    if (!series) continue;
+    let series = merged[seriesName];
+
+    // 🆕 If the series doesn't exist yet, create a stub so override PIDs
+    //    can land somewhere. The user is responsible for filling out
+    //    series-level metadata (type, vendor, etc.) via code edit later.
+    if (!series) {
+      series = {
+        type: "core",                  // sensible default; user can refine
+        vendor: "Cisco",
+        description: `${seriesName} (override-only — not yet in source catalog)`,
+        compatibleOptics: [],
+        pids: [],
+      };
+      merged[seriesName] = series;
+    }
+
     for (const [pid, patch] of Object.entries(pidPatches)) {
-      const product = series.pids.find((p) => p.pid === pid);
-      if (product) {
-        Object.assign(product, patch);
+      const existing = series.pids.find((p) => p.pid === pid);
+
+      if (existing) {
+        // 🆕 Deep-merge bundle so we don't blow away existing fields.
+        if (patch.bundle && existing.bundle) {
+          existing.bundle = mergeBundles(existing.bundle, patch.bundle);
+          // Then merge other top-level fields (description, faceplate, etc.)
+          const { bundle: _, ...rest } = patch;
+          Object.assign(existing, rest);
+        } else {
+          Object.assign(existing, patch);
+        }
+      } else {
+        // 🆕 PID didn't exist — push it as a new ProductSKU.
+        series.pids.push({
+          pid,
+          description: patch.description ?? `${pid} (imported)`,
+          ...patch,
+        } as ProductSKU);
       }
     }
   }
@@ -795,6 +1278,125 @@ export function getEffectiveCatalog(): typeof HARDWARE_LIBRARY {
   return merged;
 }
 
+/**
+ * Deep-merge two ChassisBundle objects so override data ENRICHES instead of
+ * replacing. Specifically:
+ *   - autoIncluded: union by pid (override wins on conflict)
+ *   - powerCord.byRegion: merge maps
+ *   - smartnet.baseSkuByTier: merge maps
+ *   - license.subscriptionByTerm: merge maps
+ *   - license top-level: override wins (tier, entitlementPid)
+ */
+function mergeBundles(
+  base: ChassisBundle,
+  patch: ChassisBundle
+): ChassisBundle {
+  const autoIncludedMap = new Map<string, BundleAutoItem>();
+  for (const item of base.autoIncluded) autoIncludedMap.set(item.pid, item);
+  for (const item of patch.autoIncluded) autoIncludedMap.set(item.pid, item);
+
+  return {
+    autoIncluded: Array.from(autoIncludedMap.values()),
+    powerCord: {
+      qty: patch.powerCord?.qty ?? base.powerCord.qty,
+      byRegion: {
+        ...base.powerCord.byRegion,
+        ...patch.powerCord?.byRegion,
+      },
+    },
+    redundantPsu: patch.redundantPsu ?? base.redundantPsu,
+    smartnet: {
+      baseSkuByTier: {
+        ...base.smartnet.baseSkuByTier,
+        ...patch.smartnet?.baseSkuByTier,
+      },
+    },
+    license: {
+      tier: patch.license?.tier ?? base.license.tier,
+      entitlementPid: patch.license?.entitlementPid ?? base.license.entitlementPid,
+      subscriptionByTerm: {
+        ...base.license.subscriptionByTerm,
+        ...patch.license?.subscriptionByTerm,
+      },
+    },
+    stacking: patch.stacking ?? base.stacking,
+  };
+}
+
 export function loadCatalogOverrides(): CatalogOverride {
   return loadOverrides();
+}
+
+
+// ============================================================
+// ✨ STACKING HELPERS
+// ============================================================
+
+/**
+ * Returns the default stacking cable PID for a given series.
+ * Picks the standard 50cm variant — user can override in the popover.
+ */
+export function getDefaultStackingCable(seriesName: string): string | null {
+  const series = HARDWARE_LIBRARY[seriesName];
+  if (!series?.isStackable) return null;
+
+  // Find the first stacking cable referenced in the series' bundle config.
+  for (const sku of series.pids) {
+    const cables = sku.bundle?.stacking?.dataCables;
+    if (cables && cables.length > 0) {
+      // Prefer 50cm — Cisco's most common shipping default.
+      const fiftyCm = cables.find((c) => c.length === "50cm");
+      return fiftyCm?.pid ?? cables[0].pid;
+    }
+  }
+  return null;
+}
+
+/**
+ * Returns the default StackPower cable PID for a series, if supported.
+ */
+export function getDefaultStackPowerCable(seriesName: string): string | null {
+  const series = HARDWARE_LIBRARY[seriesName];
+  if (!series?.supportsStackPower) return null;
+
+  for (const sku of series.pids) {
+    const cables = sku.bundle?.stacking?.powerCables;
+    if (cables && cables.length > 0) {
+      const thirtyCm = cables.find((c) => c.length === "30cm");
+      return thirtyCm?.pid ?? cables[0].pid;
+    }
+  }
+  return null;
+}
+
+/**
+ * Returns all available stacking data cables for a series.
+ */
+export function getStackingCablesForSeries(
+  seriesName: string
+): { pid: string; length: string }[] {
+  const series = HARDWARE_LIBRARY[seriesName];
+  if (!series?.isStackable) return [];
+
+  for (const sku of series.pids) {
+    const cables = sku.bundle?.stacking?.dataCables;
+    if (cables && cables.length > 0) return cables;
+  }
+  return [];
+}
+
+/**
+ * Returns all available StackPower cables for a series.
+ */
+export function getStackPowerCablesForSeries(
+  seriesName: string
+): { pid: string; length: string }[] {
+  const series = HARDWARE_LIBRARY[seriesName];
+  if (!series?.supportsStackPower) return [];
+
+  for (const sku of series.pids) {
+    const cables = sku.bundle?.stacking?.powerCables;
+    if (cables && cables.length > 0) return cables;
+  }
+  return [];
 }

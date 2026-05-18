@@ -2,7 +2,7 @@
 // SCHEMA — Project-centric, DB-migration-ready
 // ============================================================
 
-export const SCHEMA_VERSION = 4;
+export const SCHEMA_VERSION = 5;
 
 // ============================================================
 // LAYERS
@@ -35,14 +35,59 @@ export type ContractTermYears = 1 | 2 | 3 | 4 | 5 | 7;
 export type Region = "EU" | "US" | "UK" | "JP" | "AU" | "IN" | "CN";
 
 // ============================================================
+// MODULAR CHASSIS & STACKING — Type primitives
+// (Declared early because DeviceGroup and HardwareConfig reference them)
+// ============================================================
+
+// --- Stacking ---
+export type GroupKind = "logical" | "stack";
+
+// --- Modular slot system ---
+export type SlotKind =
+  | "supervisor"
+  | "linecard"
+  | "fabric-module"   // NEW (Nexus 9500)
+  | "psu"
+  | "fan"
+  | "ssd"             // NEW (mounted on supervisors)
+  | "blank";
+
+export interface SlotAssignment {
+  slotId: string;          // e.g., "1", "2", "SUP1", "SUP2", "FM1"..."FM6"
+  slotKind: SlotKind;
+  modulePid?: string;      // The SKU installed; undefined = empty (emits blank)
+  parentSlotId?: string;   // e.g., SSD's parentSlotId = "SUP1"
+  notes?: string;
+}
+
+export interface ChassisSlotSpec {
+  slot: number;          // 1-based slot number
+  kind: SlotKind;
+  required?: boolean;
+  // Optional human-friendly note (e.g. "Sup slot, only sups fit here")
+  note?: string;
+}
+
+// --- Module classification ---
+export type ModuleKind =
+  | "supervisor"
+  | "linecard"
+  | "service-module"
+  | "psu"
+  | "fan"
+  | "stacking-cable"
+  | "stack-power-cable";
+
+
+
+// ============================================================
 // PROJECT — Top-level container
 // ============================================================
 
 export interface UISettings {
-  bundleEdges: boolean;          
-  expandedBundles: string[];     
+  bundleEdges: boolean;
+  expandedBundles: string[];
 }
-
 
 export interface DeviceGroup {
   id: string;
@@ -52,8 +97,14 @@ export interface DeviceGroup {
   position: { x: number; y: number };
   size?: { width: number; height: number };
   color?: string;
-}
 
+  // ✨ M1 — Stacking metadata (when groupKind = "stack")
+  groupKind?: GroupKind;            // default "logical"
+  stackingCablePid?: string;        // e.g. "STACK-T1-50CM"
+  stackingCableQty?: number;
+  stackPowerCablePid?: string;      // optional, only for supportsStackPower series
+  stackPowerCableQty?: number;
+}
 
 export interface Project {
   id: string;
@@ -63,11 +114,8 @@ export interface Project {
   globalDefaults: GlobalDefaults;
   createdAt: string;
   updatedAt: string;
-  ui: UISettings; 
-  
- 
+  ui: UISettings;
 }
-
 
 export interface ProjectMetadata {
   name: string;
@@ -117,20 +165,17 @@ export interface ConfiguredDevice {
   notes?: string;
   customFields?: Record<string, string>;
   groupId?: string | null;
+  parentGroupId?:string;
 }
 
 export interface HardwareConfig {
-  series: string;                      // "Catalyst 9500"
-  chassisPid: string;                  // "C9500-48Y4C-A"
-
-  // Power options
-  region?: Region;                     // overrides project default
-  redundantPsu?: boolean;              // adds the /2 PSU SKU
-
-  // Stacking (Chunk 5)
+  series: string;                      
+  chassisPid: string;                  
   stacking?: StackingConfig;
-
-  // Future: modular chassis, firewall NMs
+  region?: Region;                     
+  redundantPsu?: boolean;              
+  slots?: SlotAssignment[];
+  excludedAutoIncludes?: string[];
   expansionModules?: ExpansionModule[];
 }
 
@@ -145,16 +190,15 @@ export interface SmartnetConfig {
   overridden?: boolean;                // user changed from global default
 }
 
-export interface StackingConfig {
-  enabled: boolean;
-  adapterKitPid?: string;              // for 9200/9200L
-  dataCablePid?: string;
-  powerCablePid?: string;
-}
-
 export interface ExpansionModule {
   slot: number;
   pid: string;
+}
+export interface StackingConfig {
+  enabled: boolean;
+  adapterKitPid?: string;
+  dataCablePid?: string;
+  powerCablePid?: string;
 }
 
 // ============================================================
@@ -174,17 +218,6 @@ export interface OpticConfig {
   pid: string;                         // "SFP-10G-SR-S" (without =)
   /** Each link consumes 2 optics by default; override per link if asymmetric. */
   quantityPerLink?: number;
-}
-
-// ============================================================
-// BOM
-// ============================================================
-export interface BOMLine {
-  partNumber: string;
-  quantity: number;
-  durationMonths?: number;
-  groupId?: number;                    // ties children to parent chassis
-  notes?: string;
 }
 
 // ============================================================
