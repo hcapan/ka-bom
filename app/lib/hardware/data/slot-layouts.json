@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "layouts": {
+    "C9404R": [
+      { "slot": 1, "kind": "linecard" },
+      { "slot": 2, "kind": "linecard" },
+      { "slot": 3, "kind": "supervisor", "required": true, "note": "Supervisor required" },
+      { "slot": 4, "kind": "supervisor", "note": "Optional redundant supervisor (HA)" }
+    ],
+    "C9407R": [
+      { "slot": 1, "kind": "linecard" },
+      { "slot": 2, "kind": "linecard" },
+      { "slot": 3, "kind": "supervisor", "required": true, "note": "Supervisor required" },
+      { "slot": 4, "kind": "supervisor", "note": "Optional redundant supervisor (HA)" },
+      { "slot": 5, "kind": "linecard" },
+      { "slot": 6, "kind": "linecard" },
+      { "slot": 7, "kind": "linecard" }
+    ],
+    "C9410R": [
+      { "slot": 1, "kind": "linecard" },
+      { "slot": 2, "kind": "linecard" },
+      { "slot": 3, "kind": "linecard" },
+      { "slot": 4, "kind": "linecard" },
+      { "slot": 5, "kind": "supervisor", "required": true, "note": "Supervisor required" },
+      { "slot": 6, "kind": "supervisor", "note": "Optional redundant supervisor (HA)" },
+      { "slot": 7, "kind": "linecard" },
+      { "slot": 8, "kind": "linecard" },
+      { "slot": 9, "kind": "linecard" },
+      { "slot": 10, "kind": "linecard" }
+    ]
+  }
+}

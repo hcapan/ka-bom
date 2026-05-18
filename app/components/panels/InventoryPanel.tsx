@@ -1,5 +1,5 @@
 "use client";
-import { Device, Link } from "../lib/types";
+import { Device, Link } from "../../lib/types";
 
 type Props = { devices: Device[]; links: Link[] };
 

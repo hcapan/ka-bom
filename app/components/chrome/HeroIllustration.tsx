@@ -25,7 +25,7 @@ export default function HeroIllustration() {
         </linearGradient>
       </defs>
 
-      <rect width="1100" height="700" fill="#04060F" />
+      <rect width="1100" height="700" fill="#ffffff" />
       <circle cx="550" cy="350" r="300" fill="url(#coreGlow)" />
 
       {/* ================= CENTRAL HOLOGRAM CORE ================= */}

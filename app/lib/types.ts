@@ -99,11 +99,13 @@ export interface DeviceGroup {
   color?: string;
 
   // ✨ M1 — Stacking metadata (when groupKind = "stack")
-  groupKind?: GroupKind;            // default "logical"
+  kind: GroupKind;             // default "logical"
   stackingCablePid?: string;        // e.g. "STACK-T1-50CM"
   stackingCableQty?: number;
   stackPowerCablePid?: string;      // optional, only for supportsStackPower series
   stackPowerCableQty?: number;
+
+  memberOrder?: string[];
 }
 
 export interface Project {

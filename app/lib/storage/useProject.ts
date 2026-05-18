@@ -21,8 +21,36 @@ import {
   getDefaultStackingCable,
   getDefaultStackPowerCable,
   getEffectiveCatalog,
-  HARDWARE_LIBRARY,
 } from "../hardware/catalog";
+
+// ============================================================
+// Migration helper — backfill `kind` on legacy groups
+// ============================================================
+function migrateGroup(g: Partial<DeviceGroup> & { groupKind?: DeviceGroup["kind"] }): DeviceGroup {
+  // Handle both legacy `groupKind` (used in earlier converters) and missing `kind`
+  const resolvedKind: DeviceGroup["kind"] =
+    g.kind ??
+    g.groupKind ??
+    (g.stackingCablePid || (g.memberOrder && g.memberOrder.length > 0)
+      ? "stack"
+      : "logical");
+
+  return {
+    id: g.id ?? `group-${Date.now()}`,
+    label: g.label ?? "Group",
+    kind: resolvedKind,
+    collapsed: g.collapsed ?? false,
+    position: g.position ?? { x: 100, y: 100 },
+    parentGroupId: g.parentGroupId,
+    size: g.size,
+    color: g.color,
+    stackingCablePid: g.stackingCablePid,
+    stackingCableQty: g.stackingCableQty,
+    stackPowerCablePid: g.stackPowerCablePid,
+    stackPowerCableQty: g.stackPowerCableQty,
+    memberOrder: g.memberOrder,
+  };
+}
 
 export function useProject() {
   const [project, setProject] = useState<Project | null>(null);
@@ -39,6 +67,7 @@ export function useProject() {
         parentGroupId?: string;
         position?: { x: number; y: number };
         color?: string;
+        kind?: DeviceGroup["kind"];
       },
     ): string => {
       let newId = "";
@@ -48,8 +77,9 @@ export function useProject() {
         const newGroup: DeviceGroup = {
           id: newId,
           label,
+          kind: options?.kind ?? "logical", // ⭐ default to logical (was "stack")
           parentGroupId: options?.parentGroupId,
-          collapsed: false, // expanded by default per spec
+          collapsed: false,
           position: options?.position ?? { x: 100, y: 100 },
           color: options?.color,
         };
@@ -69,11 +99,11 @@ export function useProject() {
   const removeGroup = useCallback((id: string) => {
     setProject((p) => {
       if (!p) return p;
-      // Detach: orphan all descendant groups (re-parent to undefined)
-      // and remove devices' groupId references
       const descendantIds = new Set(
         getDescendantGroupIds(p.topology.groups, id),
       );
+      descendantIds.add(id); // ⭐ ensure the target group itself is removed too
+
       return {
         ...p,
         topology: {
@@ -147,7 +177,6 @@ export function useProject() {
       let success = false;
       setProject((p) => {
         if (!p) return p;
-        // Safety: prevent cycles
         if (isCircularReparent(p.topology.groups, groupId, newParentId)) {
           console.warn(
             `[useProject] Circular reparent blocked: ${groupId} → ${newParentId}`,
@@ -172,17 +201,30 @@ export function useProject() {
     [],
   );
 
+  // ============================================================
+  // ⭐ COMPOSITE STACK ARCHITECTURE
+  // Stacks are now rendered as a SINGLE composite node by the canvas.
+  // We no longer mutate member device positions — the PhysicalStackNode
+  // renders members directly via group.memberOrder.
+  // ============================================================
+
   const convertGroupToStack = useCallback(
     (groupId: string) => {
       setProject((prev) => {
-        if (!prev) return prev; // ⭐ early return when no project loaded
+        if (!prev) return prev;
 
         const group = prev.topology.groups.find((g) => g.id === groupId);
         if (!group) return prev;
 
+        // Members are devices either tagged with this groupId OR parentGroupId
         const members = prev.topology.devices.filter(
-          (d) => d.parentGroupId === groupId,
+          (d) => d.parentGroupId === groupId || d.groupId === groupId,
         );
+
+        if (members.length < 2) {
+          alert(`Stack requires at least 2 devices (found ${members.length})`);
+          return prev;
+        }
 
         const validation = validateStackComposition(members);
         if (!validation.canStack) {
@@ -207,17 +249,29 @@ export function useProject() {
         const seriesName = members[0].hardware.series;
         const defaultCable = getDefaultStackingCable(seriesName);
         const defaultPowerCable = getDefaultStackPowerCable(seriesName);
-        const series = HARDWARE_LIBRARY[seriesName];
+        const effectiveCatalog = getEffectiveCatalog();
+        const series = effectiveCatalog[seriesName];
+
+        // Compute member order top-to-bottom from current y-positions
+        const orderedMembers = [...members].sort((a, b) => {
+          const ay = a.position?.y ?? 0;
+          const by = b.position?.y ?? 0;
+          return ay - by;
+        });
+        const memberOrder = orderedMembers.map((d) => d.id);
 
         return {
           ...prev,
           topology: {
             ...prev.topology,
+            // ⭐ NO position mutation on devices — composite node handles layout
             groups: prev.topology.groups.map((g) =>
               g.id === groupId
                 ? {
                     ...g,
-                    groupKind: "stack" as const,
+                    kind: "stack" as const, // ⭐ correct field name
+                    memberOrder,
+                    // size handled by PhysicalStackNode (intrinsic)
                     stackingCablePid: defaultCable ?? undefined,
                     stackingCableQty: members.length,
                     ...(series?.supportsStackPower && defaultPowerCable
@@ -233,13 +287,13 @@ export function useProject() {
         };
       });
     },
-    [setProject],
+    [],
   );
 
   const convertStackToLogical = useCallback(
     (groupId: string) => {
       setProject((prev) => {
-        if (!prev) return prev; // ⭐
+        if (!prev) return prev;
 
         return {
           ...prev,
@@ -249,11 +303,12 @@ export function useProject() {
               g.id === groupId
                 ? {
                     ...g,
-                    groupKind: "logical" as const,
+                    kind: "logical" as const, // ⭐ correct field name
                     stackingCablePid: undefined,
                     stackingCableQty: undefined,
                     stackPowerCablePid: undefined,
                     stackPowerCableQty: undefined,
+                    memberOrder: undefined, // ⭐ logical groups don't need order
                   }
                 : g,
             ),
@@ -261,13 +316,9 @@ export function useProject() {
         };
       });
     },
-    [setProject],
+    [],
   );
 
-  /**
-   * Update stacking-related fields on a stack group.
-   * Pass `stackPowerCablePid: null` to disable StackPower.
-   */
   const updateStackSettings = useCallback(
     (
       groupId: string,
@@ -279,7 +330,7 @@ export function useProject() {
       },
     ) => {
       setProject((prev) => {
-        if (!prev) return prev; // ⭐
+        if (!prev) return prev;
 
         return {
           ...prev,
@@ -310,12 +361,13 @@ export function useProject() {
         };
       });
     },
-    [setProject],
+    [],
   );
 
   /**
    * Create a new stack group from a list of device IDs.
-   * Used by the "Group as Stack" button.
+   * Composite-node version: members keep their original positions in state,
+   * but the canvas renders them as a single stacked unit via PhysicalStackNode.
    */
   const createStackFromDevices = useCallback(
     (deviceIds: string[], label: string = "Stack") => {
@@ -328,7 +380,7 @@ export function useProject() {
 
         if (members.length < 2) {
           alert(`Stack requires at least 2 devices (found ${members.length})`);
-          return prev; // ✅ return existing state
+          return prev;
         }
 
         const validation = validateStackComposition(members);
@@ -338,7 +390,7 @@ export function useProject() {
             .map((i) => `• ${i.message}`)
             .join("\n");
           alert(`Cannot create stack:\n\n${messages}`);
-          return prev; // ✅ return existing state
+          return prev;
         }
 
         const warnings = validation.issues.filter((i) => i.severity === "warn");
@@ -348,7 +400,7 @@ export function useProject() {
               .map((w) => `⚠ ${w.message}`)
               .join("\n")}\n\nContinue?`,
           );
-          if (!ok) return prev; // ✅ return existing state
+          if (!ok) return prev;
         }
 
         const seriesName = members[0].hardware.series;
@@ -357,6 +409,7 @@ export function useProject() {
         const effectiveCatalog = getEffectiveCatalog();
         const series = effectiveCatalog[seriesName];
 
+        // Stack origin = centroid of member positions
         const positions = members
           .map((d) => d.position)
           .filter((p): p is { x: number; y: number } => !!p);
@@ -367,14 +420,23 @@ export function useProject() {
           positions.reduce((s, p) => s + p.y, 0) /
           Math.max(1, positions.length);
 
-        const newGroupId = `group-${Date.now()}`;
+        const newGroupId = `stack-${Date.now()}`;
+
+        // Order members top-to-bottom by their current y-coordinate
+        const orderedMembers = [...members].sort((a, b) => {
+          const ay = a.position?.y ?? 0;
+          const by = b.position?.y ?? 0;
+          return ay - by;
+        });
+        const memberOrder = orderedMembers.map((d) => d.id);
+
         const newGroup: DeviceGroup = {
           id: newGroupId,
           label,
+          kind: "stack", // ⭐ REQUIRED
           collapsed: false,
-          position: { x: cx - 100, y: cy - 100 },
-          size: { width: 320, height: 240 },
-          groupKind: "stack",
+          position: { x: cx, y: cy }, // composite node positions itself here
+          memberOrder,
           stackingCablePid: defaultCable ?? undefined,
           stackingCableQty: members.length,
           ...(series?.supportsStackPower && defaultPowerCable
@@ -385,29 +447,44 @@ export function useProject() {
             : {}),
         };
 
-        // ⭐ THE CRITICAL RETURN — likely what was missing
+        // ⭐ Tag devices with groupId (logical link only — NO position mutation).
+        // The composite PhysicalStackNode renders members from memberOrder.
+        const memberIdSet = new Set(deviceIds);
+        const updatedDevices = prev.topology.devices.map((d) =>
+          memberIdSet.has(d.id) ? { ...d, groupId: newGroupId } : d,
+        );
+
         return {
           ...prev,
           topology: {
             ...prev.topology,
             groups: [...(prev.topology.groups ?? []), newGroup],
-            devices: prev.topology.devices.map((d) =>
-              deviceIds.includes(d.id) ? { ...d, groupId: newGroupId } : d,
-            ),
+            devices: updatedDevices,
           },
         };
       });
     },
-    [setProject],
+    [],
   );
-  // Load on mount
+
+  // ============================================================
+  // Lifecycle: Load on mount (with group migration)
+  // ============================================================
   useEffect(() => {
     let cancelled = false;
     (async () => {
       const loaded = await storage.loadProject();
       if (cancelled) return;
       if (loaded) {
-        setProject(loaded);
+        // ⭐ Migrate any legacy groups missing `kind`
+        const migrated: Project = {
+          ...loaded,
+          topology: {
+            ...loaded.topology,
+            groups: (loaded.topology.groups ?? []).map(migrateGroup),
+          },
+        };
+        setProject(migrated);
       } else {
         const fresh = await initializeFreshProject();
         setProject(fresh);
@@ -425,6 +502,14 @@ export function useProject() {
     if (!project || !isLoaded) return;
     if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
     saveTimeoutRef.current = setTimeout(() => {
+      console.log("[AUTO-SAVE]", {
+        deviceCount: project.topology.devices.length,
+        groupCount: project.topology.groups.length,
+        groupIds: project.topology.groups.map(
+          (g) => `${g.id}:${g.kind ?? "logical"}:${g.memberOrder?.length ?? 0}`,
+        ),
+      });
+
       storage.saveProject(project);
     }, 200);
     return () => {
@@ -434,7 +519,39 @@ export function useProject() {
 
   // ----- Setters -----
   const setDevices = useCallback((devices: ConfiguredDevice[]) => {
-    setProject((p) => (p ? { ...p, topology: { ...p.topology, devices } } : p));
+    setProject((p) => {
+      if (!p) return p;
+
+      // ⭐ Defensive cleanup: when devices are removed, prune them from group memberOrder
+      // and drop empty stacks. This kills phantom devices like ACC-05.
+      const newDeviceIds = new Set(devices.map((d) => d.id));
+      const cleanedGroups = p.topology.groups
+        .map((g) => ({
+          ...g,
+          memberOrder: (g.memberOrder ?? []).filter((id) =>
+            newDeviceIds.has(id),
+          ),
+        }))
+        // Drop empty stacks (logical groups can stay empty)
+        .filter((g) => g.kind !== "stack" || (g.memberOrder?.length ?? 0) > 0);
+
+      // Also strip orphan groupId references on remaining devices
+      const validGroupIds = new Set(cleanedGroups.map((g) => g.id));
+      const cleanedDevices = devices.map((d) =>
+        d.groupId && !validGroupIds.has(d.groupId)
+          ? { ...d, groupId: undefined }
+          : d,
+      );
+
+      return {
+        ...p,
+        topology: {
+          ...p.topology,
+          devices: cleanedDevices,
+          groups: cleanedGroups,
+        },
+      };
+    });
   }, []);
 
   const setLinks = useCallback((links: Link[]) => {
@@ -476,7 +593,7 @@ export function useProject() {
     setProject((p) => (p ? { ...p, metadata: { ...p.metadata, naming } } : p));
   }, []);
 
-  // ✨ NEW: UI setters
+  // ✨ UI setters
   const setUI = useCallback((patch: Partial<UISettings>) => {
     setProject((p) => (p ? { ...p, ui: { ...p.ui, ...patch } } : p));
   }, []);
@@ -528,7 +645,17 @@ export function useProject() {
   const importProject = useCallback(async (json: string) => {
     await storage.importRaw(json);
     const reloaded = await storage.loadProject();
-    if (reloaded) setProject(reloaded);
+    if (reloaded) {
+      // ⭐ Run migration on imported projects too
+      const migrated: Project = {
+        ...reloaded,
+        topology: {
+          ...reloaded.topology,
+          groups: (reloaded.topology.groups ?? []).map(migrateGroup),
+        },
+      };
+      setProject(migrated);
+    }
   }, []);
 
   const exportProject = useCallback(async (): Promise<string> => {
@@ -548,7 +675,6 @@ export function useProject() {
       autoEnabled: false,
       pattern: "{LAYER}-{NN}",
     },
-    // ✨ UI state
     ui: project?.ui ?? { bundleEdges: true, expandedBundles: [] },
 
     // Setters
@@ -558,7 +684,6 @@ export function useProject() {
     setGlobalDefaults,
     setMetadata,
     setNaming,
-    // ✨ UI setters
     setUI,
     toggleBundleEdges,
     expandBundle,
@@ -569,6 +694,8 @@ export function useProject() {
     resetProject,
     importProject,
     exportProject,
+
+    // Groups
     groups: project?.topology.groups ?? [],
     setGroups,
     addGroup,
@@ -578,6 +705,7 @@ export function useProject() {
     moveDeviceToGroup,
     moveGroupToParent,
 
+    // Stacking
     convertGroupToStack,
     convertStackToLogical,
     updateStackSettings,

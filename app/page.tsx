@@ -1,7 +1,4 @@
 import Link from "next/link";
-import Image from "next/image";
-import Illustration from "./images/illustration_hero_FSO_PrimaryGradient_Fills.svg"
-import Logo from "./images/Cisco_Logo_no_TM_Black-RGB.png"
 
 import HeroIllustration from "./components/chrome/HeroIllustration";
 

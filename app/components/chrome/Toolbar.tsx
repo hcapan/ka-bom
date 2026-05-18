@@ -36,11 +36,9 @@ export default function Toolbar({
   onExportJSON,
   onImport,
   onReset,
-  bundleEdges,
-  onToggleBundleEdges
 }: Props) {
   const [openPanel, setOpenPanel] = useState<PanelKey>(null);
-  const { ui, toggleBundleEdges, collapseAllBundles } = useProject();
+  const { ui } = useProject();
   const defaultsRef = useRef<HTMLButtonElement>(null);
   const inventoryRef = useRef<HTMLButtonElement>(null);
   const fileRef = useRef<HTMLButtonElement>(null);
@@ -105,37 +103,9 @@ export default function Toolbar({
       {/* ...your existing toolbar buttons (Defaults / BOM / File)... */}
 
   {/* ✨ NEW — Bundle toggle */}
-      <button
-        onClick={toggleBundleEdges}
-        className={`flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-sm font-medium transition ${
-          ui.bundleEdges
-            ? "border-blue-300 bg-blue-50 text-blue-700 hover:bg-blue-100"
-            : "border-slate-300 bg-white text-slate-700 hover:bg-slate-50"
-        }`}
-        title={
-          ui.bundleEdges
-            ? "Bundling ON — parallel links collapse into one edge"
-            : "Bundling OFF — every link rendered individually"
-        }
-      >
-        <span className="text-base leading-none">
-          {ui.bundleEdges ? "🔗" : "≡"}
-        </span>
-        <span>{ui.bundleEdges ? "Bundled" : "Expanded"}</span>
-      </button>
 
-      {/* ✨ Show "Collapse all" only when at least one bundle is expanded */}
-      {ui.bundleEdges && ui.expandedBundles.length > 0 && (
-        <button
-          onClick={collapseAllBundles}
-          className="rounded-md border border-amber-300 bg-amber-50 px-3 py-1.5 text-sm font-medium text-amber-700 hover:bg-amber-100"
-          title="Collapse all manually-expanded bundles"
-        >
-          ⤴ Collapse all ({ui.expandedBundles.length})
-        </button>
 
-        
-      )}
+     
 
     </div>
 

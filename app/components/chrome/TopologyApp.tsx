@@ -8,6 +8,11 @@ import DeviceListPanel from "../panels/DeviceListPanel";
 import TopologyCanvas from "../canvas/TopologyCanvas";
 import ConfigurePanel from "../panels/ConfigurePanel";
 
+type ConfigureTarget = {
+  deviceId: string;
+  slotId?: string;
+};
+
 export default function TopologyApp() {
   const {
     isLoaded,
@@ -24,7 +29,7 @@ export default function TopologyApp() {
     resetProject,
     importProject,
     exportProject,
-    ui, // ✨ MUST be here
+    ui,
     expandBundle,
     toggleBundleEdges,
     collapseAllBundles,
@@ -38,12 +43,26 @@ export default function TopologyApp() {
     convertStackToLogical,
   } = useProject();
 
-  const [configureDeviceId, setConfigureDeviceId] = useState<string | null>(
-    null,
-  );
+  // ⭐ Replaced configureDeviceId with configureTarget (object form)
+  const [configureTarget, setConfigureTarget] =
+    useState<ConfigureTarget | null>(null);
+
+  // ⭐ Helper: open panel for whole device (no slot context)
+  const openDeviceConfig = useCallback((deviceId: string) => {
+    setConfigureTarget({ deviceId });
+  }, []);
+
+  // ⭐ Helper: open panel scoped to a specific slot
+  const openSlotConfig = useCallback((deviceId: string, slotId: string) => {
+    setConfigureTarget({ deviceId, slotId });
+  }, []);
+
+  const closeConfig = useCallback(() => {
+    setConfigureTarget(null);
+  }, []);
 
   // ============================================================
-  // EXPORT BOM AS CCW EXCEL  ← primary action
+  // EXPORT BOM AS CCW EXCEL
   // ============================================================
   const exportBOM = useCallback(() => {
     if (!project) return;
@@ -62,7 +81,6 @@ export default function TopologyApp() {
         return;
       }
 
-      // If there are warnings, give user a chance to abort
       if (result.warnings.length > 0) {
         const proceed = confirm(
           `BOM generated with ${result.warnings.length} warning(s).\n\n` +
@@ -81,9 +99,6 @@ export default function TopologyApp() {
     }
   }, [project, devices.length]);
 
-  // ============================================================
-  // EXPORT JSON (kept as backup option in File menu)
-  // ============================================================
   const exportJSON = useCallback(async () => {
     if (devices.length === 0) {
       alert("Nothing to export — add some devices first.");
@@ -123,10 +138,9 @@ export default function TopologyApp() {
     );
   }
 
-  const configureDevice =
-    configureDeviceId !== null
-      ? (devices.find((d) => d.id === configureDeviceId) ?? null)
-      : null;
+  const configureDevice = configureTarget
+    ? (devices.find((d) => d.id === configureTarget.deviceId) ?? null)
+    : null;
 
   return (
     <>
@@ -137,8 +151,8 @@ export default function TopologyApp() {
           links={links}
           globalDefaults={globalDefaults}
           setGlobalDefaults={setGlobalDefaults}
-          onExportBOM={exportBOM} // ✅ Excel BOM
-          onExportJSON={exportJSON} // ✅ JSON backup
+          onExportBOM={exportBOM}
+          onExportJSON={exportJSON}
           onImport={handleImport}
           onReset={resetProject}
           bundleEdges={ui.bundleEdges}
@@ -153,13 +167,13 @@ export default function TopologyApp() {
             links={links}
             setDevices={setDevices}
             setLinks={setLinks}
-            naming={naming} // ✅ NEW
+            naming={naming}
             setNaming={setNaming}
             defaultLinkSku={globalDefaults.defaultOptic}
             setDefaultLinkSku={(sku) =>
               setGlobalDefaults({ defaultOptic: sku })
             }
-            onConfigureDevice={setConfigureDeviceId}
+            onConfigureDevice={openDeviceConfig}
             onCreateGroup={addGroup}
             groups={groups}
             setGroups={setGroups}
@@ -172,15 +186,16 @@ export default function TopologyApp() {
               setDevices={setDevices}
               setLinks={setLinks}
               defaultLinkSku={globalDefaults.defaultOptic}
-              onExport={exportBOM} // ✅ canvas FAB also runs CCW export
-              onNodeClick={setConfigureDeviceId}
-              ui={ui} // ✨ MUST forward
+              onExport={exportBOM}
+              onNodeClick={openDeviceConfig}
+              ui={ui}
               onExpandBundle={expandBundle}
               groups={groups}
               onToggleGroupCollapse={toggleGroupCollapse}
               onRenameGroup={renameGroup}
               onRemoveGroup={removeGroup}
               setGroups={setGroups}
+              onConfigureSlot={openSlotConfig}        // ⭐ wired
               onUpdateStack={updateStackSettings}
               onConvertStackToLogical={convertStackToLogical}
             />
@@ -191,7 +206,8 @@ export default function TopologyApp() {
       <ConfigurePanel
         device={configureDevice}
         globalDefaults={globalDefaults}
-        onClose={() => setConfigureDeviceId(null)}
+        selectedSlotId={configureTarget?.slotId}     // ⭐ pass slot context
+        onClose={closeConfig}
         onUpdate={updateDevice}
       />
     </>
