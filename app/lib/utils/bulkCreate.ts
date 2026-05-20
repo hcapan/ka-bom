@@ -173,15 +173,21 @@ export function createBulkDevices(
   let newGroup: DeviceGroup | undefined;
 
   if (spec.groupName && spec.groupName.trim()) {
-    const groupId = generateGroupId(existingGroups);
-    newGroup = {
-      id: groupId,
-      label: spec.groupName.trim(),
-      parentGroupId: spec.parentGroupId,
-      collapsed: false,
-      position: nextGroupPosition(spec.type, existingGroups, existingDevices, spec.parentGroupId),
-    };
-  }
+  const groupId = generateGroupId(existingGroups);
+  newGroup = {
+    id: groupId,
+    label: spec.groupName.trim(),
+    kind: "logical",                    // ⭐ ADD THIS
+    parentGroupId: spec.parentGroupId,
+    collapsed: false,
+    position: nextGroupPosition(
+      spec.type,
+      existingGroups,
+      existingDevices,
+      spec.parentGroupId,
+    ),
+  };
+}
 
   const targetGroupId = newGroup?.id ?? spec.parentGroupId;
 

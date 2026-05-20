@@ -7,6 +7,7 @@ import {
   type EdgeProps,
   type ReactFlowState,
 } from "@xyflow/react";
+import { getEdgeTheme } from "./edgeTheme";
 
 type GetSpecialPathParams = {
   sourceX: number;
@@ -39,6 +40,8 @@ export default function CustomEdge({
   markerEnd,
   label,
   animated,
+  selected,
+  data,
   style = {},
 }: EdgeProps) {
   // Find all edges between the same node pair (regardless of direction)
@@ -52,6 +55,14 @@ export default function CustomEdge({
     return { edgeIndex: idx, edgeCount: sameLinks.length };
   });
 
+  // Resolve speed from data.speed (if provided) — falls back to 1G
+  const speed = (data as { speed?: string } | undefined)?.speed;
+  const theme = getEdgeTheme(speed);
+
+  // Allow inline style overrides to win over theme
+  const resolvedStroke = (style.stroke as string) ?? theme.color;
+  const resolvedWidth = (style.strokeWidth as number) ?? theme.strokeWidth;
+
   const edgePathParams = {
     sourceX,
     sourceY,
@@ -61,11 +72,6 @@ export default function CustomEdge({
     targetPosition,
   };
 
-  // Compute offset: center the bundle around 0
-  // 1 edge → [0]
-  // 2 edges → [-30, 30]
-  // 3 edges → [-60, 0, 60]
-  // 4 edges → [-90, -30, 30, 90]
   const SPREAD = 60;
   const offset =
     edgeCount > 1 ? (edgeIndex - (edgeCount - 1) / 2) * SPREAD : 0;
@@ -81,39 +87,60 @@ export default function CustomEdge({
     labelY = ly;
   } else {
     path = getSpecialPath(edgePathParams, offset);
-    labelY = labelY + offset / 2; // approximate label position on the curve
+    labelY = labelY + offset / 2;
   }
 
   const isLateralLink =
-  (sourcePosition === "left" || sourcePosition === "right") &&
-  (targetPosition === "left" || targetPosition === "right");
+    (sourcePosition === "left" || sourcePosition === "right") &&
+    (targetPosition === "left" || targetPosition === "right");
+
+  // Lateral links keep their amber override (semantic signal)
+  const finalStroke = isLateralLink ? "#f59e0b" : resolvedStroke;
+  const finalWidth = isLateralLink ? Math.max(resolvedWidth, 3) : resolvedWidth;
+
+  // Selection adds glow + slight width bump
+  const selectionGlow = selected
+    ? `drop-shadow(0 0 6px ${finalStroke})`
+    : undefined;
 
   return (
     <>
+      {/* Invisible hover hitbox for easier click target */}
+      <path
+        d={path}
+        fill="none"
+        stroke="transparent"
+        strokeWidth={20}
+      />
+
       <BaseEdge
         id={id}
         path={path}
         markerEnd={markerEnd}
         style={{
           ...style,
-          strokeDasharray: animated ? "6 4" : undefined,
+          stroke: finalStroke,
+          strokeWidth: selected ? finalWidth + 0.5 : finalWidth,
+          strokeDasharray: animated || selected ? "6 4" : undefined,
+          filter: selectionGlow,
+          transition: "stroke-width 150ms ease, filter 150ms ease",
         }}
       />
-      {animated && (
+
+      {(animated || selected) && (
         <path
           d={path}
           fill="none"
-          stroke={(style.stroke as string) ?? "#7c3aed"}
-          strokeWidth={(style.strokeWidth as number) ?? 2}
-          strokeDasharray="6 4"
+          stroke={finalStroke}
+          strokeWidth={finalWidth}
+          strokeDasharray={isLateralLink ? "8 4" : "6 4"}
           style={{
             animation: "rf-dash 1s linear infinite",
-            stroke: isLateralLink ? "#f59e0b" : style.stroke, 
-            strokeWidth: isLateralLink ? 3 : style.strokeWidth,
-            strokeDasharray: isLateralLink ? "8 4" : undefined,  
+            pointerEvents: "none",
           }}
         />
       )}
+
       {label && (
         <EdgeLabelRenderer>
           <div
@@ -121,13 +148,14 @@ export default function CustomEdge({
               position: "absolute",
               transform: `translate(-50%, -50%) translate(${labelX}px, ${labelY}px)`,
               background: "white",
-              border: "1px solid #e2e8f0",
+              border: `1px solid ${finalStroke}33`,
               borderRadius: 8,
               padding: "2px 8px",
               fontSize: 11,
               fontWeight: 700,
-              color: (style.stroke as string) ?? "#0f172a",
+              color: finalStroke,
               pointerEvents: "all",
+              boxShadow: "0 2px 6px -2px rgba(15,23,42,0.15)",
             }}
             className="nodrag nopan"
           >
@@ -135,6 +163,7 @@ export default function CustomEdge({
           </div>
         </EdgeLabelRenderer>
       )}
+
       <style>{`
         @keyframes rf-dash {
           to { stroke-dashoffset: -20; }

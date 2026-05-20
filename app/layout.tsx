@@ -1,16 +1,15 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Inter } from "next/font/google";
 import "./globals.css";
+import { ModalProvider } from "./components/ui/Modal";
 import Navbar from "./components/chrome/Navbar";
+import { Toaster } from "sonner";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
+const inter = Inter({
   subsets: ["latin"],
+  variable: "--font-inter",
+  display: "swap",
 });
 
 export const metadata: Metadata = {
@@ -26,12 +25,26 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      className={inter.variable}
     >
-      <body className="m-0 p-0 w-screen min-h-screen overflow-x-hidden">
-        <Navbar />
-        {children}
-      </body>
+      <ModalProvider>
+        <body className="m-0 p-0 w-screen min-h-screen overflow-x-hidden">
+          <Navbar />
+          {children}
+          <Toaster
+            position="bottom-right"
+            theme="light"
+            richColors
+            closeButton
+            toastOptions={{
+              className: "text-xs",
+              style: {
+                fontFamily: "inherit",
+              },
+            }}
+          />
+        </body>
+      </ModalProvider>
     </html>
   );
 }

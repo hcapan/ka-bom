@@ -1,0 +1,60 @@
+{
+  "StackWise Cables": {
+    "productCategory": "fixed-switch",
+    "type": "access",
+    "vendor": "Cisco",
+    "description": "StackWise data and power cables",
+    "compatibleOptics": [],
+    "isModuleCatalog": true,
+    "pids": [
+      {
+        "pid": "STACK-T1-50CM",
+        "description": "StackWise-1T cable, 50cm. For Cat 9300 stacking.",
+        "vendor": "Cisco",
+        "kind": "stacking-cable"
+      },
+      {
+        "pid": "STACK-T1-1M",
+        "description": "StackWise-1T cable, 1m.",
+        "vendor": "Cisco",
+        "kind": "stacking-cable"
+      },
+      {
+        "pid": "STACK-T1-3M",
+        "description": "StackWise-1T cable, 3m.",
+        "vendor": "Cisco",
+        "kind": "stacking-cable"
+      },
+      {
+        "pid": "STACK-T4-50CM",
+        "description": "StackWise-T4 cable, 50cm. For Cat 9200/9200L stacking.",
+        "vendor": "Cisco",
+        "kind": "stacking-cable"
+      },
+      {
+        "pid": "STACK-T4-1M",
+        "description": "StackWise-T4 cable, 1m.",
+        "vendor": "Cisco",
+        "kind": "stacking-cable"
+      },
+      {
+        "pid": "STACK-T4-3M",
+        "description": "StackWise-T4 cable, 3m.",
+        "vendor": "Cisco",
+        "kind": "stacking-cable"
+      },
+      {
+        "pid": "CAB-SPWR-30CM",
+        "description": "StackPower cable, 30cm. Cat 9300 only.",
+        "vendor": "Cisco",
+        "kind": "stack-power-cable"
+      },
+      {
+        "pid": "CAB-SPWR-150CM",
+        "description": "StackPower cable, 150cm.",
+        "vendor": "Cisco",
+        "kind": "stack-power-cable"
+      }
+    ]
+  }
+}

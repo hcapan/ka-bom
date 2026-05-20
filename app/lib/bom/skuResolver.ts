@@ -1,7 +1,7 @@
 import {
-  HARDWARE_LIBRARY,
   ChassisBundle,
   getBundle,
+  getEffectiveCatalog,
   getModule,
 } from "../hardware/catalog";
 import {
@@ -13,36 +13,46 @@ import {
   SlotKind,
   DeviceGroup,
 } from "../types";
-import { BOMLine, BOMWarning ,BOMLineCategory} from "./types";
+import { BOMLine, BOMWarning, BOMLineCategory } from "./types";
+// ⭐ NEW: PSU helpers
+import {
+  emitPsuLines as emitPsuLinesFromHelper,
+  bundleUsesPsuOptions,
+} from "./psuEmitter";
+import {
+  emitNetworkModuleLines,
+} from "./networkModuleEmitter";
+import { bundleUsesPsuConfig, emitModularPsuLines } from "./modularPsuEmitter";
+import { getChassisSlotLayout,getSecondaryModulePid } from "../hardware/chassisHelpers";
+
 
 // ============================================================
 // EFFECTIVE VALUE RESOLVERS
-// (device override → global default)
 // ============================================================
 export function getEffectiveRegion(
   device: ConfiguredDevice,
-  globalDefaults: GlobalDefaults
+  globalDefaults: GlobalDefaults,
 ): Region {
   return device.hardware.region ?? globalDefaults.region;
 }
 
 export function getEffectiveLicenseTerm(
   device: ConfiguredDevice,
-  globalDefaults: GlobalDefaults
+  globalDefaults: GlobalDefaults,
 ): ContractTermYears {
   return device.license?.termYears ?? globalDefaults.licenseTermYears;
 }
 
 export function getEffectiveSmartnetTier(
   device: ConfiguredDevice,
-  globalDefaults: GlobalDefaults
+  globalDefaults: GlobalDefaults,
 ): SmartnetTier {
   return device.smartnet?.tier ?? globalDefaults.smartnetTier;
 }
 
 export function getEffectiveSmartnetTerm(
   device: ConfiguredDevice,
-  globalDefaults: GlobalDefaults
+  globalDefaults: GlobalDefaults,
 ): ContractTermYears {
   return device.smartnet?.termYears ?? globalDefaults.smartnetTermYears;
 }
@@ -51,33 +61,50 @@ export function getEffectiveSmartnetTerm(
 // CHASSIS LOOKUP
 // ============================================================
 export function getChassisInfo(device: ConfiguredDevice) {
-  const series = HARDWARE_LIBRARY[device.hardware.series];
+  const catalog = getEffectiveCatalog()
+  const series = catalog[device.hardware.series];
   if (!series) return null;
   const product = series.pids.find(
-    (p) => p.pid === device.hardware.chassisPid
+    (p) => p.pid === device.hardware.chassisPid,
   );
   if (!product) return null;
   return { series, product };
 }
 
 // ============================================================
-// SHARED RESULT TYPE — used by every line builder below
+// SHARED RESULT TYPE
 // ============================================================
 type Result = { lines: BOMLine[]; warnings: BOMWarning[] };
 
+// ⭐ NEW: helper to detect PSU PIDs in autoIncluded[]
+function isPsuPid(pid: string): boolean {
+  return /^C9K-PWR-/i.test(pid);
+}
+
 // ============================================================
-// LINE BUILDERS — each returns lines + warnings
+// LINE BUILDERS
 // ============================================================
 
 /**
- * Builds the chassis line itself + all auto-included items.
+ * Returns true if the device's chassis uses the modular psuConfig pattern
+ * (count + SKU model picker). Used to switch BOM emission paths.
+ */
+
+
+
+/**
+ * Builds the chassis line + auto-included items.
+ * ⭐ Skips PSU PIDs from autoIncluded when bundle uses the new psuOptions
+ *    shape (those are emitted by buildPsuLines instead).
  */
 export function buildChassisLines(
   device: ConfiguredDevice,
   bundle: ChassisBundle,
-  groupId: number
+  groupId: number,
 ): Result {
   const excluded = new Set(device.hardware.excludedAutoIncludes ?? []);
+  const usesNewPsuShape = bundleUsesPsuOptions(bundle);
+  const supervisorSlotIds = getPopulatedSupervisorSlotIds(device);
 
   const lines: BOMLine[] = [
     {
@@ -88,52 +115,149 @@ export function buildChassisLines(
       category: "chassis",
       description: `${device.hardware.series} chassis`,
     },
-    ...bundle.autoIncluded
-      .filter((item) => !excluded.has(item.pid))
-      .map<BOMLine>((item) => ({
-        partNumber: item.pid,
-        quantity: item.qty,
-        sourceDeviceId: device.id,
-        category: "auto-included",
-        description: item.note,
-      })),
   ];
+
+  for (const item of bundle.autoIncluded ?? []) {
+    if (excluded.has(item.pid)) continue;
+    if (usesNewPsuShape && isPsuPid(item.pid)) continue;
+
+    // ⭐ Per-supervisor PIDs: emit ONE line per supervisor slot,
+    //    each tagged with the supervisor's slotId for unique aggregation key
+    if (PER_SUPERVISOR_PIDS.has(item.pid)) {
+      if (supervisorSlotIds.length === 0) {
+        // Fallback: no supervisors populated, still emit qty 1
+        lines.push({
+          partNumber: item.pid,
+          quantity: item.qty,
+          sourceDeviceId: device.id,
+          category: "auto-included",
+          description: item.note,
+        });
+      } else {
+        for (const supSlotId of supervisorSlotIds) {
+          lines.push({
+            partNumber: item.pid,
+            quantity: 1,
+            sourceDeviceId: device.id,
+            category: "auto-included",
+            slotId: `sup-${supSlotId}-ssd`, // ⭐ unique per supervisor
+            description: item.note,
+          });
+        }
+      }
+      continue;
+    }
+
+    // Regular auto-included items
+    lines.push({
+      partNumber: item.pid,
+      quantity: item.qty,
+      sourceDeviceId: device.id,
+      category: "auto-included",
+      description: item.note,
+    });
+  }
+
   return { lines, warnings: [] };
 }
 
+
 /**
- * Builds the redundant PSU line if user opted in.
+ * Builds the network module line for fixed-switch chassis.
+ * No-op for chassis without networkModuleOptions in catalog.
+ */
+export function buildNetworkModuleLines(
+  device: ConfiguredDevice,
+  bundle: ChassisBundle,
+): Result {
+  const lines: BOMLine[] = [];
+  const warnings: BOMWarning[] = [];
+
+  const moduleLines = emitNetworkModuleLines(device, bundle);
+  for (const line of moduleLines) {
+    lines.push({
+      partNumber: line.pid,
+      quantity: line.qty,
+      sourceDeviceId: device.id,
+      category: "auto-included",   // groups with other auto-include items in BOM
+      description: line.description,
+    });
+  }
+
+  return { lines, warnings };
+}
+
+
+/**
+ * Builds PSU lines.
+ * ⭐ Two paths:
+ *   1. New schema (psuOptions): emits primary + redundant /2 OR SPS-NONE
+ *   2. Legacy schema (redundantPsu): emits redundant /2 only when toggled on
+ *      (primary PSU comes from autoIncluded[] in legacy bundles)
  */
 export function buildPsuLines(
   device: ConfiguredDevice,
-  bundle: ChassisBundle
+  bundle: ChassisBundle,
 ): Result {
-  if (!device.hardware.redundantPsu || !bundle.redundantPsu) {
-    return { lines: [], warnings: [] };
-  }
-  return {
-    lines: [
-      {
-        partNumber: bundle.redundantPsu.pid,
-        quantity: 1,
+  const lines: BOMLine[] = [];
+  const warnings: BOMWarning[] = [];
+
+  // ⭐ NEW PATH: psuOptions
+  if (bundleUsesPsuOptions(bundle)) {
+    const psuLines = emitPsuLinesFromHelper(device, bundle);
+    for (const line of psuLines) {
+      lines.push({
+        partNumber: line.pid,
+        quantity: line.qty,
         sourceDeviceId: device.id,
         category: "psu",
-        description: bundle.redundantPsu.description,
-      },
-    ],
-    warnings: [],
-  };
+        description: line.description,
+      });
+    }
+    return { lines, warnings };
+  }
+
+  // ⭐ LEGACY PATH: redundantPsu
+  if (device.hardware.redundantPsu && bundle.redundantPsu) {
+    lines.push({
+      partNumber: bundle.redundantPsu.pid,
+      quantity: 1,
+      sourceDeviceId: device.id,
+      category: "psu",
+      description: bundle.redundantPsu.description,
+    });
+  }
+
+  return { lines, warnings };
+}
+
+
+/**
+ * PIDs that should emit ONE line PER populated supervisor slot
+ * (not aggregated). CCW expects separate rows for these.
+ */
+const PER_SUPERVISOR_PIDS = new Set([
+  "C9400-SSD-NONE",
+]);
+
+function getPopulatedSupervisorSlotIds(device: ConfiguredDevice): string[] {
+  return (device.hardware.slots ?? [])
+    .filter((s) => s.slotKind === "supervisor" && s.modulePid)
+    .map((s) => s.slotId);
 }
 
 /**
  * Builds the power cord line.
- * Quantity auto-scales: 1 cord per PSU (1 if no redundancy, 2 if redundant PSU).
+ * Quantity = 1 cord per PSU (1 if no redundancy, 2 if redundant).
  */
 export function buildPowerCordLines(
   device: ConfiguredDevice,
   bundle: ChassisBundle,
-  globalDefaults: GlobalDefaults
+  globalDefaults: GlobalDefaults,
 ): Result {
+  // ⭐ Defensive: powerCord may be optional in your new schema
+  if (!bundle.powerCord) return { lines: [], warnings: [] };
+
   const region = getEffectiveRegion(device, globalDefaults);
   const cordPid = bundle.powerCord.byRegion[region];
   const warnings: BOMWarning[] = [];
@@ -158,16 +282,19 @@ function buildPowerCordLine(
   device: ConfiguredDevice,
   cordPid: string,
   bundle: ChassisBundle,
-  warnings: BOMWarning[]
+  warnings: BOMWarning[],
 ): Result {
+  if (!bundle.powerCord) return { lines: [], warnings };
+
   const psuCount = device.hardware.redundantPsu ? 2 : 1;
-  const qty = Math.min(psuCount, bundle.powerCord.qty);
+  const cordsPerPsu = bundle.powerCord.qty ?? 1;
+  const totalCords = psuCount * cordsPerPsu;
 
   return {
     lines: [
       {
         partNumber: cordPid,
-        quantity: qty,
+        quantity: totalCords,
         sourceDeviceId: device.id,
         category: "power-cord",
       },
@@ -182,21 +309,26 @@ function buildPowerCordLine(
 export function buildLicenseLines(
   device: ConfiguredDevice,
   bundle: ChassisBundle,
-  globalDefaults: GlobalDefaults
+  globalDefaults: GlobalDefaults,
 ): Result {
+  // ⭐ Defensive: license may be optional
+  if (!bundle.license) return { lines: [], warnings: [] };
+
   const term = getEffectiveLicenseTerm(device, globalDefaults);
   const lines: BOMLine[] = [];
   const warnings: BOMWarning[] = [];
 
-  lines.push({
-    partNumber: bundle.license.entitlementPid,
-    quantity: 1,
-    sourceDeviceId: device.id,
-    category: "license-entitlement",
-    description: `${bundle.license.tier} entitlement`,
-  });
+  if (bundle.license.entitlementPid) {
+    lines.push({
+      partNumber: bundle.license.entitlementPid,
+      quantity: 1,
+      sourceDeviceId: device.id,
+      category: "license-entitlement",
+      description: `${bundle.license.tier} entitlement`,
+    });
+  }
 
-  const subPid = bundle.license.subscriptionByTerm[term];
+  const subPid = bundle.license.subscriptionByTerm?.[String(term)];
   if (!subPid) {
     warnings.push({
       severity: "warning",
@@ -223,8 +355,11 @@ export function buildLicenseLines(
 export function buildSmartnetLines(
   device: ConfiguredDevice,
   bundle: ChassisBundle,
-  globalDefaults: GlobalDefaults
+  globalDefaults: GlobalDefaults,
 ): Result {
+  // ⭐ Defensive
+  if (!bundle.smartnet) return { lines: [], warnings: [] };
+
   const tier = getEffectiveSmartnetTier(device, globalDefaults);
   const term = getEffectiveSmartnetTerm(device, globalDefaults);
 
@@ -263,7 +398,6 @@ export function buildSmartnetLines(
 
 /**
  * Legacy per-device stacking (fixed-config only).
- * For group-level stacks, see buildGroupStackingLines below.
  */
 export function buildStackingLines(device: ConfiguredDevice): Result {
   const cfg = device.hardware.stacking;
@@ -300,14 +434,15 @@ export function buildStackingLines(device: ConfiguredDevice): Result {
 }
 
 // ============================================================
-// HELPER: full check whether device is BOM-ready
+// IS BOM-READY
 // ============================================================
 export function isBomReady(device: ConfiguredDevice): boolean {
   return getBundle(device.hardware.series, device.hardware.chassisPid) !== null;
 }
-// ============================================================================
-// SPRINT M2 ADDITIONS — Modular chassis & group-level stacking
-// ============================================================================
+
+// ============================================================
+// SPRINT M2 — Modular chassis & group-level stacking
+// ============================================================
 
 const SLOT_KIND_ORDER: Record<SlotKind, number> = {
   psu: 1,
@@ -321,22 +456,23 @@ const SLOT_KIND_ORDER: Record<SlotKind, number> = {
 
 function categoryForSlotKind(kind: SlotKind): BOMLineCategory {
   switch (kind) {
-    case "supervisor":    return "supervisor";
-    case "linecard":      return "linecard";
-    case "fabric-module": return "fabric-module";
-    case "psu":           return "psu";
-    case "ssd":           return "ssd";
-    case "fan":           return "fan";
-    default:              return "other";
+    case "supervisor":
+      return "supervisor";
+    case "linecard":
+      return "linecard";
+    case "fabric-module":
+      return "fabric-module";
+    case "psu":
+      return "psu";
+    case "ssd":
+      return "ssd";
+    case "fan":
+      return "fan";
+    default:
+      return "other";
   }
 }
-/**
- * Builds BOM lines for every populated slot in a modular chassis.
- * - Skips empty slots (no modulePid)
- * - Skips slots whose PID appears in excludedAutoIncludes
- * - Preserves slot identity via line.slotId so aggregation doesn't merge
- *   two physically distinct components (e.g., two SSDs in two supervisors).
- */
+
 export function buildSlotLines(device: ConfiguredDevice): Result {
   const lines: BOMLine[] = [];
   const warnings: BOMWarning[] = [];
@@ -345,6 +481,14 @@ export function buildSlotLines(device: ConfiguredDevice): Result {
   if (!slots || slots.length === 0) {
     return { lines, warnings };
   }
+
+  // ⭐ FIX 1: Compute redundant slot IDs from the chassis layout
+  const layout = getChassisSlotLayout(device.hardware.chassisPid);
+  const redundantSlotIds = new Set(
+    layout
+      .filter((s) => s.isRedundantSlot)
+      .map((s) => String(s.slot)),
+  );
 
   const excluded = new Set(device.hardware.excludedAutoIncludes ?? []);
 
@@ -369,8 +513,23 @@ export function buildSlotLines(device: ConfiguredDevice): Result {
       });
     }
 
+    // If this slot is a redundant position, swap to the /2 PID
+    let emittedPid = slot.modulePid;
+    if (redundantSlotIds.has(slot.slotId)) {
+      const secondaryPid = getSecondaryModulePid(slot.modulePid);
+      if (secondaryPid) {
+        emittedPid = secondaryPid;
+      } else {
+        warnings.push({
+          severity: "warning",
+          deviceId: device.id,
+          message: `No /2 mapping found for ${slot.modulePid} in redundant slot ${slot.slotId}. Emitting base PID — CCW may reject.`,
+        });
+      }
+    }
+
     lines.push({
-      partNumber: slot.modulePid,
+      partNumber: emittedPid,                    // ⭐ FIX 2: was slot.modulePid
       quantity: 1,
       sourceDeviceId: device.id,
       category: categoryForSlotKind(slot.slotKind),
@@ -383,31 +542,54 @@ export function buildSlotLines(device: ConfiguredDevice): Result {
   return { lines, warnings };
 }
 
-/**
- * Returns true if the device's slots[] contains any populated PSU slots.
- * Used by bomBuilder to skip the legacy buildPsuLines path.
- */
+
 export function hasModularPsus(device: ConfiguredDevice): boolean {
-  return !!device.hardware.slots?.some(
-    (s) => s.slotKind === "psu" && s.modulePid
+  const catalog = getEffectiveCatalog()
+  const series = catalog[device.hardware.series];
+  const chassisPidEntry = series?.pids.find(
+    (p) => p.pid === device.hardware.chassisPid,
   );
+  const bundle = (chassisPidEntry as { bundle?: ChassisBundle })?.bundle;
+  return bundleUsesPsuConfig(bundle);
 }
 
+export function buildModularPsuLines(
+  device: ConfiguredDevice,
+  bundle: ChassisBundle,
+): Result {
+  const lines: BOMLine[] = [];
+  const warnings: BOMWarning[] = [];
+
+  const psuLines = emitModularPsuLines(device, bundle);
+  for (const line of psuLines) {
+    lines.push({
+      partNumber: line.pid,
+      quantity: line.qty,
+      sourceDeviceId: device.id,
+      category: "psu",
+      description: line.description,
+    });
+  }
+
+  return { lines, warnings };
+}
 /**
- * Modular-aware power cord builder.
- * Quantity = number of populated PSU slots.
+ * Builds PSU lines for modular chassis (count + SKU model).
  */
+
+
 export function buildModularPowerCordLines(
   device: ConfiguredDevice,
   bundle: ChassisBundle,
-  globalDefaults: GlobalDefaults
+  globalDefaults: GlobalDefaults,
 ): Result {
-  const psuSlots =
-    device.hardware.slots?.filter(
-      (s) => s.slotKind === "psu" && s.modulePid
-    ) ?? [];
+  if (!bundle.powerCord) return { lines: [], warnings: [] };
 
-  if (psuSlots.length === 0) return { lines: [], warnings: [] };
+  const psuConfig = bundle.psuConfig;
+  const psuCount =
+    device.hardware.modularPsuQty ?? psuConfig?.defaultQty ?? 0;
+
+  if (psuCount === 0) return { lines: [], warnings: [] };
 
   const region = getEffectiveRegion(device, globalDefaults);
   const warnings: BOMWarning[] = [];
@@ -427,11 +609,13 @@ export function buildModularPowerCordLines(
     return { lines: [], warnings };
   }
 
+  const cordsPerPsu = bundle.powerCord.qty ?? 1;
+
   return {
     lines: [
       {
         partNumber: cordPid,
-        quantity: psuSlots.length,
+        quantity: psuCount * cordsPerPsu,
         sourceDeviceId: device.id,
         category: "power-cord",
       },
@@ -440,22 +624,21 @@ export function buildModularPowerCordLines(
   };
 }
 
-// ----------------------------------------------------------------------------
+// ============================================================
 // GROUP-LEVEL STACKING
-// One stack-cable line per group, qty = stackingCableQty override OR memberCount.
-// Optional StackPower line if explicitly set on the group.
-// ----------------------------------------------------------------------------
-
+// ============================================================
 const DEFAULT_STACK_CABLE_PID = "STACK-T1-50CM";
 
 export function buildGroupStackingLines(
   group: DeviceGroup,
-  memberCount: number
+  memberCount: number,
 ): Result {
   const lines: BOMLine[] = [];
   const warnings: BOMWarning[] = [];
 
-  if (group.groupKind !== "stack") return { lines, warnings };
+  // ⭐ FIELD NAME: your DeviceGroup uses `kind` (not `groupKind`)
+  if (group.kind !== "stack") return { lines, warnings };
+
   if (memberCount < 2) {
     if (memberCount === 1) {
       warnings.push({
@@ -467,7 +650,6 @@ export function buildGroupStackingLines(
   }
 
   const cablePid = group.stackingCablePid ?? DEFAULT_STACK_CABLE_PID;
-  // Honor explicit override on the group; fall back to ring topology (= memberCount)
   const cableQty = group.stackingCableQty ?? memberCount;
 
   lines.push({
@@ -491,24 +673,20 @@ export function buildGroupStackingLines(
 }
 
 /**
- * Returns true if the device is a member of any stack group.
- * Uses device-side membership (device.groupId → group lookup).
- *
- * ⚠️ If your ConfiguredDevice uses a different field name
- *    (e.g., parentGroupId, parentId), change `device.groupId` below.
+ * ⭐ FIELD NAME: your DeviceGroup uses `kind` (not `groupKind`)
  */
 export function isStackMember(
   device: ConfiguredDevice,
-  groups: DeviceGroup[]
+  groups: DeviceGroup[],
 ): boolean {
   if (!device.parentGroupId) return false;
   const group = groups.find((g) => g.id === device.parentGroupId);
-  return group?.groupKind === "stack";
+  return group?.kind === "stack";
 }
 
 export function countGroupMembers(
   group: DeviceGroup,
-  devices: ConfiguredDevice[]
+  devices: ConfiguredDevice[],
 ): number {
   return devices.filter((d) => d.parentGroupId === group.id).length;
 }

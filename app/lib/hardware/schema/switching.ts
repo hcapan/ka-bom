@@ -42,49 +42,17 @@ export type SwitchProductSKU = z.infer<typeof SwitchProductSKUSchema>;
 // ------------------------------------------------------------
 
 export const SwitchSeriesSchema = z.object({
-  /** Discriminator — explicitly marks this as switching */
   productCategory: z.enum(["modular-switch", "fixed-switch"]),
-
-  /** Topology layer this series belongs to */
   type: DeviceTypeSchema,
-
-  /** Vendor name (typically "Cisco") */
   vendor: z.string().min(1),
-
-  /** Human-readable description */
   description: z.string(),
-
-  /** All PID variants in this series (chassis, modules, accessories) */
   pids: z.array(SwitchProductSKUSchema),
-
-  /** Optic PIDs compatible with this series' uplinks */
   compatibleOptics: z.array(z.string()),
-
-  /** Chassis PIDs this series' modules are compatible with (for module catalogs) */
   compatibleChassis: z.array(z.string()).optional(),
-
-  // ----------------------------------------------------------
-  // Stacking flags (fixed switches only)
-  // ----------------------------------------------------------
-
-  /** True if this series supports stacking (e.g., 9200, 9300) */
+  secondaryPidMap: z.record(z.string(), z.string()).optional(),
   isStackable: z.boolean().optional(),
-
-  /** Maximum number of members in a stack */
   maxStackSize: z.number().int().positive().optional(),
-
-  /** True for series that support StackPower (e.g., 9300; not 9200) */
   supportsStackPower: z.boolean().optional(),
-
-  // ----------------------------------------------------------
-  // Catalog flags
-  // ----------------------------------------------------------
-
-  /**
-   * True if this series is a "module catalog" — its PIDs are slot
-   * components (linecards, supervisors, etc.) rather than standalone
-   * addable devices. Excluded from the "Add Device" dropdown.
-   */
   isModuleCatalog: z.boolean().optional(),
 });
 export type SwitchSeries = z.infer<typeof SwitchSeriesSchema>;

@@ -41,6 +41,7 @@ export default function TopologyApp() {
     setGroups,
     updateStackSettings,
     convertStackToLogical,
+    addDevicesWithOptionalGroup
   } = useProject();
 
   // ⭐ Replaced configureDeviceId with configureTarget (object form)
@@ -161,7 +162,7 @@ export default function TopologyApp() {
           onCollapseAllBundles={collapseAllBundles}
         />
 
-        <div className="flex-1 grid grid-cols-1 lg:grid-cols-[260px_1fr] gap-3 min-h-0">
+        <div className="flex-1 grid grid-cols-1 lg:grid-cols-[300px_1fr] gap-3 min-h-0">
           <DeviceListPanel
             devices={devices}
             links={links}
@@ -173,6 +174,7 @@ export default function TopologyApp() {
             setDefaultLinkSku={(sku) =>
               setGlobalDefaults({ defaultOptic: sku })
             }
+            addDevicesWithOptionalGroup={addDevicesWithOptionalGroup}
             onConfigureDevice={openDeviceConfig}
             onCreateGroup={addGroup}
             groups={groups}
@@ -209,6 +211,7 @@ export default function TopologyApp() {
         selectedSlotId={configureTarget?.slotId}     // ⭐ pass slot context
         onClose={closeConfig}
         onUpdate={updateDevice}
+        project={project}  
       />
     </>
   );

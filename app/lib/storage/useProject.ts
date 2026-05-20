@@ -22,11 +22,14 @@ import {
   getDefaultStackPowerCable,
   getEffectiveCatalog,
 } from "../hardware/catalog";
+import { isModularChassis } from "../hardware/chassisHelpers";
 
 // ============================================================
 // Migration helper — backfill `kind` on legacy groups
 // ============================================================
-function migrateGroup(g: Partial<DeviceGroup> & { groupKind?: DeviceGroup["kind"] }): DeviceGroup {
+function migrateGroup(
+  g: Partial<DeviceGroup> & { groupKind?: DeviceGroup["kind"] },
+): DeviceGroup {
   // Handle both legacy `groupKind` (used in earlier converters) and missing `kind`
   const resolvedKind: DeviceGroup["kind"] =
     g.kind ??
@@ -201,6 +204,44 @@ export function useProject() {
     [],
   );
 
+  /**
+   * Atomically add devices, optionally creating a new group at the same time.
+   * Used by bulk-add features to ensure group and devices arrive in state together,
+   * so the canvas never sees children referencing a parent that doesn't exist yet.
+   */
+  const addDevicesWithOptionalGroup = useCallback(
+    (params: {
+      devices: ConfiguredDevice[];
+      newGroup?: DeviceGroup;
+      newLinks?: Link[];
+    }) => {
+      setProject((p) => {
+        if (!p) return p;
+
+        const updatedGroups = params.newGroup
+          ? [...p.topology.groups, params.newGroup]
+          : p.topology.groups;
+
+        const updatedDevices = [...p.topology.devices, ...params.devices];
+
+        const updatedLinks = params.newLinks
+          ? [...p.topology.links, ...params.newLinks]
+          : p.topology.links;
+
+        return {
+          ...p,
+          topology: {
+            ...p.topology,
+            groups: updatedGroups,
+            devices: updatedDevices,
+            links: updatedLinks,
+          },
+        };
+      });
+    },
+    [],
+  );
+
   // ============================================================
   // ⭐ COMPOSITE STACK ARCHITECTURE
   // Stacks are now rendered as a SINGLE composite node by the canvas.
@@ -208,116 +249,110 @@ export function useProject() {
   // renders members directly via group.memberOrder.
   // ============================================================
 
-  const convertGroupToStack = useCallback(
-    (groupId: string) => {
-      setProject((prev) => {
-        if (!prev) return prev;
+  const convertGroupToStack = useCallback((groupId: string) => {
+    setProject((prev) => {
+      if (!prev) return prev;
 
-        const group = prev.topology.groups.find((g) => g.id === groupId);
-        if (!group) return prev;
+      const group = prev.topology.groups.find((g) => g.id === groupId);
+      if (!group) return prev;
 
-        // Members are devices either tagged with this groupId OR parentGroupId
-        const members = prev.topology.devices.filter(
-          (d) => d.parentGroupId === groupId || d.groupId === groupId,
+      // Members are devices either tagged with this groupId OR parentGroupId
+      const members = prev.topology.devices.filter(
+        (d) => d.parentGroupId === groupId || d.groupId === groupId,
+      );
+
+      if (members.length < 2) {
+        alert(`Stack requires at least 2 devices (found ${members.length})`);
+        return prev;
+      }
+
+      const validation = validateStackComposition(members);
+      if (!validation.canStack) {
+        const messages = validation.issues
+          .filter((i) => i.severity === "block")
+          .map((i) => `• ${i.message}`)
+          .join("\n");
+        alert(`Cannot convert to stack:\n\n${messages}`);
+        return prev;
+      }
+
+      const warnings = validation.issues.filter((i) => i.severity === "warn");
+      if (warnings.length > 0) {
+        const ok = confirm(
+          `The stack will be created with these warnings:\n\n${warnings
+            .map((w) => `⚠ ${w.message}`)
+            .join("\n")}\n\nContinue?`,
         );
+        if (!ok) return prev;
+      }
 
-        if (members.length < 2) {
-          alert(`Stack requires at least 2 devices (found ${members.length})`);
-          return prev;
-        }
+      const seriesName = members[0].hardware.series;
+      const defaultCable = getDefaultStackingCable(seriesName);
+      const defaultPowerCable = getDefaultStackPowerCable(seriesName);
+      const effectiveCatalog = getEffectiveCatalog();
+      const series = effectiveCatalog[seriesName];
 
-        const validation = validateStackComposition(members);
-        if (!validation.canStack) {
-          const messages = validation.issues
-            .filter((i) => i.severity === "block")
-            .map((i) => `• ${i.message}`)
-            .join("\n");
-          alert(`Cannot convert to stack:\n\n${messages}`);
-          return prev;
-        }
-
-        const warnings = validation.issues.filter((i) => i.severity === "warn");
-        if (warnings.length > 0) {
-          const ok = confirm(
-            `The stack will be created with these warnings:\n\n${warnings
-              .map((w) => `⚠ ${w.message}`)
-              .join("\n")}\n\nContinue?`,
-          );
-          if (!ok) return prev;
-        }
-
-        const seriesName = members[0].hardware.series;
-        const defaultCable = getDefaultStackingCable(seriesName);
-        const defaultPowerCable = getDefaultStackPowerCable(seriesName);
-        const effectiveCatalog = getEffectiveCatalog();
-        const series = effectiveCatalog[seriesName];
-
-        // Compute member order top-to-bottom from current y-positions
-        const orderedMembers = [...members].sort((a, b) => {
-          const ay = a.position?.y ?? 0;
-          const by = b.position?.y ?? 0;
-          return ay - by;
-        });
-        const memberOrder = orderedMembers.map((d) => d.id);
-
-        return {
-          ...prev,
-          topology: {
-            ...prev.topology,
-            // ⭐ NO position mutation on devices — composite node handles layout
-            groups: prev.topology.groups.map((g) =>
-              g.id === groupId
-                ? {
-                    ...g,
-                    kind: "stack" as const, // ⭐ correct field name
-                    memberOrder,
-                    // size handled by PhysicalStackNode (intrinsic)
-                    stackingCablePid: defaultCable ?? undefined,
-                    stackingCableQty: members.length,
-                    ...(series?.supportsStackPower && defaultPowerCable
-                      ? {
-                          stackPowerCablePid: defaultPowerCable,
-                          stackPowerCableQty: members.length,
-                        }
-                      : {}),
-                  }
-                : g,
-            ),
-          },
-        };
+      // Compute member order top-to-bottom from current y-positions
+      const orderedMembers = [...members].sort((a, b) => {
+        const ay = a.position?.y ?? 0;
+        const by = b.position?.y ?? 0;
+        return ay - by;
       });
-    },
-    [],
-  );
+      const memberOrder = orderedMembers.map((d) => d.id);
 
-  const convertStackToLogical = useCallback(
-    (groupId: string) => {
-      setProject((prev) => {
-        if (!prev) return prev;
+      return {
+        ...prev,
+        topology: {
+          ...prev.topology,
+          // ⭐ NO position mutation on devices — composite node handles layout
+          groups: prev.topology.groups.map((g) =>
+            g.id === groupId
+              ? {
+                  ...g,
+                  kind: "stack" as const, // ⭐ correct field name
+                  memberOrder,
+                  // size handled by PhysicalStackNode (intrinsic)
+                  stackingCablePid: defaultCable ?? undefined,
+                  stackingCableQty: members.length,
+                  ...(series?.supportsStackPower && defaultPowerCable
+                    ? {
+                        stackPowerCablePid: defaultPowerCable,
+                        stackPowerCableQty: members.length,
+                      }
+                    : {}),
+                }
+              : g,
+          ),
+        },
+      };
+    });
+  }, []);
 
-        return {
-          ...prev,
-          topology: {
-            ...prev.topology,
-            groups: prev.topology.groups.map((g) =>
-              g.id === groupId
-                ? {
-                    ...g,
-                    kind: "logical" as const, // ⭐ correct field name
-                    stackingCablePid: undefined,
-                    stackingCableQty: undefined,
-                    stackPowerCablePid: undefined,
-                    stackPowerCableQty: undefined,
-                    memberOrder: undefined, // ⭐ logical groups don't need order
-                  }
-                : g,
-            ),
-          },
-        };
-      });
-    },
-    [],
-  );
+  const convertStackToLogical = useCallback((groupId: string) => {
+    setProject((prev) => {
+      if (!prev) return prev;
+
+      return {
+        ...prev,
+        topology: {
+          ...prev.topology,
+          groups: prev.topology.groups.map((g) =>
+            g.id === groupId
+              ? {
+                  ...g,
+                  kind: "logical" as const, // ⭐ correct field name
+                  stackingCablePid: undefined,
+                  stackingCableQty: undefined,
+                  stackPowerCablePid: undefined,
+                  stackPowerCableQty: undefined,
+                  memberOrder: undefined, // ⭐ logical groups don't need order
+                }
+              : g,
+          ),
+        },
+      };
+    });
+  }, []);
 
   const updateStackSettings = useCallback(
     (
@@ -502,16 +537,9 @@ export function useProject() {
     if (!project || !isLoaded) return;
     if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
     saveTimeoutRef.current = setTimeout(() => {
-      console.log("[AUTO-SAVE]", {
-        deviceCount: project.topology.devices.length,
-        groupCount: project.topology.groups.length,
-        groupIds: project.topology.groups.map(
-          (g) => `${g.id}:${g.kind ?? "logical"}:${g.memberOrder?.length ?? 0}`,
-        ),
-      });
-
       storage.saveProject(project);
     }, 200);
+
     return () => {
       if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
     };
@@ -521,6 +549,16 @@ export function useProject() {
   const setDevices = useCallback((devices: ConfiguredDevice[]) => {
     setProject((p) => {
       if (!p) return p;
+      // 🔍 DIAGNOSTIC
+      const modular = devices.find((d) =>
+        isModularChassis(d.hardware.chassisPid),
+      );
+      if (modular) {
+        console.log("[setDevices] modular position:", {
+          id: modular.id,
+          position: modular.position,
+        });
+      }
 
       // ⭐ Defensive cleanup: when devices are removed, prune them from group memberOrder
       // and drop empty stacks. This kills phantom devices like ACC-05.
@@ -704,6 +742,7 @@ export function useProject() {
     toggleGroupCollapse,
     moveDeviceToGroup,
     moveGroupToParent,
+    addDevicesWithOptionalGroup,
 
     // Stacking
     convertGroupToStack,

@@ -61,9 +61,7 @@ function ModularChassisNodeImpl({ data, selected }: NodeProps) {
         position: "relative",
         width: MODULAR_SIZES.CHASSIS_WIDTH,
         background: MODULAR_TOKENS.bodyBg,
-        border: `1px solid ${
-          selected ? "#3b82f6" : MODULAR_TOKENS.bodyBorder
-        }`,
+        border: `1px solid ${selected ? "#3b82f6" : MODULAR_TOKENS.bodyBorder}`,
         borderRadius: 4,
         boxShadow: selected
           ? `0 0 0 2px rgba(59,130,246,0.35), 0 4px 10px rgba(0,0,0,0.15)`
@@ -144,7 +142,7 @@ function ModularChassisNodeImpl({ data, selected }: NodeProps) {
         position={Position.Top}
         id={`${device.id}::chassis::top`}
         style={{
-          background: MODULAR_TOKENS.brandBg,
+          background: "#22c55e",
           width: 8,
           height: 8,
           border: `1px solid ${MODULAR_TOKENS.bodyBorder}`,
@@ -155,10 +153,61 @@ function ModularChassisNodeImpl({ data, selected }: NodeProps) {
         position={Position.Bottom}
         id={`${device.id}::chassis::bottom`}
         style={{
-          background: MODULAR_TOKENS.brandBg,
+          background: "#22c55e",
           width: 8,
           height: 8,
           border: `1px solid ${MODULAR_TOKENS.bodyBorder}`,
+        }}
+      />
+
+      {/* ⭐ Compatibility handles — match DeviceNode short IDs (t/b/l/r) */}
+      {/* Required for bulk-connect and other code that uses short handle IDs */}
+      <Handle
+        type="target"
+        position={Position.Top}
+        id="t"
+        style={{
+          opacity: 0,
+          pointerEvents: "none",
+          width: 1,
+          height: 1,
+          top: 0,
+        }}
+      />
+      <Handle
+        type="source"
+        position={Position.Bottom}
+        id="b"
+        style={{
+          opacity: 0,
+          pointerEvents: "none",
+          width: 1,
+          height: 1,
+          bottom: 0,
+        }}
+      />
+      <Handle
+        type="target"
+        position={Position.Left}
+        id="l"
+        style={{
+          opacity: 0,
+          pointerEvents: "none",
+          width: 1,
+          height: 1,
+          left: 0,
+        }}
+      />
+      <Handle
+        type="source"
+        position={Position.Right}
+        id="r"
+        style={{
+          opacity: 0,
+          pointerEvents: "none",
+          width: 1,
+          height: 1,
+          right: 0,
         }}
       />
     </div>

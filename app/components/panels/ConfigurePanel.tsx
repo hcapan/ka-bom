@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import type {
   ConfiguredDevice,
   GlobalDefaults,
@@ -9,6 +10,7 @@ import type {
   ContractTermYears,
   HardwareConfig,
   SlotAssignment,
+  Project,
 } from "@/app/lib/types";
 import { getEffectiveCatalog } from "@/app/lib/hardware/catalog";
 import {
@@ -17,6 +19,37 @@ import {
   isModularChassis,
   type ModuleCatalogEntry,
 } from "@/app/lib/hardware/chassisHelpers";
+import type { ChassisBundle } from "@/app/lib/hardware/catalog";
+import { resolvePrimaryPsuPid } from "@/app/lib/bom/psuEmitter";
+import { resolveNetworkModulePid } from "@/app/lib/bom/networkModuleEmitter";
+import { resolveModularPsuPid } from "@/app/lib/bom/modularPsuEmitter";
+
+import {
+  IdentityIcon,
+  SlotConfigIcon,
+  HardwareIcon,
+  PowerIcon,
+  UplinkIcon,
+  SmartnetIcon,
+  LicenseIcon,
+  CloseIcon,
+  ConfigureIcon,
+} from "../ui/icons";
+
+import {
+  Accordion,
+  FieldInline,
+  FieldStacked,
+  RadioCardGroup,
+  type RadioCardOption,
+} from "./_configPrimitives";
+import {
+  validateIdentity,
+  validateHardware,
+  validateSlots,
+  validateSmartnet,
+} from "./_validateDevice.ts";
+import { BomPreviewMini } from "./_BomPreviewMini";
 
 type Props = {
   device: ConfiguredDevice | null;
@@ -24,6 +57,8 @@ type Props = {
   selectedSlotId?: string;
   onClose: () => void;
   onUpdate: (id: string, patch: Partial<ConfiguredDevice>) => void;
+  /** Optional: pass project to enable live BOM preview at the bottom. */
+  project?: Project;
 };
 
 const REGIONS: Region[] = ["EU", "US", "UK", "JP", "AU", "IN", "CN"];
@@ -44,20 +79,20 @@ export default function ConfigurePanel({
   selectedSlotId,
   onClose,
   onUpdate,
+  project,
 }: Props) {
-  // Local hostname draft so typing doesn't thrash the global state
-
   const [hostnameDraft, setHostnameDraft] = useState(device?.name ?? "");
   const [lastSyncedDeviceKey, setLastSyncedDeviceKey] = useState<string | null>(
-    device ? `${device.id}:${device.name}` : null,
+    device ? `${device.id}:${device.name}` : null
   );
 
-  // React 19 idiom: derive state during render, no effect needed
+  // React 19 idiom: derive state during render
   const currentDeviceKey = device ? `${device.id}:${device.name}` : null;
   if (currentDeviceKey !== lastSyncedDeviceKey) {
     setLastSyncedDeviceKey(currentDeviceKey);
     setHostnameDraft(device?.name ?? "");
   }
+
   if (!device) return null;
 
   const catalog = getEffectiveCatalog();
@@ -65,54 +100,113 @@ export default function ConfigurePanel({
   const chassisIsModular = isModularChassis(device.hardware.chassisPid);
 
   const patchHardware = (patch: Partial<HardwareConfig>) => {
-    onUpdate(device.id, {
-      hardware: { ...device.hardware, ...patch },
-    });
+    onUpdate(device.id, { hardware: { ...device.hardware, ...patch } });
   };
-
   const commitHostname = () => {
     if (hostnameDraft && hostnameDraft !== device.name) {
       onUpdate(device.id, { name: hostnameDraft });
     }
   };
 
+  const chassisPidEntry = series?.pids.find(
+    (p) => p.pid === device.hardware.chassisPid
+  );
+  const bundle = (chassisPidEntry as { bundle?: ChassisBundle })?.bundle;
+  const psuOptions = bundle?.psuOptions;
+  const networkModuleOptions = bundle?.networkModuleOptions;
+
+  const currentNetworkModule = networkModuleOptions
+    ? resolveNetworkModulePid(bundle, device.hardware.networkModulePid)
+    : undefined;
+  const currentPid = psuOptions
+    ? resolvePrimaryPsuPid(bundle, device.hardware.primaryPsuPid)
+    : undefined;
+  const redundantPid =
+    psuOptions && currentPid
+      ? psuOptions.secondaryPidMap[currentPid]
+      : undefined;
+  const userCanChangePrimary = psuOptions
+    ? psuOptions.emitPrimary !== false
+    : false;
+
+  // Validation snapshots
+  const vIdentity = validateIdentity(device);
+  const vHardware = validateHardware(
+    device,
+    !!psuOptions,
+    !!bundle?.psuConfig,
+    !!currentPid
+  );
+  const vSlots = validateSlots(device);
+  const vSmartnet = validateSmartnet(device);
+
+  // Auto-open the slot section if user clicked a slot to open the panel
+  const slotSectionOpen = !!selectedSlotId;
+
   return (
-    <>
-      {/* Backdrop */}
-      <div
+    <AnimatePresence>
+      <motion.div
+        key="backdrop"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        transition={{ duration: 0.15 }}
         onClick={onClose}
-        className="fixed inset-0 bg-slate-900/30 z-40 transition-opacity"
-        style={{ pointerEvents: "auto" }}
+        className="fixed inset-0 z-40 bg-slate-900/30 backdrop-blur-[1px]"
       />
 
-      {/* Drawer */}
-      <aside
-        className="fixed right-0 top-0 h-full w-[420px] bg-white shadow-2xl z-50 overflow-y-auto border-l border-slate-200"
+      <motion.aside
+        key="drawer"
+        initial={{ x: "100%" }}
+        animate={{ x: 0 }}
+        exit={{ x: "100%" }}
+        transition={{ type: "spring", stiffness: 320, damping: 32 }}
         onClick={(e) => e.stopPropagation()}
+        className="
+          fixed right-0 top-0 z-50 h-full w-105
+          overflow-y-auto
+          border-l border-slate-200 bg-slate-50/95
+          shadow-2xl backdrop-blur-md
+        "
       >
-        {/* Header */}
-        <div className="sticky top-0 bg-white border-b border-slate-200 px-5 py-3 flex items-center justify-between z-10">
-          <div>
-            <h2 className="text-sm font-bold text-slate-800">
-              ⚙ Configure Device
-            </h2>
-            <p className="text-xs text-slate-500 mt-0.5">
-              {device.id} · {device.hardware.chassisPid}
-            </p>
+        {/* ─── Sticky Header ─── */}
+        <div className="sticky top-0 z-10 border-b border-slate-200 bg-white/95 backdrop-blur-md">
+          <div className="flex items-start justify-between gap-3 px-5 py-3">
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-2">
+                <ConfigureIcon size={14} className="shrink-0 text-slate-500" aria-hidden />
+                <h2 className="truncate text-sm font-bold text-slate-800">
+                  {device.name || "Unnamed device"}
+                </h2>
+              </div>
+              <p className="mt-0.5 truncate font-mono text-[10px] text-slate-500">
+                {device.hardware.chassisPid}
+                <span className="mx-1.5 text-slate-300">·</span>
+                <span className="capitalize">{device.type}</span>
+                <span className="mx-1.5 text-slate-300">·</span>
+                {device.id}
+              </p>
+            </div>
+            <button
+              onClick={onClose}
+              className="
+                flex h-7 w-7 shrink-0 items-center justify-center
+                rounded-full text-slate-400
+                transition-colors hover:bg-slate-100 hover:text-slate-700
+              "
+              title="Close"
+              aria-label="Close panel"
+            >
+              <CloseIcon size={16} strokeWidth={2} />
+            </button>
           </div>
-          <button
-            onClick={onClose}
-            className="text-slate-400 hover:text-slate-700 text-xl leading-none px-2"
-            title="Close"
-          >
-            ×
-          </button>
         </div>
 
-        <div className="px-5 py-4 space-y-5">
-          {/* ─── Identity ─────────────────────────────── */}
-          <Section title="Identity">
-            <Field label="Hostname">
+        {/* ─── Body ─── */}
+        <div className="space-y-2.5 px-4 py-4">
+          {/* Identity */}
+          <Accordion title="Identity" icon={<IdentityIcon size={14} />} badge={vIdentity} defaultOpen={true}>
+            <FieldInline label="Hostname">
               <input
                 type="text"
                 value={hostnameDraft}
@@ -121,39 +215,59 @@ export default function ConfigurePanel({
                 onKeyDown={(e) => {
                   if (e.key === "Enter") commitHostname();
                 }}
-                className="w-full px-2 py-1 text-xs border border-slate-300 rounded font-mono"
+                className="
+                  w-full rounded-md border border-slate-300 bg-white
+                  px-2 py-1 font-mono text-xs
+                  focus:border-sky-400 focus:outline-none focus:ring-2 focus:ring-sky-200
+                "
               />
-            </Field>
-            <Field label="Type">
-              <span className="text-xs font-medium text-slate-700 capitalize">
+            </FieldInline>
+            <FieldInline label="Type">
+              <span className="text-xs font-medium capitalize text-slate-700">
                 {device.type}
               </span>
-            </Field>
-            <Field label="Series">
-              <span className="text-xs font-mono text-slate-700">
+            </FieldInline>
+            <FieldInline label="Series">
+              <span className="font-mono text-xs text-slate-700">
                 {device.hardware.series}
               </span>
-            </Field>
-          </Section>
+            </FieldInline>
+          </Accordion>
 
-          {/* ─── Slot Configuration (modular only) ────── */}
+          {/* Slot Configuration (modular only) */}
           {chassisIsModular && (
-            <SlotConfigSection
-              device={device}
-              selectedSlotId={selectedSlotId}
-              onPatchHardware={patchHardware}
-            />
+            <Accordion
+              title="Slot Configuration"
+              icon={<SlotConfigIcon size={14} />}
+              badge={vSlots}
+              defaultOpen={slotSectionOpen}
+            >
+              <SlotConfigSection
+                device={device}
+                selectedSlotId={selectedSlotId}
+                onPatchHardware={patchHardware}
+              />
+            </Accordion>
           )}
 
-          {/* ─── Hardware Options ─────────────────────── */}
-          <Section title="Hardware Options">
-            <Field label="Region">
+          {/* Hardware Options */}
+          <Accordion
+            title="Hardware Options"
+           icon={<HardwareIcon size={14} />}
+            badge={vHardware}
+            defaultOpen={false}
+          >
+            <FieldInline label="Region">
               <select
                 value={device.hardware.region ?? globalDefaults.region}
                 onChange={(e) =>
                   patchHardware({ region: e.target.value as Region })
                 }
-                className="w-full px-2 py-1 text-xs border border-slate-300 rounded"
+                className="
+                  w-full rounded-md border border-slate-300 bg-white
+                  px-2 py-1 text-xs
+                  focus:border-sky-400 focus:outline-none focus:ring-2 focus:ring-sky-200
+                "
               >
                 {REGIONS.map((r) => (
                   <option key={r} value={r}>
@@ -161,25 +275,150 @@ export default function ConfigurePanel({
                   </option>
                 ))}
               </select>
-            </Field>
+            </FieldInline>
 
-            <Field label="Redundant PSU">
-              <label className="flex items-center gap-2 text-xs text-slate-700">
-                <input
-                  type="checkbox"
-                  checked={device.hardware.redundantPsu ?? false}
-                  onChange={(e) =>
-                    patchHardware({ redundantPsu: e.target.checked })
-                  }
+            {/* Modular PSU (card picker) */}
+            {bundle?.psuConfig && (
+              <>
+                <FieldStacked label="PSU Model" hint="modular chassis">
+                  <RadioCardGroup
+                    name={`modpsu-${device.id}`}
+                    icon="⚡"
+                    value={
+                      resolveModularPsuPid(
+                        bundle.psuConfig,
+                        device.hardware.modularPsuPid
+                      ) ?? ""
+                    }
+                    options={bundle.psuConfig.options.map<RadioCardOption>(
+                      (opt) => ({
+                        value: opt.pid,
+                        label: opt.label,
+                        pid: opt.pid,
+                        isDefault: opt.default,
+                      })
+                    )}
+                    onChange={(v) => patchHardware({ modularPsuPid: v })}
+                  />
+                </FieldStacked>
+
+                <FieldInline label="PSU Quantity">
+                  <select
+                    value={
+                      device.hardware.modularPsuQty ??
+                      bundle.psuConfig.defaultQty
+                    }
+                    onChange={(e) =>
+                      patchHardware({ modularPsuQty: Number(e.target.value) })
+                    }
+                    className="
+                      w-full rounded-md border border-slate-300 bg-white
+                      px-2 py-1 text-xs
+                    "
+                  >
+                    {Array.from(
+                      { length: bundle.psuConfig.maxQty },
+                      (_, i) => i + 1
+                    ).map((n) => (
+                      <option key={n} value={n}>
+                        {n}
+                      </option>
+                    ))}
+                  </select>
+                </FieldInline>
+              </>
+            )}
+
+            {/* Fixed-switch PSU options (card picker) */}
+            {psuOptions && (
+              <>
+                {userCanChangePrimary ? (
+                  <FieldStacked label="Primary PSU">
+                    <RadioCardGroup
+                      name={`psu-${device.id}`}
+                      icon={<PowerIcon size={14} />}
+                      value={currentPid ?? ""}
+                      options={psuOptions.primary.map<RadioCardOption>(
+                        (opt) => ({
+                          value: opt.pid,
+                          label: opt.label,
+                          pid: opt.pid,
+                          isDefault: opt.default,
+                        })
+                      )}
+                      onChange={(v) => patchHardware({ primaryPsuPid: v })}
+                    />
+                  </FieldStacked>
+                ) : (
+                  <FieldInline label="Primary PSU">
+                    <span className="font-mono text-xs italic text-slate-600">
+                      {currentPid} (built into chassis)
+                    </span>
+                  </FieldInline>
+                )}
+
+                <FieldInline label="Redundant">
+                  <label className="flex items-center gap-2 text-xs text-slate-700">
+                    <input
+                      type="checkbox"
+                      checked={device.hardware.redundantPsu ?? false}
+                      onChange={(e) =>
+                        patchHardware({ redundantPsu: e.target.checked })
+                      }
+                      className="accent-sky-500"
+                    />
+                    <span>Add redundant PSU</span>
+                  </label>
+                </FieldInline>
+
+                {device.hardware.redundantPsu && redundantPid && (
+                  <p className="pl-27.5 text-[10px] italic text-slate-500">
+                    ↳ Redundant:{" "}
+                    <span className="font-mono">{redundantPid}</span>
+                  </p>
+                )}
+                {!device.hardware.redundantPsu && psuOptions.noRedundantPid && (
+                  <p className="pl-27.5 text-[10px] italic text-slate-500">
+                    ↳ Will emit:{" "}
+                    <span className="font-mono">
+                      {psuOptions.noRedundantPid}
+                    </span>
+                  </p>
+                )}
+              </>
+            )}
+          </Accordion>
+
+          {/* Uplink Module (card picker) */}
+          {networkModuleOptions && (
+            <Accordion title="Uplink Module" icon={<UplinkIcon size={14} />} defaultOpen={false}>
+              <FieldStacked label="Module">
+                <RadioCardGroup
+                  name={`netmod-${device.id}`}
+                  icon={<UplinkIcon size={14} />}
+                  value={currentNetworkModule ?? ""}
+                  options={networkModuleOptions.options.map<RadioCardOption>(
+                    (opt) => ({
+                      value: opt.pid,
+                      label: opt.label,
+                      pid: opt.pid,
+                      isDefault: opt.default,
+                    })
+                  )}
+                  onChange={(v) => patchHardware({ networkModulePid: v })}
                 />
-                <span>Add redundant power supply</span>
-              </label>
-            </Field>
-          </Section>
+              </FieldStacked>
+            </Accordion>
+          )}
 
-          {/* ─── SmartNet Override ────────────────────── */}
-          <Section title="SmartNet (Service Contract)">
-            <Field label="Tier">
+          {/* SmartNet */}
+          <Accordion
+            title="SmartNet (Service Contract)"
+            icon={<SmartnetIcon size={14} />}
+            badge={vSmartnet}
+            defaultOpen={false}
+          >
+            <FieldInline label="Tier">
               <select
                 value={device.smartnet?.tier ?? globalDefaults.smartnetTier}
                 onChange={(e) =>
@@ -193,7 +432,10 @@ export default function ConfigurePanel({
                     },
                   })
                 }
-                className="w-full px-2 py-1 text-xs border border-slate-300 rounded font-mono"
+                className="
+                  w-full rounded-md border border-slate-300 bg-white
+                  px-2 py-1 font-mono text-xs
+                "
               >
                 {SMARTNET_TIERS.map((t) => (
                   <option key={t} value={t}>
@@ -201,8 +443,8 @@ export default function ConfigurePanel({
                   </option>
                 ))}
               </select>
-            </Field>
-            <Field label="Term (years)">
+            </FieldInline>
+            <FieldInline label="Term (years)">
               <select
                 value={
                   device.smartnet?.termYears ?? globalDefaults.smartnetTermYears
@@ -217,7 +459,10 @@ export default function ConfigurePanel({
                     },
                   })
                 }
-                className="w-full px-2 py-1 text-xs border border-slate-300 rounded"
+                className="
+                  w-full rounded-md border border-slate-300 bg-white
+                  px-2 py-1 text-xs
+                "
               >
                 {TERMS.map((y) => (
                   <option key={y} value={y}>
@@ -225,17 +470,17 @@ export default function ConfigurePanel({
                   </option>
                 ))}
               </select>
-            </Field>
+            </FieldInline>
             {device.smartnet?.overridden && (
-              <p className="text-[10px] text-amber-600 italic">
+              <p className="text-[10px] italic text-amber-600">
                 Overridden from global default
               </p>
             )}
-          </Section>
+          </Accordion>
 
-          {/* ─── License Override ─────────────────────── */}
-          <Section title="License">
-            <Field label="Term (years)">
+          {/* License */}
+          <Accordion title="License" icon={<LicenseIcon size={14} />} defaultOpen={false}>
+            <FieldInline label="Term (years)">
               <select
                 value={
                   device.license?.termYears ?? globalDefaults.licenseTermYears
@@ -248,7 +493,10 @@ export default function ConfigurePanel({
                     },
                   })
                 }
-                className="w-full px-2 py-1 text-xs border border-slate-300 rounded"
+                className="
+                  w-full rounded-md border border-slate-300 bg-white
+                  px-2 py-1 text-xs
+                "
               >
                 {TERMS.map((y) => (
                   <option key={y} value={y}>
@@ -256,18 +504,21 @@ export default function ConfigurePanel({
                   </option>
                 ))}
               </select>
-            </Field>
-            
-          </Section>
+            </FieldInline>
+          </Accordion>
 
+          {/* Live BOM Preview (only if project provided) */}
+          {project && <BomPreviewMini project={project} device={device} />}
+
+          {/* Series description footer */}
           {series && (
-            <p className="text-[10px] text-slate-400 pt-2 border-t border-slate-100">
+            <p className="border-t border-slate-200 pt-3 text-[10px] italic text-slate-400">
               {series.description}
             </p>
           )}
         </div>
-      </aside>
-    </>
+      </motion.aside>
+    </AnimatePresence>
   );
 }
 
@@ -285,16 +536,13 @@ function SlotConfigSection({
 }) {
   const layout = useMemo(
     () => getChassisSlotLayout(device.hardware.chassisPid),
-    [device.hardware.chassisPid],
+    [device.hardware.chassisPid]
   );
 
-  // If a slot is selected, scroll to it on open
   useEffect(() => {
     if (selectedSlotId) {
       const el = document.getElementById(`slot-row-${selectedSlotId}`);
-      if (el) {
-        el.scrollIntoView({ behavior: "smooth", block: "center" });
-      }
+      if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
     }
   }, [selectedSlotId]);
 
@@ -306,7 +554,7 @@ function SlotConfigSection({
   const handleAssignModule = (
     slotId: string,
     slotKind: SlotAssignment["slotKind"],
-    modulePid: string | null,
+    modulePid: string | null
   ) => {
     const filtered = assignments.filter((a) => a.slotId !== slotId);
     const next: SlotAssignment[] = modulePid
@@ -316,112 +564,91 @@ function SlotConfigSection({
   };
 
   return (
-    <Section title="Slot Configuration">
-      <div className="flex flex-col gap-2">
-        {layout.map((slotSpec) => {
-          const slotId = String(slotSpec.slot);
-          const assignment = assignmentBySlotId.get(slotId);
-          const isHighlighted = selectedSlotId === slotId;
-          const compatibleModules = getModulesForSlotKind(slotSpec.kind);
+    <div className="flex flex-col gap-2">
+      {layout.map((slotSpec) => {
+        const slotId = String(slotSpec.slot);
+        const assignment = assignmentBySlotId.get(slotId);
+        const isHighlighted = selectedSlotId === slotId;
+        const isEmpty = !assignment?.modulePid;
+        const compatibleModules = getModulesForSlotKind(slotSpec.kind);
 
-          return (
-            <div
-              key={slotId}
-              id={`slot-row-${slotId}`}
-              className={`rounded border p-2 transition-colors ${
+        return (
+          <div
+            key={slotId}
+            id={`slot-row-${slotId}`}
+            className={`
+              rounded-lg border p-2 transition-all
+              ${
                 isHighlighted
-                  ? "border-blue-500 bg-blue-50"
-                  : "border-slate-200 bg-slate-50"
-              }`}
-            >
-              <div className="flex items-center justify-between mb-1">
-                <span className="text-[10px] font-mono font-bold text-slate-600">
-                  Slot {String(slotId).padStart(2, "0")} ·{" "}
-                  <span className="capitalize">{slotSpec.kind}</span>
-                  {slotSpec.required && (
-                    <span className="text-amber-600 ml-1">★</span>
-                  )}
-                </span>
-                {assignment?.modulePid && (
-                  <button
-                    onClick={() =>
-                      handleAssignModule(slotId, slotSpec.kind, null)
-                    }
-                    className="text-[10px] text-red-500 hover:text-red-700"
+                  ? "border-sky-400 bg-sky-50 ring-2 ring-sky-200"
+                  : isEmpty && slotSpec.required
+                    ? "border-amber-200 bg-amber-50/40"
+                    : "border-slate-200 bg-white"
+              }
+            `}
+          >
+            <div className="mb-1.5 flex items-center justify-between">
+              <span className="font-mono text-[10px] font-bold text-slate-600">
+                Slot {String(slotId).padStart(2, "0")}
+                <span className="mx-1 text-slate-300">·</span>
+                <span className="capitalize">{slotSpec.kind}</span>
+                {slotSpec.required && (
+                  <span
+                    className="ml-1 text-amber-600"
+                    title="Required slot"
                   >
-                    Remove
-                  </button>
+                    ★
+                  </span>
                 )}
-              </div>
-
-              <select
-                value={assignment?.modulePid ?? ""}
-                onChange={(e) =>
-                  handleAssignModule(
-                    slotId,
-                    slotSpec.kind,
-                    e.target.value || null,
-                  )
-                }
-                className="w-full px-2 py-1 text-xs border border-slate-300 rounded font-mono bg-white"
-              >
-                <option value="">— empty —</option>
-                {compatibleModules.map((m: ModuleCatalogEntry) => (
-                  <option key={m.pid} value={m.pid}>
-                    {m.pid}
-                    {m.modulePorts
-                      ? ` · ${m.modulePorts.count}× ${m.modulePorts.speed}${
-                          m.modulePorts.poe ? " " + m.modulePorts.poe : ""
-                        }`
-                      : ""}
-                  </option>
-                ))}
-              </select>
-
-              {slotSpec.note && (
-                <p className="text-[9px] text-slate-500 italic mt-1">
-                  {slotSpec.note}
-                </p>
+              </span>
+              {assignment?.modulePid && (
+                <button
+                  onClick={() =>
+                    handleAssignModule(slotId, slotSpec.kind, null)
+                  }
+                  className="text-[10px] font-medium text-rose-500 hover:text-rose-700"
+                >
+                  Remove
+                </button>
               )}
             </div>
-          );
-        })}
-      </div>
-    </Section>
-  );
-}
 
-// ============================================================
-// Layout primitives
-// ============================================================
-function Section({
-  title,
-  children,
-}: {
-  title: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="space-y-2">
-      <h3 className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
-        {title}
-      </h3>
-      <div className="space-y-2">{children}</div>
-    </div>
-  );
-}
+            <select
+              value={assignment?.modulePid ?? ""}
+              onChange={(e) =>
+                handleAssignModule(
+                  slotId,
+                  slotSpec.kind,
+                  e.target.value || null
+                )
+              }
+              className="
+                w-full rounded-md border border-slate-300 bg-white
+                px-2 py-1 font-mono text-xs
+                focus:border-sky-400 focus:outline-none focus:ring-2 focus:ring-sky-200
+              "
+            >
+              <option value="">— empty —</option>
+              {compatibleModules.map((m: ModuleCatalogEntry) => (
+                <option key={m.pid} value={m.pid}>
+                  {m.pid}
+                  {m.modulePorts
+                    ? ` · ${m.modulePorts.count}× ${m.modulePorts.speed}${
+                        m.modulePorts.poe ? " " + m.modulePorts.poe : ""
+                      }`
+                    : ""}
+                </option>
+              ))}
+            </select>
 
-function Field({
-  label,
-  children,
-}: {
-  label: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="grid grid-cols-[110px_1fr] gap-2 items-center">
-      <label className="text-[11px] text-slate-600 font-medium">{label}</label>
-      <div>{children}</div>
+            {slotSpec.note && (
+              <p className="mt-1 text-[9px] italic text-slate-500">
+                {slotSpec.note}
+              </p>
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 }

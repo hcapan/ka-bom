@@ -1,0 +1,383 @@
+{
+  "Catalyst 9500": {
+    "productCategory": "fixed-switch",
+    "type": "core",
+    "vendor": "Cisco",
+    "description": "Fixed Campus Core / Aggregation",
+    "compatibleOptics": [
+      "QSFP-100G-SR4-S",
+      "QSFP-100G-LR4-S",
+      "QSFP-40G-SR4",
+      "SFP-25G-SR-S",
+      "SFP-10G-SR",
+      "SFP-10G-LR"
+    ],
+    "pids": [
+      {
+        "pid": "C9500-48Y4C-A",
+        "description": "48x 25G + 4x 100G — Network Advantage",
+        "vendor": "Cisco",
+        "faceplate": {
+          "accessPorts": { "count": 48, "speed": "25G" },
+          "uplinkPorts": { "count": 4, "speed": "100G" },
+          "rackUnits": 1
+        },
+        "bundle": {
+          "autoIncluded": [
+            { "pid": "C9K-F1-SSD-BLANK", "qty": 1 },
+            { "pid": "C9K-T1-FANTRAY", "qty": 2 },
+            { "pid": "C9500-NW-A", "qty": 1, "note": "Network Stack" },
+            { "pid": "S9500UK9-1715", "qty": 1, "note": "IOS-XE image" },
+            { "pid": "C9500-SSD-NONE", "qty": 1 },
+            { "pid": "C9500-RFID", "qty": 1 },
+            { "pid": "NETWORK-PNP-LIC", "qty": 1 }
+          ],
+          "powerCord": {
+            "qty": 1,
+            "byRegion": {
+              "EU": "CAB-9K10A-EU",
+              "US": "CAB-9K10A-NA",
+              "UK": "CAB-9K10A-UK",
+              "JP": "CAB-9K10A-JPN",
+              "AU": "CAB-9K10A-AUS",
+              "IN": "CAB-9K10A-IND",
+              "CN": "CAB-9K10A-CHN"
+            }
+          },
+          "psuOptions": {
+            "primary": [
+              { "pid": "C9K-PWR-650WAC-R", "label": "650W AC", "default": true },
+              { "pid": "C9K-PWR-650WACL-R", "label": "650W AC Low-line" },
+              { "pid": "C9K-PWR-930WDC-R", "label": "930W DC" }
+            ],
+            "secondaryPidMap": {
+              "C9K-PWR-650WAC-R": "C9K-PWR-650WAC-R/2",
+              "C9K-PWR-650WACL-R": "C9K-PWR-650WACLR/2",
+              "C9K-PWR-930WDC-R": "C9K-PWR-930WDC-R/2"
+            },
+            "noRedundantPid": "C9500-SPS-NONE"
+          },
+          "smartnet": {
+            "baseSkuByTier": {
+              "SNT": "CON-SNT-C9504YA4",
+              "SNTP": "CON-SNTP-C9504YA4",
+              "OS": "CON-OS-C9504YA4",
+              "OSP": "CON-OSP-C9504YA4"
+            }
+          },
+          "license": {
+            "tier": "Advantage",
+            "entitlementPid": "C9500-DNA-48Y4C-A",
+            "subscriptionByTerm": {
+              "1": "C9500-DNA-A-1Y",
+              "3": "C9500-DNA-A-3Y",
+              "5": "C9500-DNA-A-5Y",
+              "7": "C9500-DNA-A-7Y"
+            }
+          }
+        }
+      },
+      {
+        "pid": "C9500-48Y4C-E",
+        "description": "48x 25G + 4x 100G — Network Essentials",
+        "vendor": "Cisco",
+        "faceplate": {
+          "accessPorts": { "count": 48, "speed": "25G" },
+          "uplinkPorts": { "count": 4, "speed": "100G" },
+          "rackUnits": 1
+        },
+        "bundle": {
+          "autoIncluded": [
+            { "pid": "C9K-F1-SSD-BLANK", "qty": 1 },
+            { "pid": "C9K-T1-FANTRAY", "qty": 2 },
+            { "pid": "C9500-NW-E", "qty": 1 },
+            { "pid": "S9500UK9-1715", "qty": 1 },
+            { "pid": "C9500-SSD-NONE", "qty": 1 },
+            { "pid": "C9500-RFID", "qty": 1 }
+          ],
+          "powerCord": {
+            "qty": 1,
+            "byRegion": {
+              "EU": "CAB-9K10A-EU",
+              "US": "CAB-9K10A-NA",
+              "UK": "CAB-9K10A-UK",
+              "JP": "CAB-9K10A-JPN",
+              "AU": "CAB-9K10A-AUS",
+              "IN": "CAB-9K10A-IND",
+              "CN": "CAB-9K10A-CHN"
+            }
+          },
+          "psuOptions": {
+            "primary": [
+              { "pid": "C9K-PWR-650WAC-R", "label": "650W AC", "default": true },
+              { "pid": "C9K-PWR-650WACL-R", "label": "650W AC Low-line" },
+              { "pid": "C9K-PWR-930WDC-R", "label": "930W DC" }
+            ],
+            "secondaryPidMap": {
+              "C9K-PWR-650WAC-R": "C9K-PWR-650WAC-R/2",
+              "C9K-PWR-650WACL-R": "C9K-PWR-650WACLR/2",
+              "C9K-PWR-930WDC-R": "C9K-PWR-930WDC-R/2"
+            },
+            "noRedundantPid": "C9500-SPS-NONE"
+          },
+          "smartnet": {
+            "baseSkuByTier": {
+              "SNT": "CON-SNT-C9504YE4",
+              "SNTP": "CON-SNTP-C9504YE4"
+            }
+          },
+          "license": {
+            "tier": "Essentials",
+            "entitlementPid": "C9500-DNA-48Y4C-E",
+            "subscriptionByTerm": {
+              "1": "C9500-DNA-E-1Y",
+              "3": "C9500-DNA-E-3Y",
+              "5": "C9500-DNA-E-5Y",
+              "7": "C9500-DNA-E-7Y"
+            }
+          }
+        }
+      },
+      {
+        "pid": "C9500-24Y4C-A",
+        "description": "24x 25G + 4x 100G — Network Advantage",
+        "vendor": "Cisco",
+        "faceplate": {
+          "accessPorts": { "count": 24, "speed": "25G" },
+          "uplinkPorts": { "count": 4, "speed": "100G" },
+          "rackUnits": 1
+        },
+        "bundle": {
+          "autoIncluded": [
+            { "pid": "C9K-F1-SSD-BLANK", "qty": 1 },
+            { "pid": "C9K-T1-FANTRAY", "qty": 2 },
+            { "pid": "C9500-NW-A", "qty": 1 },
+            { "pid": "S9500UK9-1715", "qty": 1 },
+            { "pid": "C9500-SSD-NONE", "qty": 1 },
+            { "pid": "C9500-RFID", "qty": 1 }
+          ],
+          "powerCord": {
+            "qty": 1,
+            "byRegion": {
+              "EU": "CAB-9K10A-EU",
+              "US": "CAB-9K10A-NA",
+              "UK": "CAB-9K10A-UK",
+              "JP": "CAB-9K10A-JPN",
+              "AU": "CAB-9K10A-AUS",
+              "IN": "CAB-9K10A-IND",
+              "CN": "CAB-9K10A-CHN"
+            }
+          },
+          "psuOptions": {
+            "primary": [
+              { "pid": "C9K-PWR-650WAC-R", "label": "650W AC", "default": true },
+              { "pid": "C9K-PWR-650WACL-R", "label": "650W AC Low-line" },
+              { "pid": "C9K-PWR-930WDC-R", "label": "930W DC" }
+            ],
+            "secondaryPidMap": {
+              "C9K-PWR-650WAC-R": "C9K-PWR-650WAC-R/2",
+              "C9K-PWR-650WACL-R": "C9K-PWR-650WACLR/2",
+              "C9K-PWR-930WDC-R": "C9K-PWR-930WDC-R/2"
+            },
+            "noRedundantPid": "C9500-SPS-NONE"
+          },
+          "smartnet": {
+            "baseSkuByTier": {
+              "SNT": "CON-SNT-C9502YA4",
+              "SNTP": "CON-SNTP-C9502YA4"
+            }
+          },
+          "license": {
+            "tier": "Advantage",
+            "entitlementPid": "C9500-DNA-24Y4C-A",
+            "subscriptionByTerm": {
+              "1": "C9500-DNA-A-1Y",
+              "3": "C9500-DNA-A-3Y",
+              "5": "C9500-DNA-A-5Y",
+              "7": "C9500-DNA-A-7Y"
+            }
+          }
+        }
+      },
+      {
+        "pid": "C9500-24Y4C-E",
+        "description": "24x 25G + 4x 100G — Network Essentials",
+        "vendor": "Cisco",
+        "faceplate": {
+          "accessPorts": { "count": 24, "speed": "25G" },
+          "uplinkPorts": { "count": 4, "speed": "100G" },
+          "rackUnits": 1
+        },
+        "bundle": {
+          "autoIncluded": [
+            { "pid": "C9K-F1-SSD-BLANK", "qty": 1 },
+            { "pid": "C9K-T1-FANTRAY", "qty": 2 },
+            { "pid": "C9500-NW-E", "qty": 1 },
+            { "pid": "S9500UK9-1715", "qty": 1 },
+            { "pid": "C9500-SSD-NONE", "qty": 1 },
+            { "pid": "C9500-RFID", "qty": 1 }
+          ],
+          "powerCord": {
+            "qty": 1,
+            "byRegion": {
+              "EU": "CAB-9K10A-EU",
+              "US": "CAB-9K10A-NA",
+              "UK": "CAB-9K10A-UK",
+              "JP": "CAB-9K10A-JPN",
+              "AU": "CAB-9K10A-AUS",
+              "IN": "CAB-9K10A-IND",
+              "CN": "CAB-9K10A-CHN"
+            }
+          },
+          "psuOptions": {
+            "primary": [
+              { "pid": "C9K-PWR-650WAC-R", "label": "650W AC", "default": true },
+              { "pid": "C9K-PWR-650WACL-R", "label": "650W AC Low-line" },
+              { "pid": "C9K-PWR-930WDC-R", "label": "930W DC" }
+            ],
+            "secondaryPidMap": {
+              "C9K-PWR-650WAC-R": "C9K-PWR-650WAC-R/2",
+              "C9K-PWR-650WACL-R": "C9K-PWR-650WACLR/2",
+              "C9K-PWR-930WDC-R": "C9K-PWR-930WDC-R/2"
+            },
+            "noRedundantPid": "C9500-SPS-NONE"
+          },
+          "smartnet": {
+            "baseSkuByTier": {
+              "SNT": "CON-SNT-C9502YE4"
+            }
+          },
+          "license": {
+            "tier": "Essentials",
+            "entitlementPid": "C9500-DNA-24Y4C-E",
+            "subscriptionByTerm": {
+              "1": "C9500-DNA-E-1Y",
+              "3": "C9500-DNA-E-3Y",
+              "5": "C9500-DNA-E-5Y",
+              "7": "C9500-DNA-E-7Y"
+            }
+          }
+        }
+      },
+      {
+        "pid": "C9500-32C-A",
+        "description": "32x 100G — Network Advantage",
+        "vendor": "Cisco",
+        "faceplate": {
+          "accessPorts": { "count": 32, "speed": "100G" },
+          "rackUnits": 1
+        },
+        "bundle": {
+          "autoIncluded": [
+            { "pid": "C9K-F1-SSD-BLANK", "qty": 1 },
+            { "pid": "C9K-T2-FANTRAY", "qty": 5 },
+            { "pid": "C9500-NW-A", "qty": 1 },
+            { "pid": "S9500UK9-1715", "qty": 1 },
+            { "pid": "C9500-SSD-NONE", "qty": 1 },
+            { "pid": "C9500-RFID", "qty": 1 },
+            { "pid": "NETWORK-PNP-LIC", "qty": 1 }
+          ],
+          "powerCord": {
+            "qty": 1,
+            "byRegion": {
+              "EU": "CAB-TA-EU",
+              "US": "CAB-9K10A-NA",
+              "UK": "CAB-9K10A-UK",
+              "JP": "CAB-9K10A-JPN",
+              "AU": "CAB-9K10A-AUS",
+              "IN": "CAB-9K10A-IND",
+              "CN": "CAB-9K10A-CHN"
+            }
+          },
+          "psuOptions": {
+            "primary": [
+              { "pid": "C9K-PWR-1600WAC-R", "label": "1600W AC", "default": true },
+              { "pid": "C9K-PWR-1600WDC-R", "label": "1600W AC" }
+            ],
+            "secondaryPidMap": {
+              "C9K-PWR-1600WAC-R": "C9K-PWR-1600WACR/2",
+              "C9K-PWR-1600WDC-R": "C9K-PWR-1600WDCR/2"
+            },
+            "noRedundantPid": "C9500-SPS-NONE"
+          },
+          "smartnet": {
+            "baseSkuByTier": {
+              "SNT": "CON-SNT-C95AC032",
+              "SNTP": "CON-SNTP-C95AC032A"
+            }
+          },
+          "license": {
+            "tier": "Advantage",
+            "entitlementPid": "C9500-DNA-32C-A",
+            "subscriptionByTerm": {
+              "1": "C9500-DNA-A-1Y",
+              "3": "C9500-DNA-A-3Y",
+              "5": "C9500-DNA-A-5Y",
+              "7": "C9500-DNA-A-7Y"
+            }
+          }
+        }
+      },
+      {
+        "pid": "C9500-40X-A",
+        "description": "40x 10G — Network Advantage",
+        "vendor": "Cisco",
+        "faceplate": {
+          "accessPorts": { "count": 40, "speed": "10G" },
+          "rackUnits": 1
+        },
+        "bundle": {
+          "autoIncluded": [
+            { "pid": "C9K-F1-SSD-BLANK", "qty": 1 },
+            { "pid": "C9K-T1-FANTRAY", "qty": 2 },
+            { "pid": "C9500-NW-A", "qty": 1 },
+            { "pid": "S9500UK9-1715", "qty": 1 },
+            { "pid": "C9500-SSD-NONE", "qty": 1 },
+            { "pid": "C9500-RFID", "qty": 1 }
+          ],
+          "powerCord": {
+            "qty": 1,
+            "byRegion": {
+              "EU": "CAB-9K10A-EU",
+              "US": "CAB-9K10A-NA",
+              "UK": "CAB-9K10A-UK",
+              "JP": "CAB-9K10A-JPN",
+              "AU": "CAB-9K10A-AUS",
+              "IN": "CAB-9K10A-IND",
+              "CN": "CAB-9K10A-CHN"
+            }
+          },
+          "psuOptions": {
+            "primary": [
+              { "pid": "C9K-PWR-650WAC-R", "label": "650W AC", "default": true },
+              { "pid": "C9K-PWR-650WACL-R", "label": "650W AC Low-line" },
+              { "pid": "C9K-PWR-930WDC-R", "label": "930W DC" }
+            ],
+            "secondaryPidMap": {
+              "C9K-PWR-650WAC-R": "C9K-PWR-650WAC-R/2",
+              "C9K-PWR-650WACL-R": "C9K-PWR-650WACLR/2",
+              "C9K-PWR-930WDC-R": "C9K-PWR-930WDC-R/2"
+            },
+            "noRedundantPid": "C9500-SPS-NONE"
+          },
+          "smartnet": {
+            "baseSkuByTier": {
+              "SNT": "CON-SNT-C9500X40A",
+              "SNTP": "CON-SNTP-C9500X40A"
+            }
+          },
+          "license": {
+            "tier": "Advantage",
+            "entitlementPid": "C9500-DNA-40X-A",
+            "subscriptionByTerm": {
+              "1": "C9500-DNA-A-1Y",
+              "3": "C9500-DNA-A-3Y",
+              "5": "C9500-DNA-A-5Y",
+              "7": "C9500-DNA-A-7Y"
+            }
+          }
+        }
+      }
+    ]
+  }
+}

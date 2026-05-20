@@ -12,19 +12,19 @@ export type DeviceType =
   | "distribution"
   | "access"
   | "security"
-  | "wireless"      // Phase 2: APs, WLCs
-  | "management";   // Phase 2: ISE, Catalyst Center, etc.
+  | "wireless" // Phase 2: APs, WLCs
+  | "management"; // Phase 2: ISE, Catalyst Center, etc.
 
 // ============================================================
 // CONTRACT / SUPPORT
 // ============================================================
 export type SmartnetTier =
-  | "SNT"    // SMARTnet 8x5xNBD
-  | "SNTP"   // SMARTnet Premium 24x7x4
-  | "OS"     // Solution Support 8x5xNBD
-  | "OSP"    // Solution Support Premium 24x7x4
-  | "PSUP"   // Partner Support
-  | "ECMU"   // Embedded — software only
+  | "SNT" // SMARTnet 8x5xNBD
+  | "SNTP" // SMARTnet Premium 24x7x4
+  | "OS" // Solution Support 8x5xNBD
+  | "OSP" // Solution Support Premium 24x7x4
+  | "PSUP" // Partner Support
+  | "ECMU" // Embedded — software only
   | "NONE";
 
 export type ContractTermYears = 1 | 2 | 3 | 4 | 5 | 7;
@@ -32,7 +32,20 @@ export type ContractTermYears = 1 | 2 | 3 | 4 | 5 | 7;
 // ============================================================
 // REGION (for power cord selection)
 // ============================================================
-export type Region = "EU" | "US" | "UK" | "JP" | "AU" | "IN" | "CN";
+export type Region =
+  | "EU"
+  | "US"
+  | "UK"
+  | "JP"
+  | "AU"
+  | "IN"
+  | "CN"
+  | "BR"
+  | "INTL"
+  | "IL"
+  | "CH"
+  | "IT"
+  | "TW";
 
 // ============================================================
 // MODULAR CHASSIS & STACKING — Type primitives
@@ -46,22 +59,22 @@ export type GroupKind = "logical" | "stack";
 export type SlotKind =
   | "supervisor"
   | "linecard"
-  | "fabric-module"   // NEW (Nexus 9500)
+  | "fabric-module" // NEW (Nexus 9500)
   | "psu"
   | "fan"
-  | "ssd"             // NEW (mounted on supervisors)
+  | "ssd" // NEW (mounted on supervisors)
   | "blank";
 
 export interface SlotAssignment {
-  slotId: string;          // e.g., "1", "2", "SUP1", "SUP2", "FM1"..."FM6"
+  slotId: string; // e.g., "1", "2", "SUP1", "SUP2", "FM1"..."FM6"
   slotKind: SlotKind;
-  modulePid?: string;      // The SKU installed; undefined = empty (emits blank)
-  parentSlotId?: string;   // e.g., SSD's parentSlotId = "SUP1"
+  modulePid?: string; // The SKU installed; undefined = empty (emits blank)
+  parentSlotId?: string; // e.g., SSD's parentSlotId = "SUP1"
   notes?: string;
 }
 
 export interface ChassisSlotSpec {
-  slot: number;          // 1-based slot number
+  slot: number; // 1-based slot number
   kind: SlotKind;
   required?: boolean;
   // Optional human-friendly note (e.g. "Sup slot, only sups fit here")
@@ -78,8 +91,6 @@ export type ModuleKind =
   | "stacking-cable"
   | "stack-power-cable";
 
-
-
 // ============================================================
 // PROJECT — Top-level container
 // ============================================================
@@ -92,17 +103,19 @@ export interface UISettings {
 export interface DeviceGroup {
   id: string;
   label: string;
-  parentGroupId?: string;        // ← nesting
+  parentGroupId?: string; // ← nesting
   collapsed: boolean;
   position: { x: number; y: number };
   size?: { width: number; height: number };
   color?: string;
+  width?: number; 
+  height?: number;
 
   // ✨ M1 — Stacking metadata (when groupKind = "stack")
-  kind: GroupKind;             // default "logical"
-  stackingCablePid?: string;        // e.g. "STACK-T1-50CM"
+  kind: GroupKind; // default "logical"
+  stackingCablePid?: string; // e.g. "STACK-T1-50CM"
   stackingCableQty?: number;
-  stackPowerCablePid?: string;      // optional, only for supportsStackPower series
+  stackPowerCablePid?: string; // optional, only for supportsStackPower series
   stackPowerCableQty?: number;
 
   memberOrder?: string[];
@@ -122,8 +135,8 @@ export interface Project {
 export interface ProjectMetadata {
   name: string;
   customer?: string;
-  customerNumber?: string;     // CCW BU number
-  opportunityId?: string;      // CCW Deal ID
+  customerNumber?: string; // CCW BU number
+  opportunityId?: string; // CCW Deal ID
   owner?: string;
   description?: string;
   tags?: string[];
@@ -155,8 +168,8 @@ export interface GlobalDefaults {
 // CONFIGURED DEVICE
 // ============================================================
 export interface ConfiguredDevice {
-  id: string;                          // "CORE-01"
-  name: string;                        // hostname
+  id: string; // "CORE-01"
+  name: string; // hostname
   type: DeviceType;
   position?: { x: number; y: number };
 
@@ -167,15 +180,19 @@ export interface ConfiguredDevice {
   notes?: string;
   customFields?: Record<string, string>;
   groupId?: string | null;
-  parentGroupId?:string;
+  parentGroupId?: string;
 }
 
 export interface HardwareConfig {
-  series: string;                      
-  chassisPid: string;                  
+  series: string;
+  chassisPid: string;
   stacking?: StackingConfig;
-  region?: Region;                     
-  redundantPsu?: boolean;              
+  region?: Region;
+  redundantPsu?: boolean;
+  primaryPsuPid?: string;
+  modularPsuPid?: string;
+  modularPsuQty?: number;
+  networkModulePid?: string;
   slots?: SlotAssignment[];
   excludedAutoIncludes?: string[];
   expansionModules?: ExpansionModule[];
@@ -189,7 +206,7 @@ export interface LicenseConfig {
 export interface SmartnetConfig {
   tier: SmartnetTier;
   termYears: ContractTermYears;
-  overridden?: boolean;                // user changed from global default
+  overridden?: boolean; // user changed from global default
 }
 
 export interface ExpansionModule {
@@ -217,7 +234,7 @@ export interface Link {
 }
 
 export interface OpticConfig {
-  pid: string;                         // "SFP-10G-SR-S" (without =)
+  pid: string; // "SFP-10G-SR-S" (without =)
   /** Each link consumes 2 optics by default; override per link if asymmetric. */
   quantityPerLink?: number;
 }

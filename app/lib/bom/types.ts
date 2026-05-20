@@ -22,6 +22,7 @@ export interface BOMLine {
    *  Prevents aggregation from merging physically distinct items
    *  (e.g., two C9400-SSD-480GB in two different supervisor slots). */
   slotId?: string;
+  chassisContext?: string;
 }
 
 export type BOMLineCategory =

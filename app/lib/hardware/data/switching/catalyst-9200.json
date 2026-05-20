@@ -1,0 +1,153 @@
+{
+  "Catalyst 9200L": {
+    "productCategory": "fixed-switch",
+    "type": "access",
+    "vendor": "Cisco",
+    "description": "Lite Branch Access Switches",
+    "compatibleOptics": ["SFP-10G-SR", "GLC-SX-MMD"],
+    "isStackable": true,
+    "maxStackSize": 8,
+    "supportsStackPower": false,
+    "pids": [
+      {
+        "pid": "C9200L-24T-4X-E",
+        "description": "24x 1G + 4x 10G uplinks — Network Essentials",
+        "vendor": "Cisco",
+        "faceplate": {
+          "accessPorts": { "count": 24, "speed": "1G" },
+          "uplinkPorts": { "count": 4, "speed": "10G" },
+          "rackUnits": 1
+        },
+        "bundle": {
+          "autoIncluded": [
+            { "pid": "C9200L-NW-E-24", "qty": 1, "note": "Network Essentials" },
+            { "pid": "C9200-STACK-BLANK", "qty": 2 },
+            { "pid": "C9K-ACC-RBFT", "qty": 1 },
+            { "pid": "C9K-ACC-SCR-4", "qty": 1 },
+            { "pid": "CAB-GUIDE-1RU", "qty": 1 },
+            { "pid": "NETWORK-PNP-LIC", "qty": 1 }
+          ],
+          "powerCord": {
+            "qty": 1,
+            "byRegion": {
+              "EU": "CAB-TA-EU",
+              "US": "CAB-TA-NA",
+              "UK": "CAB-TA-UK",
+              "JP": "CAB-TA-JP",
+              "AU": "CAB-TA-AP",
+              "IN": "CAB-TA-IN",
+              "CN": "CAB-TA-CN"
+            }
+          },
+          "psuOptions": {
+            "emitPrimary": false,
+            "primary": [
+              { "pid": "PWR-C5-125WAC", "label": "125W AC", "default": true },
+              { "pid": "PWR-C5-600WAC", "label": "600W AC" },
+              { "pid": "PWR-C5-1KWAC", "label": "1000W AC" }
+            ],
+            "secondaryPidMap": {
+              "PWR-C5-125WAC": "PWR-C5-125WAC/2",
+              "PWR-C5-600WAC": "PWR-C5-600WAC/2",
+              "PWR-C5-1KWAC": "PWR-C5-1KWAC/2"
+            },
+            "noRedundantPid": "PWR-C5-BLANK"
+          },
+          "smartnet": {
+            "baseSkuByTier": {
+              "SNT": "CON-SNT-C920L24X"
+            }
+          },
+          "license": {
+            "tier": "Essentials",
+            "entitlementPid": "C9200L-DNA-E-24",
+            "subscriptionByTerm": {
+              "1": "C9200L-DNA-E-24-1Y",
+              "3": "C9200L-DNA-E-24-3Y",
+              "5": "C9200L-DNA-E-24-5Y",
+              "7": "C9200L-DNA-E-24-7Y"
+            }
+          },
+          "stacking": {
+            "adapterRequired": true,
+            "adapterKits": ["C9200L-STACK-KIT"],
+            "dataCables": [
+              { "pid": "STACK-T4-50CM", "length": "50cm" },
+              { "pid": "STACK-T4-1M", "length": "1m" },
+              { "pid": "STACK-T4-3M", "length": "3m" }
+            ]
+          }
+        }
+      },
+      {
+        "pid": "C9200L-48P-4X-A",
+        "description": "48x 1G PoE+ + 4x 10G uplinks — Network Advantage",
+        "vendor": "Cisco",
+        "faceplate": {
+          "accessPorts": { "count": 48, "speed": "1G", "poe": true },
+          "uplinkPorts": { "count": 4, "speed": "10G" },
+          "rackUnits": 1
+        },
+        "bundle": {
+          "autoIncluded": [
+            { "pid": "C9200L-NW-A-48", "qty": 1 },
+            { "pid": "C9200-STACK-BLANK", "qty": 2 },
+            { "pid": "C9K-ACC-RBFT", "qty": 1 },
+            { "pid": "C9K-ACC-SCR-4", "qty": 1 },
+            { "pid": "CAB-GUIDE-1RU", "qty": 1 },
+            { "pid": "NETWORK-PNP-LIC", "qty": 1 }
+          ],
+          "powerCord": {
+            "qty": 1,
+            "byRegion": {
+              "EU": "CAB-TA-EU",
+              "US": "CAB-TA-NA",
+              "UK": "CAB-TA-UK",
+              "JP": "CAB-TA-JP",
+              "AU": "CAB-TA-AP",
+              "IN": "CAB-TA-IN",
+              "CN": "CAB-TA-CN"
+            }
+          },
+          "psuOptions": {
+            "emitPrimary": false,
+            "primary": [
+              { "pid": "PWR-C5-1KWAC", "label": "1000W AC", "default": true },
+              { "pid": "PWR-C5-600WAC", "label": "600W AC" }
+            ],
+            "secondaryPidMap": {
+              "PWR-C5-1KWAC": "PWR-C5-1KWAC/2",
+              "PWR-C5-600WAC": "PWR-C5-600WAC/2"
+            },
+            "noRedundantPid": "PWR-C5-BLANK"
+          },
+          "smartnet": {
+            "baseSkuByTier": {
+              "SNT": "CON-SNT-C920L48A",
+              "SNTP": "CON-SNTP-C920L48A"
+            }
+          },
+          "license": {
+            "tier": "Advantage",
+            "entitlementPid": "C9200L-DNA-A-48",
+            "subscriptionByTerm": {
+              "1": "C9200L-DNA-A-48-1Y",
+              "3": "C9200L-DNA-A-48-3Y",
+              "5": "C9200L-DNA-A-48-5Y",
+              "7": "C9200L-DNA-A-48-7Y"
+            }
+          },
+          "stacking": {
+            "adapterRequired": true,
+            "adapterKits": ["C9200L-STACK-KIT"],
+            "dataCables": [
+              { "pid": "STACK-T4-50CM", "length": "50cm" },
+              { "pid": "STACK-T4-1M", "length": "1m" },
+              { "pid": "STACK-T4-3M", "length": "3m" }
+            ]
+          }
+        }
+      }
+    ]
+  }
+}

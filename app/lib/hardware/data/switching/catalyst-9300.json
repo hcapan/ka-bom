@@ -1,0 +1,267 @@
+{
+  "Catalyst 9300": {
+    "productCategory": "fixed-switch",
+    "type": "access",
+    "vendor": "Cisco",
+    "description": "Stackable Access / Distribution",
+    "compatibleOptics": [
+      "SFP-10G-SR",
+      "SFP-10G-LR",
+      "QSFP-40G-SR4",
+      "GLC-SX-MMD",
+      "GLC-LH-SMD"
+    ],
+    "isStackable": true,
+    "maxStackSize": 8,
+    "supportsStackPower": true,
+    "pids": [
+      {
+        "pid": "C9300-48P-A",
+        "description": "48x 1G PoE+ + 4x 10G — Network Advantage",
+        "vendor": "Cisco",
+        "faceplate": {
+          "accessPorts": { "count": 48, "speed": "1G", "poe": true },
+          "uplinkPorts": { "count": 4, "speed": "10G" },
+          "rackUnits": 1
+        },
+        "bundle": {
+          "autoIncluded": [
+            { "pid": "C9300-NW-A-48", "qty": 1, "note": "Network Advantage" },
+            { "pid": "SC9300UK9-1718", "qty": 1, "note": "IOS-XE image" },
+            { "pid": "NETWORK-PNP-LIC", "qty": 1 },
+            { "pid": "C9300-SSD-NONE  ", "qty": 1, "note": "SSD Config" }
+          ],
+          "powerCord": {
+            "qty": 1,
+            "byRegion": {
+              "EU": "CAB-TA-EU",
+              "US": "CAB-TA-NA",
+              "UK": "CAB-TA-UK",
+              "JP": "CAB-TA-JP",
+              "AU": "CAB-TA-AP",
+              "IN": "CAB-TA-IN",
+              "CN": "CAB-TA-CN"
+            }
+          },
+          "psuOptions": {
+            "primary": [
+              { "pid": "PWR-C1-715WAC-P", "label": "715W AC Platinum (PoE+)", "default": true },
+              { "pid": "PWR-C1-715WAC", "label": "715W AC (PoE+)" },
+              { "pid": "PWR-C1-1100WAC-P", "label": "1100W AC Platinum (UPOE)" },
+              { "pid": "PWR-C1-350WAC", "label": "350W AC (data-only)" }
+            ],
+            "secondaryPidMap": {
+              "PWR-C1-715WAC-P": "PWR-C1-715WAC-P/2",
+              "PWR-C1-715WAC": "PWR-C1-715WAC/2",
+              "PWR-C1-1100WAC-P": "PWR-C1-1100WAC-P/2",
+              "PWR-C1-350WAC": "PWR-C1-350WAC/2"
+            },
+            "noRedundantPid": "C9300-SPS-NONE"
+          },
+          "networkModuleOptions": {
+            "options": [
+              { "pid": "C9300-NM-NONE", "label": "No uplink module", "default": true },
+              { "pid": "C9300-NM-4G", "label": "4× 1G SFP" },
+              { "pid": "C9300-NM-8X", "label": "8× 10G SFP+" },
+              { "pid": "C9300-NM-4M", "label": "4× mGig (1/2.5/5/10G)" },
+              { "pid": "C9300-NM-2Y", "label": "2× 25G SFP28" },
+              { "pid": "C9300-NM-2Q", "label": "2× 40G QSFP+" }
+            ]
+          },
+          "smartnet": {
+            "baseSkuByTier": {
+              "SNT": "CON-SNT-C93004PA",
+              "SNTP": "CON-SNTP-C93004PA"
+            }
+          },
+          "license": {
+            "tier": "Advantage",
+            "entitlementPid": "C9300-DNA-A-48",
+            "subscriptionByTerm": {
+              "1": "C9300-DNA-A-48-1Y",
+              "3": "C9300-DNA-A-48-3Y",
+              "5": "C9300-DNA-A-48-5Y",
+              "7": "C9300-DNA-A-48-7Y"
+            }
+          },
+          "stacking": {
+            "adapterRequired": false,
+            "dataCables": [
+              { "pid": "STACK-T1-50CM", "length": "50cm" },
+              { "pid": "STACK-T1-1M", "length": "1m" },
+              { "pid": "STACK-T1-3M", "length": "3m" }
+            ],
+            "powerCables": [
+              { "pid": "CAB-SPWR-30CM", "length": "30cm" },
+              { "pid": "CAB-SPWR-150CM", "length": "150cm" }
+            ]
+          }
+        }
+      },
+      {
+        "pid": "C9300-48P-E",
+        "description": "48x 1G PoE+ + 4x 10G — Network Essentials",
+        "vendor": "Cisco",
+        "faceplate": {
+          "accessPorts": { "count": 48, "speed": "1G", "poe": true },
+          "uplinkPorts": { "count": 4, "speed": "10G" },
+          "rackUnits": 1
+        },
+        "bundle": {
+          "autoIncluded": [
+            { "pid": "C9300-NW-E-48", "qty": 1, "note": "Network Essentials" },
+            { "pid": "SC9300UK9-1718", "qty": 1 },
+            { "pid": "NETWORK-PNP-LIC", "qty": 1 },
+            { "pid": "C9300-SSD-NONE  ", "qty": 1, "note": "SSD Config" }
+          ],
+          "powerCord": {
+            "qty": 1,
+            "byRegion": {
+              "EU": "CAB-TA-EU",
+              "US": "CAB-TA-NA",
+              "UK": "CAB-TA-UK",
+              "JP": "CAB-TA-JP",
+              "AU": "CAB-TA-AP",
+              "IN": "CAB-TA-IN",
+              "CN": "CAB-TA-CN"
+            }
+          },
+          "psuOptions": {
+            "primary": [
+              { "pid": "PWR-C1-715WAC-P", "label": "715W AC Platinum (PoE+)", "default": true },
+              { "pid": "PWR-C1-715WAC", "label": "715W AC (PoE+)" },
+              { "pid": "PWR-C1-1100WAC-P", "label": "1100W AC Platinum (UPOE)" },
+              { "pid": "PWR-C1-350WAC", "label": "350W AC (data-only)" }
+            ],
+            "secondaryPidMap": {
+              "PWR-C1-715WAC-P": "PWR-C1-715WAC-P/2",
+              "PWR-C1-715WAC": "PWR-C1-715WAC/2",
+              "PWR-C1-1100WAC-P": "PWR-C1-1100WAC-P/2",
+              "PWR-C1-350WAC": "PWR-C1-350WAC/2"
+            },
+            "noRedundantPid": "C9300-SPS-NONE"
+          },
+          "networkModuleOptions": {
+            "options": [
+              { "pid": "C9300-NM-NONE", "label": "No uplink module", "default": true },
+              { "pid": "C9300-NM-4G", "label": "4× 1G SFP" },
+              { "pid": "C9300-NM-8X", "label": "8× 10G SFP+" },
+              { "pid": "C9300-NM-4M", "label": "4× mGig (1/2.5/5/10G)" },
+              { "pid": "C9300-NM-2Y", "label": "2× 25G SFP28" },
+              { "pid": "C9300-NM-2Q", "label": "2× 40G QSFP+" }
+            ]
+          },
+          "smartnet": {
+            "baseSkuByTier": {
+              "SNT": "CON-SNT-C93004PE",
+              "SNTP": "CON-SNTP-C93004PE"
+            }
+          },
+          "license": {
+            "tier": "Essentials",
+            "entitlementPid": "C9300-DNA-E-48",
+            "subscriptionByTerm": {
+              "1": "C9300-DNA-E-48-1Y",
+              "3": "C9300-DNA-E-48-3Y",
+              "5": "C9300-DNA-E-48-5Y",
+              "7": "C9300-DNA-E-48-7Y"
+            }
+          },
+          "stacking": {
+            "adapterRequired": false,
+            "dataCables": [
+              { "pid": "STACK-T1-50CM", "length": "50cm" },
+              { "pid": "STACK-T1-1M", "length": "1m" },
+              { "pid": "STACK-T1-3M", "length": "3m" }
+            ],
+            "powerCables": [
+              { "pid": "CAB-SPWR-30CM", "length": "30cm" },
+              { "pid": "CAB-SPWR-150CM", "length": "150cm" }
+            ]
+          }
+        }
+      },
+      {
+        "pid": "C9300-24P-A",
+        "description": "24x 1G PoE+ + 4x 10G — Network Advantage",
+        "vendor": "Cisco",
+        "faceplate": {
+          "accessPorts": { "count": 24, "speed": "1G", "poe": true },
+          "uplinkPorts": { "count": 4, "speed": "10G" },
+          "rackUnits": 1
+        },
+        "bundle": {
+          "autoIncluded": [
+            { "pid": "C9300-NW-A-24", "qty": 1, "note": "Network Advantage" },
+            { "pid": "SC9300UK9-1718", "qty": 1 },
+            { "pid": "NETWORK-PNP-LIC", "qty": 1 },
+            { "pid": "C9300-SSD-NONE  ", "qty": 1, "note": "SSD Config" }
+          ],
+          "powerCord": {
+            "qty": 1,
+            "byRegion": {
+              "EU": "CAB-TA-EU",
+              "US": "CAB-TA-NA",
+              "UK": "CAB-TA-UK",
+              "JP": "CAB-TA-JP",
+              "AU": "CAB-TA-AP",
+              "IN": "CAB-TA-IN",
+              "CN": "CAB-TA-CN"
+            }
+          },
+          "psuOptions": {
+            "primary": [
+              { "pid": "PWR-C1-715WAC-P", "label": "715W AC Platinum (PoE+)", "default": true },
+              { "pid": "PWR-C1-715WAC", "label": "715W AC (PoE+)" },
+              { "pid": "PWR-C1-350WAC", "label": "350W AC (data-only)" }
+            ],
+            "secondaryPidMap": {
+              "PWR-C1-715WAC-P": "PWR-C1-715WAC-P/2",
+              "PWR-C1-715WAC": "PWR-C1-715WAC/2",
+              "PWR-C1-350WAC": "PWR-C1-350WAC/2"
+            },
+            "noRedundantPid": "C9300-SPS-NONE"
+          },
+          "networkModuleOptions": {
+            "options": [
+              { "pid": "C9300-NM-NONE", "label": "No uplink module", "default": true },
+              { "pid": "C9300-NM-4G", "label": "4× 1G SFP" },
+              { "pid": "C9300-NM-8X", "label": "8× 10G SFP+" },
+              { "pid": "C9300-NM-4M", "label": "4× mGig (1/2.5/5/10G)" },
+              { "pid": "C9300-NM-2Y", "label": "2× 25G SFP28" },
+              { "pid": "C9300-NM-2Q", "label": "2× 40G QSFP+" }
+            ]
+          },
+          "smartnet": {
+            "baseSkuByTier": {
+              "SNT": "CON-SNT-C93002PA",
+              "SNTP": "CON-SNTP-C93002PA"
+            }
+          },
+          "license": {
+            "tier": "Advantage",
+            "entitlementPid": "C9300-DNA-A-24",
+            "subscriptionByTerm": {
+              "1": "C9300-DNA-A-24-1Y",
+              "3": "C9300-DNA-A-24-3Y",
+              "5": "C9300-DNA-A-24-5Y",
+              "7": "C9300-DNA-A-24-7Y"
+            }
+          },
+          "stacking": {
+            "adapterRequired": false,
+            "dataCables": [
+              { "pid": "STACK-T1-50CM", "length": "50cm" },
+              { "pid": "STACK-T1-1M", "length": "1m" },
+              { "pid": "STACK-T1-3M", "length": "3m" }
+            ],
+            "powerCables": [
+              { "pid": "CAB-SPWR-30CM", "length": "30cm" },
+              { "pid": "CAB-SPWR-150CM", "length": "150cm" }
+            ]
+          }
+        }
+      }
+    ]
+  }
+}

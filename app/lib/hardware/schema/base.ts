@@ -11,6 +11,7 @@ import { z } from "zod";
 
 export const RegionSchema = z.enum([
   "EU", "US", "UK", "JP", "AU", "IN", "CN",
+  "BR", "INTL", "IL", "CH", "IT", "TW",
 ]);
 export type Region = z.infer<typeof RegionSchema>;
 

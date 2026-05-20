@@ -1,5 +1,7 @@
 "use client";
+
 import { useMemo, useState, useCallback } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   ConfiguredDevice,
   Link,
@@ -10,7 +12,6 @@ import {
 import { LAYER_CONFIG, getEffectiveCatalog } from "../../lib/hardware/catalog";
 import {
   generateHostname,
-  PATTERN_TOKENS,
 } from "../../lib/utils/nameGenerator";
 import { createBulkDevices } from "../../lib/utils/bulkCreate";
 import {
@@ -20,6 +21,17 @@ import {
 import { getAddableSeriesNames } from "../../lib/hardware/catalog";
 import { validateStackComposition } from "@/app/lib/utils/stackValidation";
 import { useProject } from "@/app/lib/storage";
+import {
+  ConfigureIcon,
+  AddIcon,
+  RemoveIcon,
+  SearchIcon,
+  DeleteIcon,
+  GroupIcon,
+  HardwareIcon,
+  ChevronRightIcon,
+} from "../ui/icons";
+import { Accordion, FieldInline } from "./_configPrimitives";
 
 type Props = {
   devices: ConfiguredDevice[];
@@ -39,8 +51,11 @@ type Props = {
       color?: string;
     },
   ) => string;
-
-  // ✨ Sprint 3 — Group props
+  addDevicesWithOptionalGroup: (params: {
+    devices: ConfiguredDevice[];
+    newGroup?: DeviceGroup;
+    newLinks?: Link[];
+  }) => void;
   groups: DeviceGroup[];
   setGroups: (groups: DeviceGroup[]) => void;
 };
@@ -86,7 +101,7 @@ export default function DeviceListPanel({
   onConfigureDevice,
   onCreateGroup,
   groups,
-  setGroups,
+  addDevicesWithOptionalGroup,
 }: Props) {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const { createStackFromDevices } = useProject();
@@ -111,35 +126,25 @@ export default function DeviceListPanel({
     Map<string, { linkCount: number; opticPid: string }>
   >(new Map());
 
-  // ✨ Sprint 3 — Group inputs
   const [groupName, setGroupName] = useState("");
   const [parentGroupId, setParentGroupId] = useState<string>("");
 
-  const [showPatternHelp, setShowPatternHelp] = useState(false);
+  // Footer optic dropdown expansion
+  const [opticExpanded, setOpticExpanded] = useState(false);
 
   const currentSeries = catalog[newNode.series];
   const currentPidObj = currentSeries.pids.find((p) => p.pid === newNode.pid);
   const previewType = currentSeries.type;
-  //const previewId = generateDeviceId(previewType, devices);
 
   const selectedDevices = useMemo(() => {
-  const found = selectedIds
-    .map(id => devices.find(d => d.id === id))
-    .filter((d): d is ConfiguredDevice => d !== undefined);
-  
-  console.log('[Stack Debug]', {
-    selectedIds,
-    deviceIds: devices.map(d => d.id),
-    matched: found.length,
-  });
-  
-  return found;
-}, [selectedIds, devices]);
+    return selectedIds
+      .map((id) => devices.find((d) => d.id === id))
+      .filter((d): d is ConfiguredDevice => d !== undefined);
+  }, [selectedIds, devices]);
 
   const canStackSelection = useMemo(() => {
     if (selectedDevices.length < 2) return false;
-    const v = validateStackComposition(selectedDevices);
-    return v.canStack;
+    return validateStackComposition(selectedDevices).canStack;
   }, [selectedDevices]);
 
   const autoName = useMemo(
@@ -151,26 +156,22 @@ export default function DeviceListPanel({
   );
 
   const handleGroupAsStack = useCallback(() => {
-  if (selectedIds.length < 2) {
-    alert('Select at least 2 devices to create a stack');
-    return;
-  }
-  
-  // ✅ Pass IDs directly — they're already strings
-  createStackFromDevices(selectedIds, `Stack-${Date.now().toString().slice(-4)}`);
-  
-  // Clear selection after grouping
-  setSelectedIds([]);
-}, [selectedIds, createStackFromDevices]);
+    if (selectedIds.length < 2) {
+      alert("Select at least 2 devices to create a stack");
+      return;
+    }
+    createStackFromDevices(
+      selectedIds,
+      `Stack-${Date.now().toString().slice(-4)}`,
+    );
+    setSelectedIds([]);
+  }, [selectedIds, createStackFromDevices]);
 
-
-  const toggleDeviceSelection = (id: string, e?: React.MouseEvent) => {
-    e?.stopPropagation();
+  const toggleDeviceSelection = (id: string) => {
     setSelectedIds((prev) =>
       prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
     );
   };
-
   const clearSelection = () => setSelectedIds([]);
 
   const handleSeriesChange = (series: string) => {
@@ -179,22 +180,16 @@ export default function DeviceListPanel({
       console.warn(`Series "${series}" has no PIDs available.`);
       return;
     }
-    setNewNode({
-      ...newNode,
-      series,
-      pid: seriesData.pids[0].pid,
-    });
+    setNewNode({ ...newNode, series, pid: seriesData.pids[0].pid });
   };
 
   const addNode = () => {
-    // === Single-device path (no bulk mode, or qty=1) ===
     if (!bulkMode || quantity === 1) {
       const finalName = naming.autoEnabled ? autoName : newNode.name.trim();
       if (!finalName) return;
 
       const series = catalog[newNode.series];
 
-      // ✨ Sprint 3 — single-device can also opt into a group
       const trimmedGroupName = bulkMode ? groupName.trim() : "";
       let newGroupForSingle: DeviceGroup | undefined;
       let assignedGroupId: string | null = parentGroupId || null;
@@ -215,6 +210,7 @@ export default function DeviceListPanel({
         newGroupForSingle = {
           id: newId,
           label: trimmedGroupName,
+          kind: "logical",
           parentGroupId: parentGroupId || undefined,
           collapsed: false,
           position: { x: 200, y: 200 },
@@ -226,13 +222,8 @@ export default function DeviceListPanel({
         id: generateDeviceId(series.type, devices),
         name: finalName,
         type: series.type,
-        position: assignedGroupId
-          ? { x: 24, y: 60 } // relative to group container
-          : undefined, // canvas will assign default
-        hardware: {
-          series: newNode.series,
-          chassisPid: newNode.pid,
-        },
+        position: assignedGroupId ? { x: 24, y: 60 } : undefined,
+        hardware: { series: newNode.series, chassisPid: newNode.pid },
         groupId: assignedGroupId,
       };
 
@@ -244,7 +235,7 @@ export default function DeviceListPanel({
               id: `LNK-${Date.now()}-${i}-${targetId}-${Math.random()
                 .toString(36)
                 .slice(2, 6)}`,
-              from: targetId, // parent (CORE) is source
+              from: targetId,
               to: device.id,
               sourceHandle: "b",
               targetHandle: "t",
@@ -254,28 +245,20 @@ export default function DeviceListPanel({
         }
       }
 
-      // Apply changes — group first
-      if (newGroupForSingle) {
-        setGroups([...groups, newGroupForSingle]);
-      }
-      setDevices([...devices, device]);
-      if (bulkLinks.length > 0) {
-        setLinks([...links, ...bulkLinks]);
-      }
+      addDevicesWithOptionalGroup({
+        devices: [device],
+        newGroup: newGroupForSingle,
+        newLinks: bulkLinks.length > 0 ? bulkLinks : undefined,
+      });
 
-      if (!naming.autoEnabled) {
-        setNewNode({ ...newNode, name: "" });
-      }
-      // Reset group inputs after success
+      if (!naming.autoEnabled) setNewNode({ ...newNode, name: "" });
       setGroupName("");
       setParentGroupId("");
       return;
     }
 
-    // === Bulk path (qty > 1, requires auto-name) ===
     if (!naming.autoEnabled) return;
 
-    // ✨ Validate group name uniqueness
     const trimmedGroupName = groupName.trim();
     if (trimmedGroupName) {
       const conflict = groups.some(
@@ -303,41 +286,35 @@ export default function DeviceListPanel({
           opticPid: cfg.opticPid,
           linkCount: cfg.linkCount,
         })),
-        // ✨ NEW
         groupName: trimmedGroupName || undefined,
         parentGroupId: parentGroupId || undefined,
       },
       devices,
       links,
-      groups, // ✨ pass existing groups for ID collision check
+      groups,
       naming,
     );
 
-    // Apply changes — group FIRST so device.groupId references resolve
-    if (result.newGroup) {
-      setGroups([...groups, result.newGroup]);
-    }
-    setDevices([...devices, ...result.newDevices]);
-    if (result.newLinks.length > 0) {
-      setLinks([...links, ...result.newLinks]);
-    }
-
-    // Reset bulk inputs after success
+    addDevicesWithOptionalGroup({
+      devices: result.newDevices,
+      newGroup: result.newGroup ?? undefined,
+      newLinks: result.newLinks.length > 0 ? result.newLinks : undefined,
+    });
     setGroupName("");
     setParentGroupId("");
   };
 
   const addableSeries = getAddableSeriesNames();
-
-  const groupedSeries = addableSeries
-    .map((name) => [name, catalog[name]] as const) // ⭐ was: catalog[name]
-    .reduce<Record<string, string[]>>((acc, [name, s]) => {
-      if (!s) return acc; // ⭐ defensive guard
-      const key = s.type.toUpperCase();
-      acc[key] = acc[key] || [];
+  const groupedSeries = useMemo(() => {
+    return addableSeries.reduce<Record<string, string[]>>((acc, name) => {
+      const s = catalog[name];
+      if (!s?.type) return acc;
+      const key = s.type;
+      if (!acc[key]) acc[key] = [];
       acc[key].push(name);
       return acc;
     }, {});
+  }, [addableSeries, catalog]);
 
   const layerOrder: DeviceType[] = [
     "security",
@@ -374,9 +351,7 @@ export default function DeviceListPanel({
 
   const layerCounts = useMemo(() => {
     const counts: Record<string, number> = { all: devices.length };
-    for (const d of devices) {
-      counts[d.type] = (counts[d.type] ?? 0) + 1;
-    }
+    for (const d of devices) counts[d.type] = (counts[d.type] ?? 0) + 1;
     return counts;
   }, [devices]);
 
@@ -427,27 +402,60 @@ export default function DeviceListPanel({
     ? autoName.trim().length > 0
     : newNode.name.trim().length > 0;
 
+  // Bulk-mode summary for accordion badge
+  const bulkSummary = useMemo(() => {
+    const parts: string[] = [];
+    if (quantity > 1) parts.push(`${quantity} dev`);
+    if (uplinkTargets.size > 0) parts.push(`${grandTotalLinks} link`);
+    if (groupName.trim() || parentGroupId) parts.push("grp");
+    return parts.join(" · ");
+  }, [quantity, uplinkTargets.size, grandTotalLinks, groupName, parentGroupId]);
+
   // ============================================================
   // RENDER
   // ============================================================
   return (
-    <aside className="bg-white border border-slate-200 rounded-xl shadow-sm flex flex-col h-full overflow-hidden">
-      {/* SECTION 1: ADD DEVICE */}
-      <div className="p-3 border-b border-slate-200 bg-slate-50">
-        <p className="text-[10px] uppercase font-bold text-slate-500 tracking-wider mb-2">
-          Add Device
-        </p>
+    <aside
+      className="
+        flex h-full flex-col overflow-hidden
+        rounded-xl border border-slate-200 bg-white shadow-sm
+      "
+    >
+      {/* ════════════════════════════════════════════════════════ */}
+      {/* SECTION 1 — ADD DEVICE (always visible)                   */}
+      {/* ════════════════════════════════════════════════════════ */}
+      <div className="border-b border-slate-200 bg-slate-50/60 backdrop-blur-sm p-3">
+        <div className="mb-2 flex items-center justify-between">
+          <p className="text-[10px] font-bold uppercase tracking-wider text-slate-600">
+            <HardwareIcon size={16} className="text-slate-500" aria-hidden />
+            Add Device
+          </p>
+          {naming.autoEnabled && autoName && (
+            <span
+              className="
+                rounded-full bg-sky-100 px-2 py-0.5
+                font-mono text-[10px] font-semibold text-sky-700
+                ring-1 ring-inset ring-sky-200
+              "
+              title={`Auto-name pattern: ${naming.pattern}`}
+            >
+              auto · {autoName}
+            </span>
+          )}
+        </div>
+
         <div className="space-y-2">
-          {/* Hostname input */}
+          {/* Hostname */}
           <input
             placeholder={
               naming.autoEnabled ? autoName || "Pattern preview…" : "HOSTNAME"
             }
-            className={`w-full border border-slate-200 p-1.5 rounded text-xs ${
-              naming.autoEnabled
-                ? "bg-slate-100 text-slate-500 italic cursor-not-allowed"
-                : ""
-            }`}
+            className={`
+              w-full rounded-md border border-slate-300 bg-white px-2 py-1.5
+              text-xs
+              focus:border-sky-400 focus:outline-none focus:ring-2 focus:ring-sky-200
+              ${naming.autoEnabled ? "italic text-slate-500 bg-slate-100 cursor-not-allowed" : ""}
+            `}
             value={naming.autoEnabled ? autoName : newNode.name}
             readOnly={naming.autoEnabled}
             onChange={(e) =>
@@ -459,82 +467,34 @@ export default function DeviceListPanel({
             }}
           />
 
-          {/* Auto-name controls */}
-          <div className="flex items-center justify-between">
-            <label className="flex items-center gap-1.5 text-[10px] text-slate-600 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={naming.autoEnabled}
-                onChange={(e) =>
-                  setNaming({ ...naming, autoEnabled: e.target.checked })
-                }
-                className="cursor-pointer"
-              />
-              Auto-name
-            </label>
-            {naming.autoEnabled && (
-              <button
-                onClick={() => setShowPatternHelp(!showPatternHelp)}
-                className="text-[10px] text-blue-600 hover:underline"
-              >
-                Pattern ⓘ
-              </button>
-            )}
-          </div>
-
-          {naming.autoEnabled && (
-            <>
-              <input
-                type="text"
-                value={naming.pattern}
-                onChange={(e) =>
-                  setNaming({ ...naming, pattern: e.target.value })
-                }
-                placeholder="{LAYER}-{NN}"
-                className="w-full border border-slate-200 p-1.5 rounded text-xs font-mono"
-              />
-              {showPatternHelp && (
-                <div className="bg-blue-50 border border-blue-200 rounded p-2 space-y-1">
-                  <p className="text-[10px] font-bold text-blue-800 mb-1">
-                    Available tokens:
-                  </p>
-                  {PATTERN_TOKENS.map((t) => (
-                    <p
-                      key={t.token}
-                      className="text-[10px] text-slate-700 leading-tight"
-                    >
-                      <span className="font-mono font-bold text-blue-700">
-                        {t.token}
-                      </span>{" "}
-                      — {t.desc}
-                    </p>
-                  ))}
-                </div>
-              )}
-            </>
-          )}
-
-          {/* Series & PID */}
+          {/* Series */}
           <select
-            className="w-full border border-slate-200 p-1.5 rounded text-xs"
+            className="
+              w-full rounded-md border border-slate-300 bg-white px-2 py-1.5
+              text-xs
+              focus:border-sky-400 focus:outline-none focus:ring-2 focus:ring-sky-200
+            "
             value={newNode.series}
             onChange={(e) => handleSeriesChange(e.target.value)}
           >
-            {layerOrder
-              .filter((layer) => groupedSeries[layer.toUpperCase()])
-              .map((layer) => (
-                <optgroup key={layer} label={layer.toUpperCase()}>
-                  {groupedSeries[layer.toUpperCase()].map((name) => (
-                    <option key={name} value={name}>
-                      {name}
-                    </option>
-                  ))}
-                </optgroup>
-              ))}
+            {layerOrder.map((layer) => (
+              <optgroup key={layer} label={layer.toUpperCase()}>
+                {(groupedSeries[layer] ?? []).map((name) => (
+                  <option key={name} value={name}>
+                    {name}
+                  </option>
+                ))}
+              </optgroup>
+            ))}
           </select>
 
+          {/* PID */}
           <select
-            className="w-full border border-slate-200 p-1.5 rounded text-xs font-mono"
+            className="
+              w-full rounded-md border border-slate-300 bg-white px-2 py-1.5
+              font-mono text-xs
+              focus:border-sky-400 focus:outline-none focus:ring-2 focus:ring-sky-200
+            "
             value={newNode.pid}
             onChange={(e) => setNewNode({ ...newNode, pid: e.target.value })}
           >
@@ -546,14 +506,25 @@ export default function DeviceListPanel({
           </select>
 
           {currentPidObj && (
-            <p className="text-[10px] text-slate-400 italic leading-tight">
+            <p className="text-[10px] italic leading-tight text-slate-500">
               {currentPidObj.description}
             </p>
           )}
 
-          {/* BULK MODE TOGGLE */}
-          <div className="border-t border-slate-200 pt-2 mt-2">
-            <label className="flex items-center gap-1.5 text-[10px] text-slate-600 cursor-pointer">
+          {/* Toggles row */}
+          <div className="flex items-center gap-3 pt-1">
+            <label className="flex cursor-pointer items-center gap-1.5 text-[11px] text-slate-700">
+              <input
+                type="checkbox"
+                checked={naming.autoEnabled}
+                onChange={(e) =>
+                  setNaming({ ...naming, autoEnabled: e.target.checked })
+                }
+                className="cursor-pointer accent-sky-500"
+              />
+              Auto-name
+            </label>
+            <label className="flex cursor-pointer items-center gap-1.5 text-[11px] text-slate-700">
               <input
                 type="checkbox"
                 checked={bulkMode}
@@ -566,167 +537,34 @@ export default function DeviceListPanel({
                     setParentGroupId("");
                   }
                 }}
-                className="cursor-pointer"
+                className="cursor-pointer accent-sky-500"
               />
-              <span className="font-semibold">Bulk Mode</span>
-              <span className="text-slate-400">— add multiple + auto-link</span>
+              Bulk Mode
             </label>
           </div>
 
-          {bulkMode && (
-            <div className="space-y-2 bg-blue-50 border border-blue-200 rounded p-2">
-              {/* Quantity */}
-              <div>
-                <label className="text-[10px] uppercase font-bold text-slate-600 tracking-wider">
-                  Quantity
-                </label>
-                <div className="flex items-center gap-1 mt-1">
-                  <button
-                    onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                    className="w-7 h-7 flex items-center justify-center bg-white border border-slate-200 rounded text-slate-600 hover:bg-slate-50 font-bold"
-                  >
-                    −
-                  </button>
-                  <input
-                    type="number"
-                    min={1}
-                    max={100}
-                    value={quantity}
-                    onChange={(e) =>
-                      setQuantity(Math.max(1, parseInt(e.target.value) || 1))
-                    }
-                    className="flex-1 border border-slate-200 p-1 rounded text-xs text-center font-mono"
-                  />
-                  <button
-                    onClick={() => setQuantity(Math.min(100, quantity + 1))}
-                    className="w-7 h-7 flex items-center justify-center bg-white border border-slate-200 rounded text-slate-600 hover:bg-slate-50 font-bold"
-                  >
-                    +
-                  </button>
-                </div>
-                {!naming.autoEnabled && quantity > 1 && (
-                  <p className="text-[10px] text-amber-700 italic mt-1">
-                    ⚠ Enable Auto-name above to add multiple devices
-                  </p>
-                )}
-              </div>
-
-              {/* ✨ Sprint 3 — Group fields */}
-              <div className="space-y-1.5 bg-purple-50/60 border border-purple-200 rounded p-2">
-                <div className="flex items-center gap-1 text-[10px] font-bold text-purple-700 uppercase tracking-wider">
-                  <span>📦</span>
-                  <span>Group (optional)</span>
-                </div>
-                <input
-                  type="text"
-                  value={groupName}
-                  onChange={(e) => setGroupName(e.target.value)}
-                  placeholder="e.g. ACC Pod 1"
-                  className="w-full border border-slate-200 p-1.5 rounded text-xs"
-                />
-                {groups.length > 0 && (
-                  <select
-                    value={parentGroupId}
-                    onChange={(e) => setParentGroupId(e.target.value)}
-                    className="w-full border border-slate-200 p-1.5 rounded text-xs"
-                  >
-                    <option value="">— Top level —</option>
-                    {groups.map((g) => (
-                      <option key={g.id} value={g.id}>
-                        {indentGroupLabel(g, groups)}
-                      </option>
-                    ))}
-                  </select>
-                )}
-                <p className="text-[10px] text-slate-500 italic leading-tight">
-                  {groupName.trim()
-                    ? `Will create new group "${groupName.trim()}"${parentGroupId ? " (nested)" : ""}.`
-                    : parentGroupId
-                      ? "Devices will be added to the selected group."
-                      : "Leave blank to create devices at top level."}
-                </p>
-              </div>
-
-              {/* Uplinks */}
-              <div>
-                <label className="text-[10px] uppercase font-bold text-slate-600 tracking-wider">
-                  Uplink To ({uplinkTargets.size} selected)
-                </label>
-                {availableUplinkTargets.length === 0 ? (
-                  <p className="text-[10px] text-slate-400 italic mt-1">
-                    No other devices yet — add cores first to enable
-                    auto-uplinks
-                  </p>
-                ) : (
-                  <div className="mt-1 max-h-40 overflow-y-auto custom-scrollbar space-y-1 bg-white border border-slate-200 rounded p-1">
-                    {availableUplinkTargets.map((target) => {
-                      const cfg = uplinkTargets.get(target.id);
-                      const isChecked = !!cfg;
-                      const targetCfg = LAYER_CONFIG[target.type];
-                      return (
-                        <div
-                          key={target.id}
-                          className={`flex items-center gap-1.5 p-1 rounded text-[10px] ${
-                            isChecked ? "bg-blue-50" : "hover:bg-slate-50"
-                          }`}
-                        >
-                          <input
-                            type="checkbox"
-                            checked={isChecked}
-                            onChange={() => toggleUplinkTarget(target.id)}
-                            className="cursor-pointer"
-                          />
-                          <span
-                            className="w-1.5 h-4 rounded-full shrink-0"
-                            style={{ background: targetCfg.color }}
-                          />
-                          <span className="font-semibold text-slate-700 flex-1 truncate">
-                            {target.name}
-                          </span>
-                          {isChecked && (
-                            <>
-                              <span className="text-slate-400">×</span>
-                              <input
-                                type="number"
-                                min={1}
-                                max={8}
-                                value={cfg!.linkCount}
-                                onChange={(e) =>
-                                  updateUplinkCount(
-                                    target.id,
-                                    parseInt(e.target.value) || 1,
-                                  )
-                                }
-                                className="w-10 border border-slate-200 rounded p-0.5 text-center text-[10px] font-mono"
-                                onClick={(e) => e.stopPropagation()}
-                              />
-                            </>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-
-              {/* Live preview */}
-              {(quantity > 1 || uplinkTargets.size > 0 || groupName.trim()) && (
-                <div className="text-[10px] text-slate-700 bg-white border border-slate-200 rounded p-2 leading-tight">
-                  <p className="font-semibold mb-0.5">Will create:</p>
-                  {groupName.trim() && <p>• 1 group: 📦 {groupName.trim()}</p>}
-                  <p>
-                    • {quantity} device{quantity !== 1 ? "s" : ""}
-                  </p>
-                  {grandTotalLinks > 0 && (
-                    <p>
-                      • {grandTotalLinks} link{grandTotalLinks !== 1 ? "s" : ""}{" "}
-                      ({quantity} × {totalLinks} per device)
-                    </p>
-                  )}
-                </div>
-              )}
-            </div>
-          )}
+          {/* Add button */}
+          <button
+            onClick={addNode}
+            disabled={
+              !canAdd || (bulkMode && quantity > 1 && !naming.autoEnabled)
+            }
+            className="
+              flex items-center justify-center gap-1.5 w-full rounded-md bg-sky-600 py-1.5
+              text-xs font-bold text-white
+              transition-colors
+              hover:bg-sky-700
+              disabled:cursor-not-allowed disabled:opacity-40
+              focus:outline-none focus:ring-2 focus:ring-sky-300
+            "
+          >
+            <AddIcon size={14} strokeWidth={2.5} />Add{" "}
+            {bulkMode && quantity > 1 ? `${quantity} Devices` : "Device"}
+            {bulkMode && grandTotalLinks > 0
+              ? ` + ${grandTotalLinks} Links`
+              : ""}
+            {bulkMode && groupName.trim() ? " (in group)" : ""}
+          </button>
 
           {onCreateGroup && (
             <button
@@ -738,124 +576,390 @@ export default function DeviceListPanel({
                   });
                 }
               }}
-              className="w-full bg-purple-600 hover:bg-purple-700 text-white py-1.5 rounded text-xs font-bold transition-colors"
+              className="
+                 flex items-center justify-center gap-1.5 w-full rounded-md border border-slate-300 bg-white py-1.5
+                text-[11px] font-semibold text-slate-700
+                transition-colors hover:border-sky-400 hover:text-sky-700
+              "
               title="Create empty group"
             >
-              + Empty Group
+              <AddIcon size={12} /> Empty Group
             </button>
           )}
-
-          <button
-            onClick={addNode}
-            disabled={
-              !canAdd || (bulkMode && quantity > 1 && !naming.autoEnabled)
-            }
-            className="w-full bg-blue-600 hover:bg-blue-700 text-white py-1.5 rounded text-xs font-bold transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-          >
-            + Add {bulkMode && quantity > 1 ? `${quantity} Devices` : "Device"}
-            {bulkMode && grandTotalLinks > 0
-              ? ` + ${grandTotalLinks} Links`
-              : ""}
-            {bulkMode && groupName.trim() ? " (in group)" : ""}
-          </button>
         </div>
       </div>
 
-      {/* SECTION 1B: DEFAULT LINK OPTIC */}
-      <div className="p-3 border-b border-slate-200 bg-white">
-        <div className="flex items-center justify-between mb-1.5">
-          <p className="text-[10px] uppercase font-bold text-slate-500 tracking-wider">
-            Link Optic
-          </p>
-          <SpeedBadge sku={defaultLinkSku} />
-        </div>
-        <select
-          value={defaultLinkSku}
-          onChange={(e) => setDefaultLinkSku(e.target.value)}
-          className="w-full border border-slate-200 p-1.5 rounded text-xs font-mono"
+      {/* ════════════════════════════════════════════════════════ */}
+      {/* SECTION 2 — Footer Optic Picker                            */}
+      {/* ════════════════════════════════════════════════════════ */}
+      <div className="border-b border-slate-200 bg-white">
+        <button
+          onClick={() => setOpticExpanded((v) => !v)}
+          className="
+            flex w-full items-center justify-between gap-2 px-3 py-2
+            text-left transition-colors hover:bg-slate-50
+          "
         >
-          <optgroup label="100G">
-            <option value="QSFP-100G-SR4">QSFP-100G-SR4 (Multi-mode)</option>
-            <option value="QSFP-100G-LR4">QSFP-100G-LR4 (Single-mode)</option>
-          </optgroup>
-          <optgroup label="40G">
-            <option value="QSFP-40G-SR4">QSFP-40G-SR4</option>
-          </optgroup>
-          <optgroup label="25G">
-            <option value="SFP-25G-SR-S">SFP-25G-SR-S</option>
-          </optgroup>
-          <optgroup label="10G">
-            <option value="SFP-10G-SR">SFP-10G-SR (Multi-mode)</option>
-            <option value="SFP-10G-LR">SFP-10G-LR (Single-mode)</option>
-          </optgroup>
-          <optgroup label="1G">
-            <option value="GLC-SX-MMD">GLC-SX-MMD (Multi-mode)</option>
-            <option value="GLC-LH-SMD">GLC-LH-SMD (Single-mode)</option>
-          </optgroup>
-        </select>
-        <p className="text-[10px] text-slate-400 italic mt-1">
-          Used when drag-connecting nodes
-        </p>
+          <div className="flex min-w-0 items-center gap-2">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
+              Optic Selection
+            </span>
+            <span className="truncate font-mono text-[11px] text-slate-700">
+              {defaultLinkSku}
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            <SpeedBadge sku={defaultLinkSku} />
+            <motion.span
+              animate={{ rotate: opticExpanded ? 90 : 0 }}
+              transition={{ duration: 0.18 }}
+              className="text-xs text-slate-400"
+              aria-hidden
+            >
+              <ChevronRightIcon size={14} strokeWidth={2.5} />
+            </motion.span>
+          </div>
+        </button>
+
+        <AnimatePresence initial={false}>
+          {opticExpanded && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: "auto", opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ duration: 0.2, ease: "easeOut" }}
+              className="overflow-hidden"
+            >
+              <div className="px-3 pb-3 pt-1 border-t border-slate-100">
+                <select
+                  value={defaultLinkSku}
+                  onChange={(e) => setDefaultLinkSku(e.target.value)}
+                  className="
+                    w-full rounded-md border border-slate-300 bg-white px-2 py-1.5
+                    font-mono text-xs
+                    focus:border-sky-400 focus:outline-none focus:ring-2 focus:ring-sky-200
+                  "
+                >
+                  <optgroup label="100G">
+                    <option value="QSFP-100G-SR4">
+                      QSFP-100G-SR4 (Multi-mode)
+                    </option>
+                    <option value="QSFP-100G-LR4">
+                      QSFP-100G-LR4 (Single-mode)
+                    </option>
+                  </optgroup>
+                  <optgroup label="40G">
+                    <option value="QSFP-40G-SR4">QSFP-40G-SR4</option>
+                  </optgroup>
+                  <optgroup label="25G">
+                    <option value="SFP-25G-SR-S">SFP-25G-SR-S</option>
+                  </optgroup>
+                  <optgroup label="10G">
+                    <option value="SFP-10G-SR">SFP-10G-SR (Multi-mode)</option>
+                    <option value="SFP-10G-LR">SFP-10G-LR (Single-mode)</option>
+                  </optgroup>
+                  <optgroup label="1G">
+                    <option value="GLC-SX-MMD">GLC-SX-MMD (Multi-mode)</option>
+                    <option value="GLC-LH-SMD">GLC-LH-SMD (Single-mode)</option>
+                  </optgroup>
+                </select>
+                <p className="mt-1 text-[10px] italic text-slate-400">
+                  Used when drag-connecting nodes
+                </p>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
-      {selectedIds.length > 0 && (
-        <div className="mt-2 rounded border border-purple-300 bg-purple-50 p-2">
-          <div className="flex items-center justify-between mb-1.5">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-purple-700">
-              {selectedIds.length} selected
-            </span>
-            <button
-              onClick={clearSelection}
-              className="text-[10px] text-slate-500 hover:text-slate-700"
-            >
-              Clear
-            </button>
-          </div>
+      {/* ════════════════════════════════════════════════════════ */}
+      {/* SECTION 3 — Bulk Mode accordion                            */}
+      {/* ════════════════════════════════════════════════════════ */}
+      {bulkMode && (
+        <div className="border-b border-slate-200 bg-white p-2">
+          <Accordion
+            title="Bulk Mode"
+            icon={<GroupIcon size={14} />}
+            defaultOpen={true}
+            badge={
+              bulkSummary ? { state: "info", label: bulkSummary } : undefined
+            }
+          >
+            {/* Quantity */}
+            <FieldInline label="Quantity">
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={() => setQuantity(Math.max(1, quantity - 1))}
+                  className="
+                    flex h-7 w-7 items-center justify-center
+                    rounded-md border border-slate-200 bg-white
+                    font-bold text-slate-600 hover:bg-slate-50
+                  "
+                >
+                  <RemoveIcon size={14} />
+                </button>
+                <input
+                  type="number"
+                  min={1}
+                  max={100}
+                  value={quantity}
+                  onChange={(e) =>
+                    setQuantity(Math.max(1, parseInt(e.target.value) || 1))
+                  }
+                  className="
+                    flex-1 rounded-md border border-slate-300 bg-white px-2 py-1
+                    text-center font-mono text-xs
+                  "
+                />
+                <button
+                  onClick={() => setQuantity(Math.min(100, quantity + 1))}
+                  className="
+                    flex h-7 w-7 items-center justify-center
+                    rounded-md border border-slate-200 bg-white
+                    font-bold text-slate-600 hover:bg-slate-50
+                  "
+                >
+                  <AddIcon size={14} />
+                </button>
+              </div>
+            </FieldInline>
 
-          {selectedIds.length >= 2 ? (
-            <button
-              onClick={handleGroupAsStack}
-              disabled={!canStackSelection}
-              className={`w-full rounded py-1.5 text-[11px] font-bold transition-colors ${
-                canStackSelection
-                  ? "bg-purple-600 text-white hover:bg-purple-700"
-                  : "cursor-not-allowed bg-slate-200 text-slate-400"
-              }`}
-              title={
-                !canStackSelection
-                  ? "Selection cannot form a stack — must be same series, stackable, ≤8 members"
-                  : `Group ${selectedIds.length} devices into a stack`
-              }
-            >
-              📚 Group as Stack ({selectedIds.length})
-            </button>
-          ) : (
-            <p className="text-[10px] italic text-slate-500">
-              Select 1+ more to enable stacking
-            </p>
-          )}
+            {!naming.autoEnabled && quantity > 1 && (
+              <p className="text-[10px] italic text-amber-600">
+                ⚠ Enable Auto-name to add multiple devices
+              </p>
+            )}
+
+            {/* Group nesting */}
+            <div className="rounded-lg border-l-2 border-sky-300 bg-sky-50/30 px-3 py-2 space-y-1.5">
+              <div className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-sky-700">
+                <GroupIcon
+                  size={11}
+                  className="text-cisco-blue-700"
+                  aria-hidden
+                />
+                <span>Group (optional)</span>
+              </div>
+              <input
+                type="text"
+                value={groupName}
+                onChange={(e) => setGroupName(e.target.value)}
+                placeholder="e.g. ACC Pod 1"
+                className="
+                  w-full rounded-md border border-slate-300 bg-white px-2 py-1
+                  text-xs
+                  focus:border-sky-400 focus:outline-none focus:ring-2 focus:ring-sky-200
+                "
+              />
+              {groups.length > 0 && (
+                <select
+                  value={parentGroupId}
+                  onChange={(e) => setParentGroupId(e.target.value)}
+                  className="
+                    w-full rounded-md border border-slate-300 bg-white px-2 py-1
+                    text-xs
+                  "
+                >
+                  <option value="">— Top level —</option>
+                  {groups.map((g) => (
+                    <option key={g.id} value={g.id}>
+                      {indentGroupLabel(g, groups)}
+                    </option>
+                  ))}
+                </select>
+              )}
+              <p className="text-[10px] italic leading-tight text-slate-500">
+                {groupName.trim()
+                  ? `Will create new group "${groupName.trim()}"${
+                      parentGroupId ? " (nested)" : ""
+                    }.`
+                  : parentGroupId
+                    ? "Devices will be added to the selected group."
+                    : "Leave blank to create devices at top level."}
+              </p>
+            </div>
+
+            {/* Uplinks */}
+            <div className="space-y-1">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-600">
+                Uplink To ({uplinkTargets.size} selected)
+              </p>
+              {availableUplinkTargets.length === 0 ? (
+                <p className="text-[10px] italic text-slate-400">
+                  No other devices yet — add cores first to enable auto-uplinks
+                </p>
+              ) : (
+                <div className="custom-scrollbar max-h-40 space-y-1 overflow-y-auto rounded-md border border-slate-200 bg-white p-1">
+                  {availableUplinkTargets.map((target) => {
+                    const cfg = uplinkTargets.get(target.id);
+                    const isChecked = !!cfg;
+                    const targetCfg = LAYER_CONFIG[target.type];
+                    return (
+                      <div
+                        key={target.id}
+                        className={`
+                          flex items-center gap-1.5 rounded p-1
+                          text-[10px]
+                          ${isChecked ? "bg-sky-50" : "hover:bg-slate-50"}
+                        `}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={isChecked}
+                          onChange={() => toggleUplinkTarget(target.id)}
+                          className="cursor-pointer accent-sky-500"
+                        />
+                        <span
+                          className="h-4 w-1.5 shrink-0 rounded-full"
+                          style={{ background: targetCfg.color }}
+                        />
+                        <span className="flex-1 truncate font-semibold text-slate-700">
+                          {target.name}
+                        </span>
+                        {isChecked && (
+                          <>
+                            <span className="text-slate-400">×</span>
+                            <input
+                              type="number"
+                              min={1}
+                              max={8}
+                              value={cfg!.linkCount}
+                              onChange={(e) =>
+                                updateUplinkCount(
+                                  target.id,
+                                  parseInt(e.target.value) || 1,
+                                )
+                              }
+                              className="
+                                w-10 rounded border border-slate-200
+                                p-0.5 text-center font-mono text-[10px]
+                              "
+                              onClick={(e) => e.stopPropagation()}
+                            />
+                          </>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* Live preview */}
+            {(quantity > 1 || uplinkTargets.size > 0 || groupName.trim()) && (
+              <div className="rounded-md border border-slate-200 bg-white p-2 text-[10px] leading-tight text-slate-700">
+                <p className="mb-0.5 font-semibold">Will create:</p>
+                {groupName.trim() && <p>• 1 group: 📦 {groupName.trim()}</p>}
+                <p>
+                  • {quantity} device{quantity !== 1 ? "s" : ""}
+                </p>
+                {grandTotalLinks > 0 && (
+                  <p>
+                    • {grandTotalLinks} link{grandTotalLinks !== 1 ? "s" : ""} (
+                    {quantity} × {totalLinks} per device)
+                  </p>
+                )}
+              </div>
+            )}
+          </Accordion>
         </div>
       )}
 
-      {/* SECTION 2: DEVICE LIST */}
-      <div className="p-3 border-b border-slate-200 bg-slate-50">
-        <div className="flex justify-between items-center mb-2">
-          <p className="text-[10px] uppercase font-bold text-slate-500 tracking-wider">
+      {/* ════════════════════════════════════════════════════════ */}
+      {/* SECTION 4 — Sticky Stack Action Bar                        */}
+      {/* ════════════════════════════════════════════════════════ */}
+      <AnimatePresence initial={false}>
+        {selectedIds.length > 0 && (
+          <motion.div
+            key="stack-bar"
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.2, ease: "easeOut" }}
+            className="overflow-hidden border-b border-sky-200 bg-sky-50/60"
+          >
+            <div className="flex items-center gap-2 px-3 py-2">
+              <span
+                className="
+                  rounded-full bg-white px-2 py-0.5
+                  text-[10px] font-bold uppercase tracking-wider text-sky-700
+                  ring-1 ring-inset ring-sky-300
+                "
+              >
+                {selectedIds.length} selected
+              </span>
+              <button
+                onClick={clearSelection}
+                className="text-[10px] text-slate-500 hover:text-slate-700"
+              >
+                Clear
+              </button>
+              <div className="flex-1" />
+              {selectedIds.length >= 2 && (
+                <button
+                  onClick={handleGroupAsStack}
+                  disabled={!canStackSelection}
+                  className={`
+                    rounded-md px-3 py-1
+                    text-[11px] font-bold transition-colors
+                    ${
+                      canStackSelection
+                        ? "bg-sky-600 text-white hover:bg-sky-700"
+                        : "cursor-not-allowed bg-slate-200 text-slate-400"
+                    }
+                  `}
+                  title={
+                    !canStackSelection
+                      ? "Selection cannot form a stack — must be same series, stackable, ≤8 members"
+                      : `Group ${selectedIds.length} devices into a stack`
+                  }
+                >
+                  📚 Stack ({selectedIds.length})
+                </button>
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ════════════════════════════════════════════════════════ */}
+      {/* SECTION 5 — Inventory Header                              */}
+      {/* ════════════════════════════════════════════════════════ */}
+      <div className="border-b border-slate-200 bg-slate-50/60 p-3">
+        <div className="mb-2 flex items-center justify-between">
+          <p className="text-[10px] font-bold uppercase tracking-wider text-slate-600">
             Devices
           </p>
-          <span className="text-[10px] font-mono text-slate-500 bg-white px-1.5 py-0.5 rounded border border-slate-200">
+          <span
+            className="
+              rounded border border-slate-200 bg-white px-1.5 py-0.5
+              font-mono text-[10px] text-slate-500
+            "
+          >
             {filtered.length}/{devices.length}
           </span>
         </div>
 
-        <input
-          type="text"
-          placeholder="🔍 Search devices..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="w-full border border-slate-200 p-1.5 rounded text-xs"
-        />
-        <div className="flex flex-wrap gap-1 mt-2">
+        <div className="relative">
+          <SearchIcon
+            size={12}
+            className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400"
+            aria-hidden
+          />
+          <input
+            type="text"
+            placeholder="Search devices…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="
+      w-full rounded-md border border-slate-300 bg-white pl-8 pr-2 py-1.5
+      text-xs
+      focus:border-cisco-blue-400 focus:outline-none focus:ring-2 focus:ring-cisco-blue-200
+    "
+          />
+        </div>
+
+        <div className="mt-2 flex flex-wrap gap-1">
           {layerChips
             .filter((c) => c.value === "all" || (layerCounts[c.value] ?? 0) > 0)
             .map((chip) => {
@@ -866,11 +970,15 @@ export default function DeviceListPanel({
                 <button
                   key={chip.value}
                   onClick={() => setLayerFilter(chip.value)}
-                  className={`text-[9px] font-bold px-1.5 py-0.5 rounded border transition-colors ${
-                    isActive
-                      ? "bg-slate-700 text-white border-slate-700"
-                      : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"
-                  }`}
+                  className={`
+                    rounded border px-1.5 py-0.5
+                    text-[9px] font-bold transition-colors
+                    ${
+                      isActive
+                        ? "border-slate-700 bg-slate-700 text-white"
+                        : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
+                    }
+                  `}
                   style={
                     isActive && cfg
                       ? { background: cfg.color, borderColor: cfg.color }
@@ -884,19 +992,26 @@ export default function DeviceListPanel({
         </div>
       </div>
 
-      {/* SECTION 3: SCROLLABLE DEVICE LIST */}
-      <div className="flex-1 overflow-y-auto custom-scrollbar p-2">
+      {/* ════════════════════════════════════════════════════════ */}
+      {/* SECTION 6 — Inventory List (scroll)                       */}
+      {/* ════════════════════════════════════════════════════════ */}
+      <div className="custom-scrollbar flex-1 overflow-y-auto p-2">
         {devices.length === 0 ? (
-          <div className="text-center py-8">
-            <p className="text-xs text-slate-400 italic">No devices yet</p>
-            <p className="text-[10px] text-slate-300 mt-1">
+          <div className="py-8 text-center">
+            <div className="mb-2 text-3xl opacity-50">🛜</div>
+            <p className="text-xs italic text-slate-400">No devices yet</p>
+            <p className="mt-1 text-[10px] text-slate-300">
               Use the form above to add one
             </p>
           </div>
         ) : filtered.length === 0 ? (
-          <p className="text-xs text-slate-400 italic p-2 text-center">
-            No matches
-          </p>
+          <div className="py-6 text-center">
+            <div className="mb-1 text-2xl opacity-40">🔎</div>
+            <p className="text-xs italic text-slate-400">No matches</p>
+            <p className="mt-1 text-[10px] text-slate-300">
+              Try a different search or layer filter
+            </p>
+          </div>
         ) : (
           <div className="space-y-1">
             {filtered.map((d) => {
@@ -907,70 +1022,75 @@ export default function DeviceListPanel({
               const isSelected = selectedIds.includes(d.id);
 
               return (
-                <div
+                <motion.div
                   key={d.id}
-                  className={`group flex items-center gap-2 p-2 rounded border transition-colors cursor-pointer ${
-                    isSelected
-                      ? "bg-purple-50 border-purple-300"
-                      : "border-transparent hover:bg-slate-50 hover:border-slate-200"
-                  }`}
+                  whileHover={{ x: 1 }}
+                  transition={{ duration: 0.12 }}
+                  className={`
+                    group flex cursor-pointer items-center gap-2
+                    rounded-md border p-2 transition-colors
+                    ${
+                      isSelected
+                        ? "border-sky-300 bg-sky-50"
+                        : "border-transparent hover:border-slate-200 hover:bg-slate-50"
+                    }
+                  `}
                   onClick={() => onConfigureDevice?.(d.id)}
                 >
-                  {/* ✨ STACK: selection checkbox */}
                   <input
                     type="checkbox"
                     checked={isSelected}
-                    onChange={(e) =>
-                      toggleDeviceSelection(
-                        d.id,
-                        e as unknown as React.MouseEvent,
-                      )
-                    }
+                    onChange={() => toggleDeviceSelection(d.id)}
                     onClick={(e) => e.stopPropagation()}
-                    className="cursor-pointer shrink-0"
+                    className="shrink-0 cursor-pointer accent-sky-500"
                     title="Select for bulk action"
                   />
                   <span
-                    className="w-1.5 h-8 rounded-full shrink-0"
+                    className="h-8 w-1.5 shrink-0 rounded-full"
                     style={{ background: cfg.color }}
                   />
-                  <div className="flex flex-col min-w-0 flex-1">
-                    <span className="font-semibold text-xs text-slate-800 truncate">
+                  <div className="flex min-w-0 flex-1 flex-col">
+                    <span className="truncate text-xs font-semibold text-slate-800">
                       {d.name}
                     </span>
-                    <span className="text-[10px] text-slate-400 font-mono truncate">
+                    <span className="truncate font-mono text-[10px] text-slate-400">
                       {d.id} · {d.hardware.chassisPid}
                       {groupOf && (
-                        <span className="ml-1 text-purple-600">
-                          · {groupOf.groupKind === "stack" ? "📚" : "📦"}{" "}
+                        <span className="ml-1 text-sky-600">
+                          · {groupOf.kind === "stack" ? "📚" : "📦"}{" "}
                           {groupOf.label}
                         </span>
                       )}
                     </span>
                   </div>
-                  <div className="flex flex-col gap-0.5 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <div
+                    className="
+                      flex shrink-0 flex-col gap-0.5
+                      opacity-0 transition-opacity group-hover:opacity-100
+                    "
+                  >
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
                         onConfigureDevice?.(d.id);
                       }}
-                      className="text-blue-500 hover:text-blue-700 text-xs"
+                      className="text-xs text-sky-500 hover:text-sky-700"
                       title="Configure"
                     >
-                      ⚙
+                      <ConfigureIcon size={12} />
                     </button>
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
                         deleteDevice(d.id);
                       }}
-                      className="text-red-500 hover:text-red-700 text-xs font-bold"
+                      className="text-xs font-bold text-rose-500 hover:text-rose-700"
                       title="Delete"
                     >
-                      ✕
+                      <DeleteIcon size={12} />
                     </button>
                   </div>
-                </div>
+                </motion.div>
               );
             })}
           </div>
@@ -987,10 +1107,10 @@ function SpeedBadge({ sku }: { sku: string }) {
   const { label, color } = getSpeedInfo(sku);
   return (
     <span
-      className="text-[9px] font-bold px-1.5 py-0.5 rounded"
+      className="rounded px-1.5 py-0.5 text-[9px] font-bold"
       style={{
         background: `${color}15`,
-        color: color,
+        color,
         border: `1px solid ${color}40`,
       }}
     >
@@ -1000,10 +1120,10 @@ function SpeedBadge({ sku }: { sku: string }) {
 }
 
 function getSpeedInfo(sku: string): { label: string; color: string } {
-  if (sku.includes("400G")) return { label: "400G", color: "#ec4899" };
-  if (sku.includes("100G")) return { label: "100G", color: "#9333ea" };
-  if (sku.includes("40G")) return { label: "40G", color: "#7c3aed" };
-  if (sku.includes("25G")) return { label: "25G", color: "#06b6d4" };
+  if (sku.includes("400G")) return { label: "400G", color: "#10b981" };
+  if (sku.includes("100G")) return { label: "100G", color: "#ef4444" };
+  if (sku.includes("40G")) return { label: "40G", color: "#f59e0b" };
+  if (sku.includes("25G")) return { label: "25G", color: "#8b5cf6" };
   if (sku.includes("10G")) return { label: "10G", color: "#0ea5e9" };
   if (sku.includes("1G") || sku.startsWith("GLC")) {
     return { label: "1G", color: "#64748b" };

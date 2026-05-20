@@ -1,0 +1,8 @@
+{
+  "schemaVersion": 1,
+  "meta": {
+    "generatedAt": "2026-05-18T00:00:00.000Z",
+    "description": "Cisco enterprise switching catalog — converted from catalog.ts",
+    "sourceFile": "app/lib/hardware/catalog.ts (manual migration)"
+  }
+}

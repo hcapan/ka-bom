@@ -41,6 +41,20 @@ export const FaceplateConfigSchema = z.object({
 });
 export type FaceplateConfig = z.infer<typeof FaceplateConfigSchema>;
 
+export const NetworkModuleOptionSchema = z.object({
+  pid: z.string().min(1),
+  label: z.string().min(1),
+  default: z.boolean().optional(),
+});
+
+export const NetworkModuleOptionsSchema = z.object({
+  options: z.array(NetworkModuleOptionSchema).min(1),
+});
+
+export type NetworkModuleOption = z.infer<typeof NetworkModuleOptionSchema>;
+export type NetworkModuleOptions = z.infer<typeof NetworkModuleOptionsSchema>;
+
+
 // ------------------------------------------------------------
 // MODULAR CHASSIS SLOT SPECIFICATION
 // ------------------------------------------------------------
@@ -113,6 +127,48 @@ export const StackingSpecSchema = z.object({
 });
 export type StackingSpec = z.infer<typeof StackingSpecSchema>;
 
+// ============================================================
+// PSU Options (NEW)
+// ============================================================
+export const PsuOptionSchema = z.object({
+  pid: z.string().min(1),
+  label: z.string().min(1),
+  default: z.boolean().optional(),
+});
+
+export const PsuOptionsSchema = z.object({
+  emitPrimary: z.boolean().optional(),
+  primary: z.array(PsuOptionSchema).min(1),
+  secondaryPidMap: z.record(z.string(), z.string()),
+  noRedundantPid: z.string().optional(),
+});
+
+export const PsuConfigSchema = z.object({
+  options: z
+    .array(
+      z.object({
+        pid: z.string().min(1),
+        label: z.string().min(1),
+        default: z.boolean().optional(),
+      }),
+    )
+    .min(1),
+  defaultQty: z.number().int().positive(),
+  maxQty: z.number().int().positive(),
+});
+
+export type PsuConfig = z.infer<typeof PsuConfigSchema>;
+
+export const LegacyRedundantPsuSchema = z.object({
+  pid: z.string(),
+  description: z.string().optional(),
+});
+
+
+export type PsuOption = z.infer<typeof PsuOptionSchema>;
+export type PsuOptions = z.infer<typeof PsuOptionsSchema>;
+
+
 // ------------------------------------------------------------
 // CHASSIS BUNDLE (the full auto-included config for a chassis)
 // ------------------------------------------------------------
@@ -120,7 +176,10 @@ export type StackingSpec = z.infer<typeof StackingSpecSchema>;
 export const ChassisBundleSchema = z.object({
   autoIncluded: z.array(BundleAutoItemSchema),
   powerCord: PowerCordSpecSchema,
-  redundantPsu: RedundantPsuSpecSchema.optional(),
+  redundantPsu: LegacyRedundantPsuSchema.optional(),
+  psuOptions: PsuOptionsSchema.optional(),
+  psuConfig: PsuConfigSchema.optional(), 
+  networkModuleOptions: NetworkModuleOptionsSchema.optional(),
   smartnet: SmartnetSpecSchema,
   license: LicenseSpecSchema,
   stacking: StackingSpecSchema.optional(),

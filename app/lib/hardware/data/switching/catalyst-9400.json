@@ -1,0 +1,192 @@
+{
+  "Catalyst 9400": {
+    "productCategory": "modular-switch",
+    "type": "core",
+    "vendor": "Cisco",
+    "description": "Modular Campus Core/Distribution Chassis",
+    "compatibleOptics": [
+      "QSFP-100G-SR4",
+      "QSFP-100G-LR4",
+      "QSFP-40G-SR4",
+      "SFP-25G-SR-S",
+      "SFP-10G-SR",
+      "SFP-10G-LR",
+      "GLC-SX-MMD",
+      "GLC-LH-SMD"
+    ],
+    "pids": [
+      {
+        "pid": "C9404R",
+        "description": "Catalyst 9404R 4-slot chassis (2RU). 2 linecard + 2 supervisor slots.",
+        "vendor": "Cisco",
+        "faceplate": {
+          "modularSlots": 4,
+          "rackUnits": 2,
+          "powerBays": 4
+        },
+        "bundle": {
+          "autoIncluded": [
+            { "pid": "NETWORK-PNP-LIC", "qty": 1 },
+            { "pid":"C9400-SSD-NONE" , "qty":1 }
+
+          ],
+          "powerCord": {
+            "qty": 1,
+             "byRegion": {
+                "US": "CAB-US520-C19-US",
+                "EU": "CAB-CEE77-C19-EU",
+                "CN": "CAB-9K16A-CH",
+                "BR": "CAB-EL224-C19-BR",
+                "INTL": "CAB-I309-C19-INTL",
+                "IL": "CAB-S132-C19-ISRL",
+                "IN": "CAB-SABS-C19-IND",
+                "AU": "CAB-A3112-C19-AUS",
+                "CH": "CAB-ACS-16",
+                "IT": "CAB-C2316-C19-IT",
+                "TW": "CAB-AC-C19-TW"
+            }
+          },
+          "psuConfig": {
+            "options": [
+              { "pid": "C9400-PWR-2100AC", "label": "2100W AC" },
+              { "pid": "C9400-PWR-3200AC", "label": "3200W AC", "default": true },
+              { "pid": "C9400-PWR-3200DC", "label": "3200W DC" }
+            ],
+            "defaultQty": 1,
+            "maxQty": 4
+          },
+          "smartnet": {
+             "baseSkuByTier": {
+              "SNT": "CON-SNT-C9404R",
+              "SNTP": "CON-SNTP-C9404R"
+            }
+          },
+          "license": {
+            "tier": "Advantage",
+            "entitlementPid": "C9400-DNA-A",
+            "subscriptionByTerm": {
+              "1": "C9400-DNA-A-1Y",
+              "3": "C9400-DNA-A-3Y",
+              "5": "C9400-DNA-A-5Y",
+              "7": "C9400-DNA-A-7Y"
+            }
+          }
+        }
+      },
+      {
+        "pid": "C9407R",
+        "description": "Catalyst 9407R 7-slot chassis (10RU). 5 linecard + 2 supervisor slots.",
+        "vendor": "Cisco",
+        "faceplate": {
+          "modularSlots": 7,
+          "rackUnits": 10,
+          "powerBays": 8
+        },
+        "bundle": {
+          "autoIncluded": [
+            { "pid": "NETWORK-PNP-LIC", "qty": 1 },
+            { "pid":"C9400-SSD-NONE" , "qty":1 }
+          ],
+          "powerCord": {
+            "qty": 1,
+            "byRegion": {
+                "US": "CAB-US520-C19-US",
+                "EU": "CAB-CEE77-C19-EU",
+                "CN": "CAB-9K16A-CH",
+                "BR": "CAB-EL224-C19-BR",
+                "INTL": "CAB-I309-C19-INTL",
+                "IL": "CAB-S132-C19-ISRL",
+                "IN": "CAB-SABS-C19-IND",
+                "AU": "CAB-A3112-C19-AUS",
+                "CH": "CAB-ACS-16",
+                "IT": "CAB-C2316-C19-IT",
+                "TW": "CAB-AC-C19-TW"
+            }
+          },
+          "psuConfig": {
+            "options": [
+              { "pid": "C9400-PWR-2100AC", "label": "2100W AC" },
+              { "pid": "C9400-PWR-3200AC", "label": "3200W AC", "default": true },
+              { "pid": "C9400-PWR-3200DC", "label": "3200W DC" }
+            ],
+            "defaultQty": 2,
+            "maxQty": 8
+          },
+          "smartnet": {
+             "baseSkuByTier": {
+              "SNT": "CON-SNT-C9404R",
+              "SNTP": "CON-SNTP-C9404R"
+            }
+          },
+          "license": {
+            "tier": "Advantage",
+            "entitlementPid": "C9400-DNA-A",
+            "subscriptionByTerm": {
+              "1": "C9400-DNA-A-1Y",
+              "3": "C9400-DNA-A-3Y",
+              "5": "C9400-DNA-A-5Y",
+              "7": "C9400-DNA-A-7Y"
+            }
+          }
+        }
+      },
+      {
+        "pid": "C9410R",
+        "description": "Catalyst 9410R 10-slot chassis (13RU). 8 linecard + 2 supervisor slots.",
+        "vendor": "Cisco",
+        "faceplate": {
+          "modularSlots": 10,
+          "rackUnits": 13,
+          "powerBays": 8
+        },
+        "bundle": {
+          "autoIncluded": [
+            { "pid": "NETWORK-PNP-LIC", "qty": 1 },
+            { "pid":"C9400-SSD-NONE" , "qty":1 }
+          ],
+          "powerCord": {
+            "qty": 1,
+             "byRegion": {
+                "US": "CAB-US520-C19-US",
+                "EU": "CAB-CEE77-C19-EU",
+                "CN": "CAB-9K16A-CH",
+                "BR": "CAB-EL224-C19-BR",
+                "INTL": "CAB-I309-C19-INTL",
+                "IL": "CAB-S132-C19-ISRL",
+                "IN": "CAB-SABS-C19-IND",
+                "AU": "CAB-A3112-C19-AUS",
+                "CH": "CAB-ACS-16",
+                "IT": "CAB-C2316-C19-IT",
+                "TW": "CAB-AC-C19-TW"
+            }
+          },
+          "psuConfig": {
+            "options": [
+              { "pid": "C9400-PWR-2100AC", "label": "2100W AC" },
+              { "pid": "C9400-PWR-3200AC", "label": "3200W AC", "default": true },
+              { "pid": "C9400-PWR-3200DC", "label": "3200W DC" }
+            ],
+            "defaultQty": 4,
+            "maxQty": 8
+          },
+          "smartnet": {
+            "baseSkuByTier": {
+              "SNT": "CON-SNT-C9404R",
+              "SNTP": "CON-SNTP-C9404R"
+            }
+          },
+          "license": {
+            "tier": "Advantage",
+            "entitlementPid": "C9400-DNA-A",
+            "subscriptionByTerm": {
+              "1": "C9400-DNA-A-1Y",
+              "3": "C9400-DNA-A-3Y",
+              "5": "C9400-DNA-A-5Y",
+              "7": "C9400-DNA-A-7Y"
+            }
+          }
+        }
+      }
+    ]
+  }
+}

@@ -1,5 +1,5 @@
 "use client";
-import { useCallback, useEffect, useMemo, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ReactFlow,
   Background,
@@ -13,14 +13,16 @@ import {
   useNodesState,
   useEdgesState,
   NodeChange,
+  Panel,
   EdgeChange,
   applyNodeChanges,
+  useReactFlow,
   applyEdgeChanges,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
-
-import DeviceNode, { DeviceData } from "./DeviceNode";
-import CustomEdge from "./CustomEdge";
+import { toast } from "sonner";
+import DeviceNode from "./DeviceNode";
+import CustomEdge from "./Edges/CustomEdge";
 import {
   Device,
   Link,
@@ -33,21 +35,40 @@ import {
   DeviceType,
   getEffectiveCatalog,
 } from "../../lib/hardware/catalog";
-import { BundledEdge } from "./BundledEdge";
+import { BundledEdge } from "./Edges/BundledEdge";
 import { bundleLinks } from "../../lib/utils/bundleLinks";
 import GroupNode, { GroupNodeData } from "./GroupNode";
-import { computeGroupBox } from "../../lib/utils/groupLayout";
+import { computeGroupBox, type ComputedBox } from "../../lib/utils/groupLayout";
+import {
+  layoutChildrenInGroup,
+  calcGroupSize,
+  pickColsFor,
+} from "@/app/lib/utils/groupLayout";
 import {
   getChildGroups,
   getGroupDepth,
   findVisibleAncestor,
 } from "../../lib/utils/groupHelpers";
-import { PhysicalStackNode } from './PhysicalStackNode';
+import { PhysicalStackNode } from "./PhysicalStackNode";
 import { ModularChassisNode } from "./ModularChassisNode";
 import { isModularChassis } from "@/app/lib/hardware/chassisHelpers";
+import {
+  DEVICE_W,
+  DEVICE_H,
+  HEADER_H,
+  PADDING_X,
+  PADDING_Y,
+  GAP_X,
+  GAP_Y,
+} from "../../lib/utils/groupLayout";
 
-const nodeTypes = { device: DeviceNode, group: GroupNode , stack: PhysicalStackNode , modular: ModularChassisNode,   };
-const edgeTypes = { custom: CustomEdge, bundled:BundledEdge };
+const nodeTypes = {
+  device: DeviceNode,
+  group: GroupNode,
+  stack: PhysicalStackNode,
+  modular: ModularChassisNode,
+};
+const edgeTypes = { custom: CustomEdge, bundled: BundledEdge };
 
 type Props = {
   devices: Device[];
@@ -81,7 +102,6 @@ type Props = {
 // HELPERS
 // ============================================================
 
-
 function devicesToNodes(
   devices: ConfiguredDevice[],
   groups: DeviceGroup[],
@@ -91,6 +111,14 @@ function devicesToNodes(
   },
 ): Node[] {
   const groupById = new Map(groups.map((g) => [g.id, g]));
+
+  const siblingsByGroup = new Map<string, ConfiguredDevice[]>();
+  devices.forEach((d) => {
+    if (d.groupId) {
+      if (!siblingsByGroup.has(d.groupId)) siblingsByGroup.set(d.groupId, []);
+      siblingsByGroup.get(d.groupId)!.push(d);
+    }
+  });
 
   const isHidden = (deviceGroupId: string | null | undefined): boolean => {
     if (!deviceGroupId) return false;
@@ -117,29 +145,44 @@ function devicesToNodes(
       // ⭐ Detect modular chassis (C9404R / C9407R / C9410R, etc.)
       const isModular = isModularChassis(d.hardware.chassisPid);
 
-      const basePosition = d.position ?? {
-        x: 100 + (i % 4) * 220,
-        y: LAYER_CONFIG[d.type].y + 50,
-      };
+      let basePosition;
+      if (d.groupId) {
+        const siblings = siblingsByGroup.get(d.groupId) ?? [];
+        const localIndex = siblings.findIndex((x) => x.id === d.id);
+        const cols = pickColsFor(siblings.length);
+        const { width: groupWidth } = calcGroupSize(siblings.length, cols);
 
-      // ─── Modular chassis branch ───────────────────────────────
-      if (isModular) {
-        return [
-          {
-            id: d.id,
-            type: "modular",
-            position: basePosition,
-            data: {
-              device: d,
-              onConfigureSlot: handlers.onConfigureSlot,
-              onConfigureDevice: handlers.onConfigureDevice,
-            },
-            parentId: d.groupId ?? undefined,
-            extent: d.groupId ? ("parent" as const) : undefined,
-            draggable: true,
-          },
-        ];
+        // Always recompute for grouped devices — ignore stale persisted positions
+        const row = Math.floor(localIndex / cols);
+        const col = localIndex % cols;
+        const itemsInRow = Math.min(cols, siblings.length - row * cols);
+        const rowWidth = itemsInRow * DEVICE_W + (itemsInRow - 1) * GAP_X;
+        const startX = (groupWidth - rowWidth) / 2;
+
+        basePosition = {
+          x: startX + col * (DEVICE_W + GAP_X),
+          y: HEADER_H + PADDING_Y + row * (DEVICE_H + GAP_Y),
+        };
+      } else {
+        // Free device — use persisted or default
+        basePosition = d.position ?? {
+          x: 100,
+          y: LAYER_CONFIG[d.type].y + 50,
+        };
       }
+
+      if (isModular) {
+        return [{
+          id: d.id,
+          type: "modular",
+          position: basePosition,
+          data: { device: d, ...handlers },
+          parentId: d.groupId ?? undefined,
+          extent: d.groupId ? ("parent" as const) : undefined,
+          draggable: false,
+        }];
+      }
+
 
       // ─── Fixed-switch (existing) branch ───────────────────────
       return [
@@ -155,7 +198,7 @@ function devicesToNodes(
           },
           parentId: d.groupId ?? undefined,
           extent: d.groupId ? ("parent" as const) : undefined,
-          draggable: !isStackMember,
+          draggable: false,
         },
       ];
     });
@@ -177,7 +220,10 @@ function groupsToNodes(
     const childDevices = devices.filter((d) => d.groupId === g.id);
     const childSubgroups = getChildGroups(groups, g.id);
     const depth = getGroupDepth(groups, g.id) - 1;
-    const box = g.collapsed ? null : computeGroupBox(g.id, devices, groups);
+
+    const count = childDevices.length;
+    const cols = pickColsFor(count);
+    const { width, height } = calcGroupSize(count, cols);
 
     // ⭐ STACK: derive series + maxStackSize from member devices
     let stackSeries: string | undefined;
@@ -217,17 +263,51 @@ function groupsToNodes(
       id: g.id,
       type: "group",
       position: g.position,
-      width: box?.width,
-      height: box?.height,
+      style: { width, height },
       data,
       parentId: g.parentGroupId ?? undefined,
       extent: g.parentGroupId ? ("parent" as const) : undefined,
       zIndex: -1 - depth,
       deletable: false,
       selectable: true,
-      draggable: true,
+      draggable: false,
     };
   });
+}
+
+/**
+ * Ensures parent nodes appear before child nodes in the array.
+ * Strips parentId from nodes whose parent doesn't exist in the array.
+ *
+ * React Flow requires this ordering, otherwise it crashes on
+ * `clampPositionToParent` / `updateNodeInternals` when a child
+ * is processed before its parent has been measured.
+ */
+function orderNodesParentFirst(nodes: Node[]): Node[] {
+  const nodeIds = new Set(nodes.map((n) => n.id));
+  const parents: Node[] = [];
+  const children: Node[] = [];
+  const orphansFixed: Node[] = [];
+
+  for (const n of nodes) {
+    if (!n.parentId) {
+      parents.push(n);
+    } else if (nodeIds.has(n.parentId)) {
+      children.push(n);
+    } else {
+      // Parent doesn't exist — strip parentId, treat as standalone
+      console.warn(
+        `[CANVAS] Node ${n.id} has parentId="${n.parentId}" but parent not in nodes. Stripping.`,
+      );
+      orphansFixed.push({
+        ...n,
+        parentId: undefined,
+        extent: undefined,
+      });
+    }
+  }
+
+  return [...parents, ...children, ...orphansFixed];
 }
 
 function linkToEdge(l: Link): Edge {
@@ -272,6 +352,30 @@ function linkToEdge(l: Link): Edge {
       strokeDasharray: l.isLateral ? "8 4" : undefined,
     },
   };
+}
+
+function ZoomBadge() {
+  const { getZoom } = useReactFlow();
+  const [zoom, setZoom] = useState(1);
+
+  useEffect(() => {
+    const id = setInterval(() => setZoom(getZoom()), 200);
+    return () => clearInterval(id);
+  }, [getZoom]);
+
+  return (
+    <div
+      className="
+        rounded-full border border-slate-200 bg-white/90
+        px-2.5 py-1 text-[10px] font-semibold text-slate-600
+        shadow-sm backdrop-blur-md
+        tabular-nums
+      "
+      title="Current zoom"
+    >
+      {Math.round(zoom * 100)}%
+    </div>
+  );
 }
 
 function redirectLinksThroughGroups(
@@ -358,13 +462,14 @@ function CanvasInner({
   onUpdateStack,
   onConvertStackToLogical,
 }: Props) {
-   const deviceHandlers = useMemo(
+  const deviceHandlers = useMemo(
     () => ({
       onConfigureSlot,
       onConfigureDevice: (deviceId: string) => onNodeClick?.(deviceId),
     }),
     [onConfigureSlot, onNodeClick],
   );
+
 
   const [nodes, setNodes] = useNodesState([
     ...groupsToNodes(groups, devices, {
@@ -374,22 +479,12 @@ function CanvasInner({
       onUpdateStack, // ⭐ STACK
       onConvertToLogical: onConvertStackToLogical, // ⭐ STACK
     }),
-    ...devicesToNodes(devices, groups,deviceHandlers),
+    ...devicesToNodes(devices, groups, deviceHandlers),
   ]);
-
-  console.log("[CANVAS RENDER]", {
-    deviceCount: devices.length,
-    groupCount: groups.length,
-    groupIds: groups.map((g) => g.id),
-    devicesInGroups: devices
-      .filter((d) => d.groupId)
-      .map((d) => `${d.id}→${d.groupId}`),
-  });
 
   const [edges, setEdges] = useEdgesState(
     buildEdges(links, devices, groups, ui, onExpandBundle),
   );
-  
 
   // Refs for latest values inside event handlers
   const devicesRef = useRef(devices);
@@ -423,6 +518,7 @@ function CanvasInner({
     [],
   );
 
+
   // Sync refs for one-way prop→canvas
   const lastSyncedDeviceIdsRef = useRef<string>("");
   const lastSyncedGroupKeyRef = useRef<string>("");
@@ -432,102 +528,110 @@ function CanvasInner({
 
   // Re-sync NODES when devices or groups change
   useEffect(() => {
-  // ─── Build sync keys ──────────────────────────────────────────
-  const incomingDeviceIds = devices
-    .map((d) => d.id)
-    .sort()
-    .join("|");
+    // ─── Build sync keys ──────────────────────────────────────────
+    const incomingDeviceIds = devices
+      .map((d) => d.id)
+      .sort()
+      .join("|");
 
-  const incomingGroupKey = groups
-    .map(
-      (g) =>
-        `${g.id}:${g.kind}:${g.label}:${g.collapsed}:${g.parentGroupId ?? ""}:${
-          g.position.x
-        },${g.position.y}:${(g.memberOrder ?? []).join(",")}`,
-    )
-    .sort()
-    .join("|");
+    const incomingGroupKey = groups
+      .map(
+        (g) =>
+          `${g.id}:${g.kind}:${g.label}:${g.collapsed}:${g.parentGroupId ?? ""}:${
+            g.position.x
+          },${g.position.y}:${(g.memberOrder ?? []).join(",")}`,
+      )
+      .sort()
+      .join("|");
 
-  const devicesChanged = incomingDeviceIds !== lastSyncedDeviceIdsRef.current;
-  const groupsChanged = incomingGroupKey !== lastSyncedGroupKeyRef.current;
+    const devicesChanged = incomingDeviceIds !== lastSyncedDeviceIdsRef.current;
+    const groupsChanged = incomingGroupKey !== lastSyncedGroupKeyRef.current;
 
-  if (!devicesChanged && !groupsChanged) {
-    return;
-  }
+    if (!devicesChanged && !groupsChanged) {
+      return;
+    }
 
-  lastSyncedDeviceIdsRef.current = incomingDeviceIds;
-  lastSyncedGroupKeyRef.current = incomingGroupKey;
+    lastSyncedDeviceIdsRef.current = incomingDeviceIds;
+    lastSyncedGroupKeyRef.current = incomingGroupKey;
 
-  // ─── Partition groups by kind ─────────────────────────────────
-  const stackGroups = groups.filter((g) => g.kind === 'stack');
-  const logicalGroups = groups.filter((g) => g.kind === 'logical');
+    // ⭐ DEFENSIVE: strip orphan parent references
+    const validGroupIds = new Set(groups.map((g) => g.id));
+    const sanitizedDevices = devices.map((d) => {
+      const groupRef = d.groupId ?? d.parentGroupId;
+      if (groupRef && !validGroupIds.has(groupRef)) {
+        return { ...d, groupId: undefined, parentGroupId: undefined };
+      }
+      return d;
+    });
 
-  // ─── Identify devices that live INSIDE a stack ────────────────
-  const stackMemberIds = new Set<string>(
-    stackGroups.flatMap((g) => g.memberOrder ?? []),
-  );
+    // ─── Partition groups by kind ─────────────────────────────────
+    const stackGroups = groups.filter((g) => g.kind === "stack");
+    const logicalGroups = groups.filter((g) => g.kind === "logical");
 
-  // ─── Build stack nodes (composite) ────────────────────────────
-  const stackNodes: Node[] = stackGroups.map((stack) => {
-    const members = (stack.memberOrder ?? [])
-      .map((id) => devices.find((d) => d.id === id))
-      .filter((d): d is Device => Boolean(d));
+    // ─── Identify devices that live INSIDE a stack ────────────────
+    const stackMemberIds = new Set<string>(
+      stackGroups.flatMap((g) => g.memberOrder ?? []),
+    );
 
-    return {
-      id: stack.id,
-      type: 'stack',
-      position: stack.position,
-      data: {
-        stackId: stack.id,
-        label: stack.label,
-        members,
-        onConvertToLogical: onConvertStackToLogical,
-        onDelete: onRemoveGroup,
-      },
-      // No parentId. No extent. Just a normal draggable node.
-    };
-  });
+    // ─── Build stack nodes (composite) ────────────────────────────
+    const stackNodes: Node[] = stackGroups.map((stack) => {
+      const members = (stack.memberOrder ?? [])
+        .map((id) => sanitizedDevices.find((d) => d.id === id))
+        .filter((d): d is Device => Boolean(d));
 
-  // ─── Build logical group nodes (existing behavior) ────────────
-  const logicalGroupNodes = groupsToNodes(logicalGroups, devices, {
-    onToggleCollapse: onToggleGroupCollapse,
-    onRename: onRenameGroup,
-    onDelete: onRemoveGroup,
+      return {
+        id: stack.id,
+        type: "stack",
+        position: stack.position,
+        data: {
+          stackId: stack.id,
+          label: stack.label,
+          members,
+          onConvertToLogical: onConvertStackToLogical,
+          onDelete: onRemoveGroup,
+        },
+        // No parentId. No extent. Just a normal draggable node.
+      };
+    });
+
+    // ─── Build logical group nodes (existing behavior) ────────────
+    const logicalGroupNodes = groupsToNodes(logicalGroups, devices, {
+      onToggleCollapse: onToggleGroupCollapse,
+      onRename: onRenameGroup,
+      onDelete: onRemoveGroup,
+      onUpdateStack,
+      onConvertToLogical: onConvertStackToLogical,
+    });
+
+    // ─── Build standalone device nodes (NOT in a stack) ───────────
+    const standaloneDevices = devices.filter((d) => !stackMemberIds.has(d.id));
+    const deviceNodes = devicesToNodes(
+      standaloneDevices,
+      logicalGroups,
+      deviceHandlers,
+    );
+
+    // ─── Compose final node list ──────────────────────────────────
+    // Order: logical groups → stacks → standalone devices
+    // (logical groups must precede their child devices for parentId to work)
+    const newNodes: Node[] = orderNodesParentFirst([
+      ...logicalGroupNodes,
+      ...stackNodes,
+      ...deviceNodes,
+    ]);
+
+    setNodes(newNodes);
+  }, [
+    devices,
+    groups,
+    onToggleGroupCollapse,
+    deviceHandlers,
+    onRenameGroup,
+    onRemoveGroup,
     onUpdateStack,
-    onConvertToLogical: onConvertStackToLogical,
-  });
-
-  // ─── Build standalone device nodes (NOT in a stack) ───────────
-  const standaloneDevices = devices.filter((d) => !stackMemberIds.has(d.id));
-  const deviceNodes = devicesToNodes(standaloneDevices, logicalGroups,deviceHandlers);
-
-  // ─── Compose final node list ──────────────────────────────────
-  // Order: logical groups → stacks → standalone devices
-  // (logical groups must precede their child devices for parentId to work)
-  const newNodes: Node[] = [
-    ...logicalGroupNodes,
-    ...stackNodes,
-    ...deviceNodes,
-  ];
-
-  console.log('[CANVAS SYNC]', {
-    stacks: stackNodes.length,
-    logicalGroups: logicalGroupNodes.length,
-    standaloneDevices: deviceNodes.length,
-    stackMemberIds: Array.from(stackMemberIds),
-  });
-
-  setNodes(newNodes);
-}, [
-  devices,
-  groups,
-  onToggleGroupCollapse,
-  onRenameGroup,
-  onRemoveGroup,
-  onUpdateStack,
-  onConvertStackToLogical,
-  setNodes,
-]);
+    onConvertStackToLogical,
+    setNodes,
+  ]);
 
   // Re-sync EDGES when links, devices, groups, or ui change
   useEffect(() => {
@@ -570,16 +674,6 @@ function CanvasInner({
 
       if (!hasPositionChange && !hasRemoval) return;
 
-      // Sync GROUP node positions back to project
-
-      console.log("[SYNC EFFECT] fired", {
-        deviceCount: devices.length,
-        groupCount: groups.length,
-        groups: groups.map((g) => ({ id: g.id, members: g.memberOrder })),
-        devicesWithGroupId: devices
-          .filter((d) => d.groupId)
-          .map((d) => ({ id: d.id, groupId: d.groupId })),
-      });
       const groupNodesNow = next.filter((n) => n.type === "group");
       let groupsChanged = false;
       const updatedGroups = groupsRef.current.map((g) => {
@@ -599,7 +693,9 @@ function CanvasInner({
       }
 
       // Sync DEVICE nodes — MERGE, don't replace (preserves hidden devices)
-      const deviceNodesNow = next.filter((n) => n.type === "device");
+      const deviceNodesNow = next.filter(
+        (n) => n.type === "device" || n.type === "modular",
+      );
       const visibleNodeIds = new Set(deviceNodesNow.map((n) => n.id));
 
       const positionUpdates = new Map<string, { x: number; y: number }>();
@@ -627,7 +723,9 @@ function CanvasInner({
       let finalDevices = updatedDevices;
       if (hasRemoval) {
         const previouslyVisibleIds = new Set(
-          nodes.filter((n) => n.type === "device").map((n) => n.id),
+          nodes
+            .filter((n) => n.type === "device" || n.type === "modular")
+            .map((n) => n.id),
         );
         const removedIds = new Set<string>();
         for (const id of previouslyVisibleIds) {
@@ -772,7 +870,14 @@ function CanvasInner({
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}
         onNodeClick={(_, node) => {
-          if (node.type === "device") onNodeClick?.(node.id);
+          console.log("[CANVAS CLICK]", {
+            nodeId: node.id,
+            nodeType: node.type,
+            willOpenPanel: node.type === "device" || node.type === "modular",
+          });
+          if (node.type === "device" || node.type === "modular") {
+            onNodeClick?.(node.id);
+          }
         }}
         fitView
         fitViewOptions={{ padding: 0.3 }}
@@ -787,16 +892,52 @@ function CanvasInner({
           [10000, 10000],
         ]}
       >
-        <Background variant={BackgroundVariant.Dots} gap={20} size={1} />
-        <Controls />
+        <Background
+          variant={BackgroundVariant.Dots}
+          gap={20}
+          size={1}
+          color="#A3BBDB"
+          className="opacity-40"
+        />
+
+        <Controls
+          position="bottom-left"
+          showInteractive={false}
+          className="
+    rounded-xl! border! border-slate-200! bg-white/90!
+    shadow-lg! backdrop-blur-md!
+    [&>button]:border-slate-200!
+    [&>button]:bg-transparent!
+    [&>button:hover]:bg-sky-50!
+    [&>button:hover]:text-sky-600!
+    [&>button]:text-slate-600!
+  "
+        />
         <MiniMap
+          position="bottom-right"
+          pannable
+          zoomable
+          nodeStrokeWidth={2}
+          nodeBorderRadius={4}
           nodeColor={(n) => {
-            if (n.type === "group") return "#a855f7";
+            if (n.type === "group") return "#0ea5e9"; // sky (was violet)
+            if (n.type === "stack") return "#0284c7"; // sky-600
+            if (n.type === "modular") return "#0369a1"; // sky-700
             const type = (n.data as { type?: DeviceType })?.type;
             return type ? LAYER_CONFIG[type].color : "#94a3b8";
           }}
-          maskColor="rgba(241, 245, 249, 0.7)"
+          nodeStrokeColor="#ffffff"
+          maskColor="rgba(241, 245, 249, 0.6)"
+          className="
+            rounded-xl! border! border-slate-200! bg-white/80!
+            shadow-lg! backdrop-blur-md! overflow-hidden
+        "
+          style={{ width: 180, height: 120 }}
         />
+
+        <Panel position="bottom-center" className="m-2!">
+          <ZoomBadge />
+        </Panel>
       </ReactFlow>
 
       <div className="absolute top-2 left-2 z-10 flex flex-col gap-1 pointer-events-none">

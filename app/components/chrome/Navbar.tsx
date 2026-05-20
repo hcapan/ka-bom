@@ -1,82 +1,139 @@
 "use client";
+
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import Image from "next/image";
-import Logo from "../../images/Cisco_Logo_no_TM_Black-RGB.png"
+import {
+  Home,
+  Network,
+  HardDrive,
+  Upload,
+  Info,
+  type LucideIcon,
+} from "lucide-react";
+import Logo from "../../images/Cisco_Logo_no_TM_Black-RGB.png";
 
 type Props = {
   /** Optional: shown on the right (e.g., "12 devices · 8 links") */
   stats?: string;
-  
 };
 
-const NAV_ITEMS = [
-  { href: "/", label: "Home" },
-  { href: "/canvas", label: "Topology Builder" },
-  { href: "/hardwarelib", label: "Hardware Library" },
-  { href: "/import", label: "SKU Importer" },
-  { href: "/about", label: "About" },
+interface NavItem {
+  href: string;
+  label: string;
+  icon: LucideIcon;
+}
+
+const NAV_ITEMS: NavItem[] = [
+  { href: "/", label: "Home", icon: Home },
+  { href: "/canvas", label: "Topology Builder", icon: Network },
+  { href: "/hardwarelib", label: "Hardware Library", icon: HardDrive },
+  { href: "/import", label: "SKU Importer", icon: Upload },
+  { href: "/about", label: "About", icon: Info },
 ];
 
 export default function Navbar({ stats }: Props) {
   const pathname = usePathname();
 
   return (
-    <nav className="bg-white border-b border-slate-200 sticky top-0 z-50 backdrop-blur-md ">
-      <div className="max-w-480 mx-auto px-4 lg:px-6">
-        <div className="flex items-center justify-between h-14">
+    <nav
+      className="
+        sticky top-0 z-50
+        border-b border-slate-200
+        bg-white/85 backdrop-blur-md
+        shadow-[0_1px_2px_-1px_rgba(15,23,42,0.06)]
+      "
+    >
+      <div className="mx-auto max-w-screen-2xl px-4 lg:px-6">
+        <div className="flex h-14 items-center justify-between gap-4">
           {/* ============ LEFT: LOGO ============ */}
-          <Link href="/" className="flex items-center gap-2 group">
-            <div className="w-8 h-8 rounded-lg bg-linear-to-br flex items-center justify-center text-white font-bold text-sm shadow-sm group-hover:shadow-md transition-shadow">
-               <Image
-            src={Logo}
-            width={1440}
-            height={1440}
-            alt="Picture of the author"
-          />
+          <Link
+            href="/"
+            className="group flex shrink-0 items-center gap-2.5"
+            aria-label="CCW CANVAS"
+          >
+            <div
+              className="
+                flex h-8 w-8 items-center justify-center
+                rounded-lg border border-slate-200 bg-white
+                shadow-sm
+                transition-shadow group-hover:shadow-md
+              "
+            >
+              <Image
+                src={Logo}
+                width={32}
+                height={32}
+                alt="Cisco"
+                className="h-5 w-auto"
+                priority
+              />
             </div>
-            <div className="flex flex-col leading-tight">
-              <span className="font-bold text-slate-800 text-sm">KA-BOM</span>
-              <span className="text-[10px] text-slate-500 -mt-0.5">
-                Network Topology Builder
+            <div className="hidden flex-col leading-tight sm:flex">
+              <span className="text-sm font-bold tracking-tight text-cisco-indigo-500">
+                CCW<span className="text-cisco-blue-500">·</span>CANVAS
+              </span>
+              <span className="-mt-0.5 text-[9px] uppercase tracking-[0.15em] text-slate-400">
+                BOM AUTOMATION TOOL
               </span>
             </div>
           </Link>
 
           {/* ============ CENTER: NAV LINKS ============ */}
-          <div className="hidden md:flex items-center gap-1">
-            {NAV_ITEMS.map((item) => {
-              const isActive =
-                pathname === item.href ||
-                (item.href !== "/" && pathname.startsWith(item.href));
+          <div className="hidden flex-1 justify-center md:flex">
+            <div className="flex items-center gap-0.5">
+              {NAV_ITEMS.map((item) => {
+                const Icon = item.icon;
+                const isActive =
+                  pathname === item.href ||
+                  (item.href !== "/" && pathname.startsWith(item.href));
 
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors ${
-                    isActive
-                      ? "bg-slate-100 text-slate-900"
-                      : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
-                  }`}
-                >
-                  {item.label}
-                </Link>
-              );
-            })}
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    className={`
+                      relative flex items-center gap-1.5
+                      rounded-md px-3 py-1.5
+                      text-xs font-semibold transition-colors
+                      ${
+                        isActive
+                          ? "text-cisco-blue-700"
+                          : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+                      }
+                    `}
+                  >
+                    <Icon size={14} strokeWidth={2} />
+                    {item.label}
+                    {isActive && (
+                      <span
+                        aria-hidden
+                        className="
+                          absolute inset-x-2 -bottom-[15px]
+                          h-[2px] rounded-full bg-cisco-blue-500
+                        "
+                      />
+                    )}
+                  </Link>
+                );
+              })}
+            </div>
           </div>
 
-          {/* ============ RIGHT: STATS + ACTIONS ============ */}
-          <div className="flex items-center gap-3">
-            
-
+          {/* ============ RIGHT: STATS + GITHUB ============ */}
+          <div className="flex shrink-0 items-center gap-3">
             {stats && (
-              <span className="hidden lg:inline-block text-[11px] font-mono text-slate-500 bg-slate-50 px-2 py-1 rounded border border-slate-200">
+              <span
+                className="
+                  hidden rounded-full border border-slate-200 bg-slate-50
+                  px-2.5 py-0.5 font-mono text-[10px] text-slate-600
+                  lg:inline-block
+                "
+              >
                 {stats}
               </span>
             )}
 
-            {/* GitHub / Docs link (optional) */}
             <a
               href="https://github.com/hcapan"
               target="_blank"
@@ -94,8 +151,6 @@ export default function Navbar({ stats }: Props) {
               </svg>
               <span className="hidden sm:inline">GitHub</span>
             </a>
-
-            
           </div>
         </div>
       </div>

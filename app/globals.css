@@ -2,12 +2,36 @@
 
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+
+@theme {
+  /* Cisco brand */
+  --color-cisco-blue-50:  #E6F9FD;
+  --color-cisco-blue-100: #CCF3FB;
+  --color-cisco-blue-200: #99E7F7;
+  --color-cisco-blue-300: #66DBF3;
+  --color-cisco-blue-400: #33CFEF;
+  --color-cisco-blue-500: #00BCEB;
+  --color-cisco-blue-600: #0096BC;
+  --color-cisco-blue-700: #00708D;
+  --color-cisco-blue-800: #004B5E;
+  --color-cisco-blue-900: #00252F;
+
+  --color-cisco-indigo-50:  #E8EEF6;
+  --color-cisco-indigo-100: #D1DDED;
+  --color-cisco-indigo-500: #1E4471;
+  --color-cisco-indigo-700: #122944;
+  --color-cisco-indigo-900: #060E17;
+
+  --color-cisco-midnight-500: #0D274D;
+  --color-cisco-ocean:        #005073;
+  --color-cisco-sky:          #64BBE3;
+
+  --color-cisco-success: #6CC04A;
+  --color-cisco-warning: #FBAB18;
+  --color-cisco-danger:  #E2231A;
+
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
 }
-
-
 
 @media (prefers-color-scheme: dark) {
   :root {
@@ -16,11 +40,43 @@
   }
 }
 
+
+:root {
+  --background: #ffffff;
+  --foreground: #171717;
+}
+
+
+/* ─── Base typography & smoothing ──────────────────────── */
+html {
+  font-family: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ─── Subtle app background gradient ───────────────────── */
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
-  
+  background:
+    radial-gradient(circle at 20% 0%,  rgba(0, 188, 235, 0.04), transparent 50%),
+    radial-gradient(circle at 80% 100%, rgba(30, 68, 113, 0.03), transparent 50%),
+    #f8fafc;
+  min-height: 100vh;
+}
+
+/* ─── Custom scrollbar (used in panels) ────────────────── */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 999px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
 }
 
 
@@ -38,25 +94,17 @@ body {
   background-color: #22c55e !important;
 }
 
-
-.custom-scrollbar {
-  scrollbar-width: thin;
-  scrollbar-color: #cbd5e1 transparent;
+.react-flow__node-group {
+  border: none !important;
+  background: transparent !important;
+  padding: 0 !important;
 }
 
-.custom-scrollbar::-webkit-scrollbar {
-  width: 6px;
+.react-flow__node-group.selected {
+  outline: none !important;
+  box-shadow: 0 0 0 2px rgba(0, 188, 235, 0.4) !important; /* Cisco blue glow */
 }
-
-.custom-scrollbar::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.custom-scrollbar::-webkit-scrollbar-thumb {
-  background-color: #cbd5e1;
-  border-radius: 3px;
-}
-
-.custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  background-color: #94a3b8;
+.react-flow__node-group:hover {
+  box-shadow: 0 0 0 1.5px rgba(0, 188, 235, 0.3) !important;
+  transition: box-shadow 0.15s ease;
 }

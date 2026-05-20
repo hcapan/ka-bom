@@ -7,9 +7,10 @@ import type { SlotKind, SlotAssignment, ConfiguredDevice } from "../types";
 // ============================================================
 
 type SlotLayoutEntry = {
-  slot: number;
+  slot: string | number;
   kind: SlotKind;
   required?: boolean;
+  isRedundantSlot?: boolean; 
   note?: string;
 };
 
@@ -204,6 +205,27 @@ export function normalizeSlots(
       slotKind: slotSpec.kind,
     };
   });
+}
+
+/**
+ * Returns the redundant ("/2") PID for a module, if one is defined in
+ * its parent module catalog's secondaryPidMap.
+ *
+ * Used by buildSlotLines to swap module PIDs when emitting redundant
+ * slot positions (e.g., second supervisor slot in C9400 chassis).
+ */
+export function getSecondaryModulePid(modulePid: string): string | undefined {
+  const catalog = getEffectiveCatalog();
+  for (const series of Object.values(catalog)) {
+    if (!series.isModuleCatalog) continue;
+    const seriesWithMap = series as typeof series & {
+      secondaryPidMap?: Record<string, string>;
+    };
+    if (seriesWithMap.secondaryPidMap?.[modulePid]) {
+      return seriesWithMap.secondaryPidMap[modulePid];
+    }
+  }
+  return undefined;
 }
 
 export type { SlotLayoutEntry };

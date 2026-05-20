@@ -10,7 +10,7 @@
 // unused exports, so this is efficient.
 // ============================================================
 
-import switchingDataRaw from "./data/switching.json";
+import switchingDataRaw from "./data/switching";
 import slotLayoutsDataRaw from "./data/slot-layouts.json";
 
 import {

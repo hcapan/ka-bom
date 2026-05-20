@@ -1,0 +1,168 @@
+{
+  "Catalyst 9400 Supervisors": {
+    "productCategory": "modular-switch",
+    "type": "core",
+    "vendor": "Cisco",
+    "description": "Catalyst 9400 Supervisor Engines",
+    "compatibleOptics": [
+      "QSFP-100G-SR4",
+      "QSFP-100G-LR4",
+      "SFP-25G-SR-S",
+      "SFP-10G-SR",
+      "SFP-10G-LR"
+    ],
+     "secondaryPidMap": {
+    "C9400-SUP-1":      "C9400-SUP-1/2",
+    "C9400-SUP-1XL":    "C9400-SUP-1XL/2",
+    "C9400-SUP-1XL-Y":  "C9400-SUP-1XL-Y/2",
+    "C9400X-SUP-2":     "C9400X-SUP-2/2",
+    "C9400X-SUP-2XL":   "C9400X-SUP-2XL/2"
+  },
+    "isModuleCatalog": true,
+    "pids": [
+      {
+        "pid": "C9400-SUP-1",
+        "description": "Cat 9400 Supervisor Engine 1 (240Gbps per slot, 80G uplinks).",
+        "vendor": "Cisco",
+        "kind": "supervisor",
+        "slotKind": "supervisor"
+      },
+      {
+        "pid": "C9400-SUP-1XL",
+        "description": "Cat 9400 Supervisor Engine 1XL (480Gbps per slot).",
+        "vendor": "Cisco",
+        "kind": "supervisor",
+        "slotKind": "supervisor"
+      },
+      {
+        "pid": "C9400-SUP-1XL-Y",
+        "description": "Cat 9400 Supervisor 1XL with 25G uplinks.",
+        "vendor": "Cisco",
+        "kind": "supervisor",
+        "slotKind": "supervisor"
+      },
+      {
+        "pid": "C9400X-SUP-2",
+        "description": "Cat 9400X Supervisor Engine 2 (next-gen, recommended for new designs).",
+        "vendor": "Cisco",
+        "kind": "supervisor",
+        "slotKind": "supervisor"
+      },
+      {
+        "pid": "C9400X-SUP-2XL",
+        "description": "Cat 9400X Supervisor Engine 2XL (highest performance).",
+        "vendor": "Cisco",
+        "kind": "supervisor",
+        "slotKind": "supervisor"
+      }
+    ]
+  },
+  "Catalyst 9400 Linecards": {
+    "productCategory": "modular-switch",
+    "type": "core",
+    "vendor": "Cisco",
+    "description": "Catalyst 9400 Linecards",
+    "compatibleOptics": [
+      "QSFP-100G-SR4",
+      "QSFP-100G-LR4",
+      "QSFP-40G-SR4",
+      "SFP-10G-SR",
+      "SFP-10G-LR",
+      "GLC-SX-MMD",
+      "GLC-LH-SMD"
+    ],
+    "isModuleCatalog": true,
+    "pids": [
+      {
+        "pid": "C9400-LC-48U",
+        "description": "48-port 1G UPOE linecard.",
+        "vendor": "Cisco",
+        "kind": "linecard",
+        "slotKind": "linecard",
+        "modulePorts": { "count": 48, "speed": "1G", "poe": "UPOE" }
+      },
+      {
+        "pid": "C9400-LC-48P",
+        "description": "48-port 1G PoE+ linecard.",
+        "vendor": "Cisco",
+        "kind": "linecard",
+        "slotKind": "linecard",
+        "modulePorts": { "count": 48, "speed": "1G", "poe": "PoE+" }
+      },
+      {
+        "pid": "C9400-LC-48T",
+        "description": "48-port 1G data-only linecard.",
+        "vendor": "Cisco",
+        "kind": "linecard",
+        "slotKind": "linecard",
+        "modulePorts": { "count": 48, "speed": "1G" }
+      },
+      {
+        "pid": "C9400-LC-48UX",
+        "description": "48-port multigigabit (1/2.5/5/10G) UPOE linecard.",
+        "vendor": "Cisco",
+        "kind": "linecard",
+        "slotKind": "linecard",
+        "modulePorts": { "count": 48, "speed": "10G", "poe": "UPOE" }
+      },
+      {
+        "pid": "C9400-LC-48XS",
+        "description": "48-port 10G SFP+ linecard for 10G aggregation.",
+        "vendor": "Cisco",
+        "kind": "linecard",
+        "slotKind": "linecard",
+        "modulePorts": { "count": 48, "speed": "10G" }
+      },
+      {
+        "pid": "C9400-LC-24XS",
+        "description": "24-port 10G SFP+ linecard.",
+        "vendor": "Cisco",
+        "kind": "linecard",
+        "slotKind": "linecard",
+        "modulePorts": { "count": 24, "speed": "10G" }
+      },
+      {
+        "pid": "C9400-LC-12QC",
+        "description": "12-port 40G/100G QSFP linecard for high-speed uplinks.",
+        "vendor": "Cisco",
+        "kind": "linecard",
+        "slotKind": "linecard",
+        "modulePorts": { "count": 12, "speed": "100G" }
+      }
+    ]
+  },
+  "Catalyst 9400 Power & Fans": {
+    "productCategory": "modular-switch",
+    "type": "core",
+    "vendor": "Cisco",
+    "description": "Catalyst 9400 Power Supplies and Fan Trays",
+    "compatibleOptics": [],
+    "isModuleCatalog": true,
+    "pids": [
+      {
+        "pid": "C9400-PWR-2100AC",
+        "description": "Cat 9400 2100W AC power supply.",
+        "vendor": "Cisco",
+        "kind": "psu"
+      },
+      {
+        "pid": "C9400-PWR-3200AC",
+        "description": "Cat 9400 3200W AC power supply.",
+        "vendor": "Cisco",
+        "kind": "psu"
+      },
+      {
+        "pid": "C9400-PWR-3200DC",
+        "description": "Cat 9400 3200W DC power supply.",
+        "vendor": "Cisco",
+        "kind": "psu"
+      },
+      {
+        "pid": "C9400-FAN",
+        "description": "Cat 9400 fan tray (model varies by chassis size).",
+        "vendor": "Cisco",
+        "kind": "fan"
+      }
+    ]
+  }
+}

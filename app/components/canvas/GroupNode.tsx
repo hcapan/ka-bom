@@ -3,8 +3,13 @@
 import { memo, useState, useRef, useEffect } from "react";
 import { Handle, Position, NodeProps, Node } from "@xyflow/react";
 import { StackSettingsPopover } from "./StackSettingsPopover";
+import {
+  layoutChildrenInGroup,
+  pickColsFor,
+  HEADER_H
+} from "@/app/lib/utils/groupLayout";
+import { Sparkles } from "lucide-react";
 
-// ⭐ STACK: data shape now carries optional stack metadata
 export interface GroupNodeData extends Record<string, unknown> {
   label: string;
   collapsed: boolean;
@@ -13,7 +18,6 @@ export interface GroupNodeData extends Record<string, unknown> {
   depth: number;
   color?: string;
 
-  // ⭐ STACK fields (only present when groupKind === "stack")
   groupKind?: "logical" | "stack";
   stackingCablePid?: string;
   stackingCableQty?: number;
@@ -22,12 +26,12 @@ export interface GroupNodeData extends Record<string, unknown> {
   stackSeries?: string;
   stackMaxSize?: number;
 
-  // Callbacks
   onToggleCollapse: (id: string) => void;
   onRename: (id: string, newLabel: string) => void;
   onDelete: (id: string) => void;
   onUpdateStack?: (id: string, patch: Partial<StackPatch>) => void;
   onConvertToLogical?: (id: string) => void;
+  onTidy?: (id: string) => void;
 }
 
 export interface StackPatch {
@@ -40,32 +44,63 @@ export interface StackPatch {
 export type GroupNodeType = Node<GroupNodeData, "group">;
 
 const DEPTH_PALETTES = [
-  { bg: "rgba(59, 130, 246, 0.05)", border: "#3b82f6", header: "#dbeafe" },
-  { bg: "rgba(16, 185, 129, 0.05)", border: "#10b981", header: "#d1fae5" },
-  { bg: "rgba(168, 85, 247, 0.05)", border: "#a855f7", header: "#ede9fe" },
-  { bg: "rgba(245, 158, 11, 0.05)", border: "#f59e0b", header: "#fef3c7" },
-  { bg: "rgba(244, 63, 94, 0.05)", border: "#f43f5e", header: "#ffe4e6" },
+  {
+    bg: "from-blue-500/5 to-cyan-500/5",
+    border: "#3b82f6",
+    glow: "shadow-blue-500/20",
+    header: "from-blue-100 to-cyan-50",
+  },
+  {
+    bg: "from-emerald-500/5 to-green-500/5",
+    border: "#10b981",
+    glow: "shadow-emerald-500/20",
+    header: "from-emerald-100 to-green-50",
+  },
+  {
+    bg: "from-violet-500/5 to-purple-500/5",
+    border: "#8b5cf6",
+    glow: "shadow-violet-500/20",
+    header: "from-violet-100 to-purple-50",
+  },
+  {
+    bg: "from-amber-500/5 to-orange-500/5",
+    border: "#f59e0b",
+    glow: "shadow-amber-500/20",
+    header: "from-amber-100 to-orange-50",
+  },
+  {
+    bg: "from-rose-500/5 to-pink-500/5",
+    border: "#f43f5e",
+    glow: "shadow-rose-500/20",
+    header: "from-rose-100 to-pink-50",
+  },
 ];
 
-// ⭐ STACK: a stack always uses a distinct purple palette for instant recognition
 const STACK_PALETTE = {
-  bg: "rgba(168, 85, 247, 0.08)",
+  bg: "from-violet-500/10 via-purple-500/5 to-fuchsia-500/10",
   border: "#9333ea",
-  header: "#f3e8ff",
+  glow: "shadow-violet-500/30",
+  header: "from-violet-100 via-purple-50 to-fuchsia-100",
 };
 
 function GroupNode({ id, data, selected }: NodeProps<GroupNodeType>) {
   const isStack = data.groupKind === "stack";
+
   const palette = isStack
     ? STACK_PALETTE
     : DEPTH_PALETTES[Math.min(data.depth, DEPTH_PALETTES.length - 1)];
-  const accent = data.color ?? palette.border;
-  const [editing, setEditing] = useState(false);
 
-  // ⭐ STACK: popover state
+  const accent = data.color ?? palette.border;
+
+  const [editing, setEditing] = useState(false);
   const [showStackPopover, setShowStackPopover] = useState(false);
 
   const inputRef = useRef<HTMLInputElement>(null);
+
+  console.group(`🟪 GroupNode render: ${id}`);
+  console.log('data:', data);
+  console.log('selected:', selected);
+  console.groupEnd();
 
   useEffect(() => {
     if (editing && inputRef.current) {
@@ -76,76 +111,150 @@ function GroupNode({ id, data, selected }: NodeProps<GroupNodeType>) {
 
   const commitRename = () => {
     const trimmed = inputRef.current?.value.trim() ?? "";
+
     if (trimmed && trimmed !== data.label) {
       data.onRename(id, trimmed);
     }
+
     setEditing(false);
   };
 
   const cancelRename = () => {
-    if (inputRef.current) inputRef.current.value = data.label;
+    if (inputRef.current) {
+      inputRef.current.value = data.label;
+    }
+
     setEditing(false);
   };
 
-  // ⭐ STACK: icon + count badge for stacks
-  const icon = isStack ? "📚" : "📦";
+  const icon = isStack ? "⚡" : "◈";
+
+
+
   const stackBadge = isStack ? (
-    <span
-      className="rounded-full border bg-white/80 px-2 py-0.5 text-[10px] font-bold"
-      style={{ color: STACK_PALETTE.border, borderColor: STACK_PALETTE.border }}
+    <div
+      className="flex items-center gap-1 rounded-full border bg-white/80 px-2.5 py-1 text-[10px] font-bold backdrop-blur-sm"
+      style={{
+        borderColor: `${accent}55`,
+        color: accent,
+      }}
     >
+      <div
+        className="h-1.5 w-1.5 rounded-full animate-pulse"
+        style={{ background: accent }}
+      />
       {data.childDeviceCount}/{data.stackMaxSize ?? 8}
-    </span>
+    </div>
   ) : (
-    <span className="rounded-full border bg-white/80 px-2 py-0.5 text-[10px] font-bold text-slate-600">
-      {data.childDeviceCount} dev
-      {data.childGroupCount > 0 && ` · ${data.childGroupCount} sub`}
-    </span>
+    <div className="rounded-full border-0 border-slate-200 bg-white/80 px-2.5 py-1 text-[10px] font-semibold text-slate-600 backdrop-blur-sm">
+      {data.childDeviceCount} devices
+      {data.childGroupCount > 0 && ` · ${data.childGroupCount} groups`}
+    </div>
   );
 
   // ─────────────────────────────────────
-  // COLLAPSED VIEW
+  // COLLAPSED
   // ─────────────────────────────────────
+
   if (data.collapsed) {
     return (
       <div
-        className={`relative rounded-lg border-2 shadow-md transition ${
-          selected ? "ring-2 ring-offset-2 ring-blue-400" : ""
-        }`}
+        className={`
+    group relative overflow-visible rounded-2xl border
+    bg-white/60 backdrop-blur-xl
+    shadow-lg transition-all duration-300
+    ${selected ? "ring-2 ring-blue-400 ring-offset-2" : ""}
+  `}
         style={{
-          background: palette.header,
-          borderColor: accent,
-          minWidth: 280,
-          padding: "10px 14px",
+          borderColor: `${accent}30`,
+          width: "100%",
+          height: "100%",
+          minWidth: 360,
+          minHeight: 240,
         }}
       >
-        <Handle id="t" type="target" position={Position.Top} style={handleStyle(accent)} />
-        <Handle id="b" type="source" position={Position.Bottom} style={handleStyle(accent)} />
-        <Handle id="left" type="source" position={Position.Left} style={lateralStyle("#f59e0b")} />
-        <Handle id="right" type="target" position={Position.Right} style={lateralStyle("#f59e0b")} />
+        {/* Glow */}
+        <div
+          className="absolute inset-0 opacity-20 blur-2xl"
+          style={{
+            background: `radial-gradient(circle at top right, ${accent}, transparent 60%)`,
+          }}
+        />
 
-        <div className="flex items-center gap-2">
+        {/* Handles */}
+        <Handle
+          id="t"
+          type="target"
+          position={Position.Top}
+          style={handleStyle(accent)}
+        />
+        <Handle
+          id="b"
+          type="source"
+          position={Position.Bottom}
+          style={handleStyle(accent)}
+        />
+        <Handle
+          id="left"
+          type="source"
+          position={Position.Left}
+          style={lateralStyle(accent)}
+        />
+        <Handle
+          id="right"
+          type="target"
+          position={Position.Right}
+          style={lateralStyle(accent)}
+        />
+
+        <div className="relative flex items-center gap-3 px-4 py-3">
           <button
-            className="flex h-6 w-6 items-center justify-center rounded text-slate-700 hover:bg-white/70"
+            className="
+              flex h-8 w-8 items-center justify-center
+              rounded-xl border border-white/50
+              bg-white/70 text-slate-700
+              backdrop-blur-md
+              transition hover:scale-105 hover:bg-white
+            "
             onClick={() => data.onToggleCollapse(id)}
             title="Expand group"
           >
             ▶
           </button>
-          <span className="text-base">{icon}</span>
-          <span className="flex-1 truncate font-semibold text-slate-800">
-            {data.label}
-          </span>
 
-          {/* ⭐ STACK: settings cog (only for stacks) */}
+          <div
+            className="flex h-10 w-10 items-center justify-center rounded-xl text-lg shadow-inner"
+            style={{
+              background: `${accent}15`,
+              color: accent,
+            }}
+          >
+            {icon}
+          </div>
+
+          <div className="min-w-0 flex-1">
+            <div className="truncate text-sm font-bold text-slate-800">
+              {data.label}
+            </div>
+
+            <div className="mt-0.5 text-[11px] text-slate-500">
+              {isStack ? "Stack Group" : "Logical Group"}
+            </div>
+          </div>
+
           {isStack && (
             <button
-              className="flex h-5 w-5 items-center justify-center rounded text-slate-600 hover:bg-white/70"
+              className="
+                flex h-8 w-8 items-center justify-center
+                rounded-xl border border-white/50
+                bg-white/70 text-slate-600
+                backdrop-blur-md
+                transition hover:rotate-90 hover:bg-white
+              "
               onClick={(e) => {
                 e.stopPropagation();
                 setShowStackPopover((v) => !v);
               }}
-              title="Stack settings"
             >
               ⚙
             </button>
@@ -154,8 +263,221 @@ function GroupNode({ id, data, selected }: NodeProps<GroupNodeType>) {
           {stackBadge}
         </div>
 
-        {/* ⭐ STACK: popover */}
-        {isStack && showStackPopover && data.onUpdateStack && data.onConvertToLogical && (
+        {isStack &&
+          showStackPopover &&
+          data.onUpdateStack &&
+          data.onConvertToLogical && (
+            <StackSettingsPopover
+              groupId={id}
+              label={data.label}
+              series={data.stackSeries ?? "Unknown series"}
+              memberCount={data.childDeviceCount}
+              maxSize={data.stackMaxSize ?? 8}
+              stackingCablePid={data.stackingCablePid}
+              stackingCableQty={data.stackingCableQty}
+              stackPowerCablePid={data.stackPowerCablePid}
+              stackPowerCableQty={data.stackPowerCableQty}
+              onUpdate={(patch) => data.onUpdateStack!(id, patch)}
+              onConvertToLogical={() => {
+                data.onConvertToLogical!(id);
+                setShowStackPopover(false);
+              }}
+              onClose={() => setShowStackPopover(false)}
+            />
+          )}
+      </div>
+    );
+  }
+
+  // ─────────────────────────────────────
+  // EXPANDED
+  // ─────────────────────────────────────
+
+  return (
+    <div
+      className={`
+      group relative flex flex-col overflow-hidden
+      rounded-3xl border
+      bg-white/70 
+      backdrop-blur-xl
+      border-b border-slate-200/60
+      shadow-2xl ${palette.glow}
+      transition-all duration-300
+      ${selected ? "ring-2 ring-blue-400 ring-offset-2" : ""}
+    `}
+      style={{
+        borderColor: `${accent}55`,
+        width: "100%",
+        minWidth: 340,
+        height: "100%",
+        minHeight: data.childDeviceCount > 0 ? 320 : 220,
+      }}
+    >
+      {/* Ambient Glow */}
+      <div
+        className="pointer-events-none absolute inset-0 opacity-20"
+        style={{
+          background: `radial-gradient(circle at top right, ${accent}, transparent 60%)`,
+        }}
+      />
+
+      {/* Top highlight */}
+      <div
+        className="absolute inset-x-0 top-0 h-px"
+        style={{
+          background: `linear-gradient(to right, transparent, ${accent}, transparent)`,
+        }}
+      />
+
+      {/* Handles */}
+      <Handle
+        id="t"
+        type="target"
+        position={Position.Top}
+        style={handleStyle(accent)}
+      />
+      <Handle
+        id="b"
+        type="source"
+        position={Position.Bottom}
+        style={handleStyle(accent)}
+      />
+      <Handle
+        id="left"
+        type="source"
+        position={Position.Left}
+        style={lateralStyle(accent)}
+      />
+      <Handle
+        id="right"
+        type="target"
+        position={Position.Right}
+        style={lateralStyle(accent)}
+      />
+
+      {/* HEADER */}
+      <div
+        className={`
+        relative flex items-center gap-3
+        border-b border-white/30
+        bg-linear-to-r ${palette.header}
+        px-4 py-3
+        backdrop-blur-xl
+        shrink-0 z-10
+      `}
+      >
+        <button
+          className="flex h-8 w-8 items-center justify-center rounded-xl border border-white/50 bg-white/70 text-slate-700 backdrop-blur-md transition hover:scale-105 hover:bg-white"
+          onClick={() => data.onToggleCollapse(id)}
+        >
+          ▼
+        </button>
+
+        <div
+          className="flex h-10 w-10 items-center justify-center rounded-xl text-lg shadow-inner"
+          style={{
+            background: `${accent}15`,
+            color: accent,
+          }}
+        >
+          {icon}
+        </div>
+
+        <div className="min-w-0 flex-1">
+          {editing ? (
+            <input
+              ref={inputRef}
+              defaultValue={data.label}
+              className="
+              w-full rounded-xl border border-white/50
+              bg-white/80 px-3 py-1.5
+              text-sm font-bold text-slate-800
+              backdrop-blur-md outline-none
+              focus:border-blue-400
+            "
+              onBlur={commitRename}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") commitRename();
+                if (e.key === "Escape") cancelRename();
+              }}
+            />
+          ) : (
+            <button
+              className="w-full text-left"
+              onDoubleClick={() => setEditing(true)}
+            >
+              <div className="truncate text-sm font-bold text-slate-800">
+                {data.label}
+              </div>
+              <div className="mt-0.5 text-[11px] text-slate-500">
+                {isStack ? "Stack Infrastructure" : "Logical Container"}
+              </div>
+            </button>
+          )}
+        </div>
+
+        {isStack && (
+          <button
+            className="flex h-8 w-8 items-center justify-center rounded-xl border border-white/50 bg-white/70 text-slate-600 backdrop-blur-md transition hover:rotate-90 hover:bg-white"
+            onClick={(e) => {
+              e.stopPropagation();
+              setShowStackPopover((v) => !v);
+            }}
+          >
+            ⚙
+          </button>
+        )}
+
+        {stackBadge}
+
+        <button
+          className="flex h-8 w-8 items-center justify-center rounded-xl border border-white/50 bg-white/70 text-slate-400 backdrop-blur-md transition hover:bg-rose-50 hover:text-rose-600"
+          onClick={(e) => {
+            e.stopPropagation();
+            if (confirm(`Delete group "${data.label}"?`)) {
+              data.onDelete(id);
+            }
+          }}
+        >
+          ×
+        </button>
+      </div>
+
+      {/* CONTENT (NOW FULLY STRETCHABLE) */}
+      <div className="absolute flex-1 min-h-0 overflow-visible">
+        {/* Grid background */}
+        <div
+          className="absolute inset-0 opacity-[0.03]"
+          style={{
+            backgroundImage: `
+      radial-gradient(circle, ${accent} 1px, transparent 1px)
+    `,
+            backgroundSize: "18px 18px",
+            paddingTop: 82,
+            paddingLeft: 24,
+            paddingRight: 24,
+            paddingBottom: 24,
+          }}
+        />
+
+        {/* Inner soft frame */}
+        <div className="absolute inset-3 rounded-2xl border border-dashed border-white/20" />
+        <div className="pointer-events-none absolute inset-0">
+          {data.childDeviceCount === 0 && (
+            <div className="flex h-full items-center justify-center" style={{ paddingTop: HEADER_H }}>
+              <div className="text-[11px] text-slate-400 italic">
+                Drag devices here
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* STACK POPOVER (unchanged logic) */}
+      {isStack &&
+        showStackPopover &&
+        data.onUpdateStack &&
+        data.onConvertToLogical && (
           <StackSettingsPopover
             groupId={id}
             label={data.label}
@@ -174,133 +496,28 @@ function GroupNode({ id, data, selected }: NodeProps<GroupNodeType>) {
             onClose={() => setShowStackPopover(false)}
           />
         )}
-      </div>
-    );
-  }
-
-  // ─────────────────────────────────────
-  // EXPANDED VIEW
-  // ─────────────────────────────────────
-  return (
-    <div
-      className={`relative rounded-lg border-2 transition ${
-        selected ? "ring-2 ring-offset-2 ring-blue-400" : ""
-      }`}
-      style={{
-        background: palette.bg,
-        borderColor: accent,
-        borderStyle: "dashed",
-        width: "100%",
-        height: "100%",
-        minWidth: 320,
-        minHeight: 200,
-      }}
-    >
-      <Handle id="t" type="target" position={Position.Top} style={handleStyle(accent)} />
-      <Handle id="b" type="source" position={Position.Bottom} style={handleStyle(accent)} />
-      <Handle id="left" type="source" position={Position.Left} style={lateralStyle("#f59e0b")} />
-      <Handle id="right" type="target" position={Position.Right} style={lateralStyle("#f59e0b")} />
-
-      <div
-        className="flex items-center gap-2 rounded-t-md border-b px-3 py-2"
-        style={{ background: palette.header, borderColor: `${accent}55` }}
-      >
-        <button
-          className="flex h-5 w-5 items-center justify-center rounded text-slate-700 hover:bg-white/70"
-          onClick={() => data.onToggleCollapse(id)}
-          title="Collapse group"
-        >
-          ▼
-        </button>
-
-        <span className="text-sm leading-none">{icon}</span>
-
-        {editing ? (
-          <input
-            key={data.label}
-            ref={inputRef}
-            defaultValue={data.label}
-            className="flex-1 rounded border bg-white px-1.5 py-0.5 text-sm font-semibold focus:outline-none focus:ring-1 focus:ring-blue-400"
-            onBlur={commitRename}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") commitRename();
-              if (e.key === "Escape") cancelRename();
-            }}
-          />
-        ) : (
-          <button
-            className="flex-1 truncate text-left text-sm font-semibold text-slate-800 hover:underline"
-            onDoubleClick={() => setEditing(true)}
-            title="Double-click to rename"
-          >
-            {data.label}
-          </button>
-        )}
-
-        {/* ⭐ STACK: cog button */}
-        {isStack && (
-          <button
-            className="flex h-5 w-5 items-center justify-center rounded text-slate-600 hover:bg-white/70"
-            onClick={(e) => {
-              e.stopPropagation();
-              setShowStackPopover((v) => !v);
-            }}
-            title="Stack settings"
-          >
-            ⚙
-          </button>
-        )}
-
-        {stackBadge}
-
-        <button
-          className="ml-1 flex h-5 w-5 items-center justify-center rounded text-slate-400 hover:bg-white/70 hover:text-rose-600"
-          onClick={(e) => {
-            e.stopPropagation();
-            if (
-              confirm(
-                `Delete group "${data.label}"? Children will be detached, not deleted.`
-              )
-            ) {
-              data.onDelete(id);
-            }
-          }}
-          title="Delete group"
-        >
-          ×
-        </button>
-      </div>
-
-      {/* ⭐ STACK: popover (anchored above the header) */}
-      {isStack && showStackPopover && data.onUpdateStack && data.onConvertToLogical && (
-        <StackSettingsPopover
-          groupId={id}
-          label={data.label}
-          series={data.stackSeries ?? "Unknown series"}
-          memberCount={data.childDeviceCount}
-          maxSize={data.stackMaxSize ?? 8}
-          stackingCablePid={data.stackingCablePid}
-          stackingCableQty={data.stackingCableQty}
-          stackPowerCablePid={data.stackPowerCablePid}
-          stackPowerCableQty={data.stackPowerCableQty}
-          onUpdate={(patch) => data.onUpdateStack!(id, patch)}
-          onConvertToLogical={() => {
-            data.onConvertToLogical!(id);
-            setShowStackPopover(false);
-          }}
-          onClose={() => setShowStackPopover(false)}
-        />
-      )}
     </div>
   );
 }
 
 function handleStyle(color: string): React.CSSProperties {
-  return { width: 10, height: 10, background: color, border: "2px solid white" };
+  return {
+    width: 12,
+    height: 12,
+    background: color,
+    border: "2px solid rgba(255,255,255,0.9)",
+    boxShadow: `0 0 12px ${color}`,
+  };
 }
 
 function lateralStyle(color: string): React.CSSProperties {
-  return { width: 8, height: 8, background: color, border: "2px solid white" };
+  return {
+    width: 10,
+    height: 10,
+    background: color,
+    border: "2px solid rgba(255,255,255,0.9)",
+    boxShadow: `0 0 10px ${color}`,
+  };
 }
 
 export default memo(GroupNode);

@@ -20,6 +20,11 @@ const CATEGORY_LABELS: Record<BOMLine["category"], string> = {
   "stack-adapter": "Stack Adapter",
   optic: "Optic",
   other: "Other",
+   supervisor:"Supervisor", 
+   linecard:"Linecard", 
+   fan:"Fan", 
+   ssd:"SSD", 
+   "fabric-module":"Fabric Module"
 };
 
 const CATEGORY_COLORS: Record<BOMLine["category"], string> = {
@@ -35,6 +40,11 @@ const CATEGORY_COLORS: Record<BOMLine["category"], string> = {
   "stack-adapter": "bg-purple-50 text-purple-700",
   optic: "bg-cyan-50 text-cyan-700",
   other: "bg-slate-100 text-slate-600",
+   supervisor: "bg-rose-50 text-rose-700",
+  linecard: "bg-indigo-50 text-indigo-700",
+  fan: "bg-sky-50 text-sky-700",
+  ssd: "bg-lime-50 text-lime-700",
+  "fabric-module": "bg-fuchsia-50 text-fuchsia-700"
 };
 
 export default function BomPreviewPanel({ project }: Props) {
