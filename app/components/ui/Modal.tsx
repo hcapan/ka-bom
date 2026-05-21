@@ -93,7 +93,7 @@ export function ModalProvider({ children }: { children: ReactNode }) {
               exit={{ opacity: 0 }}
               transition={{ duration: 0.15 }}
               onClick={() => close(state.kind === "confirm" ? false : null)}
-              className="fixed inset-0 z-[100] bg-slate-900/40 backdrop-blur-[2px]"
+              className="fixed inset-0 z-100 bg-slate-900/40 backdrop-blur-[2px]"
             />
 
             {/* Dialog */}
@@ -104,8 +104,8 @@ export function ModalProvider({ children }: { children: ReactNode }) {
               exit={{ opacity: 0, scale: 0.96, y: 8 }}
               transition={{ duration: 0.18, ease: "easeOut" }}
               className="
-                fixed left-1/2 top-1/2 z-[101]
-                w-[420px] max-w-[90vw]
+                fixed left-1/2 top-1/2 z-101
+                w-105 max-w-[90vw]
                 -translate-x-1/2 -translate-y-1/2
                 rounded-xl border border-slate-200 bg-white
                 shadow-2xl

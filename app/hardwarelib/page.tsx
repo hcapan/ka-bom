@@ -241,12 +241,12 @@ export default function LibraryPage() {
   }, []);
 
   return (
-    <main className="min-h-screen bg-gradient-to-b from-slate-50 to-slate-100 p-4 lg:p-6">
-      <div className="max-w-[1500px] mx-auto space-y-4">
+    <main className="min-h-screen bg-linear-to-b from-slate-50 to-slate-100 p-4 lg:p-6">
+      <div className="max-w-375 mx-auto space-y-4">
         {/* ===== HEADER ===== */}
         <header className="flex flex-wrap items-end justify-between gap-3">
           <div className="flex items-start gap-3">
-            <div className="hidden sm:flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 text-white shadow-md shadow-blue-500/20 ring-1 ring-white/40">
+            <div className="hidden sm:flex h-11 w-11 items-center justify-center rounded-xl bg-linear-to-br from-blue-500 to-indigo-600 text-white shadow-md shadow-blue-500/20 ring-1 ring-white/40">
               <Library size={22} strokeWidth={2.25} />
             </div>
             <div>

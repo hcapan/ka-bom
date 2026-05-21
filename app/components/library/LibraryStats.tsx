@@ -173,7 +173,7 @@ function Stat({
   const styles = TONE_STYLES[tone];
   return (
     <div
-      className={`flex-1 min-w-[110px] flex flex-col gap-0.5 px-4 py-3 bg-white transition-colors ${
+      className={`flex-1 min-w-27.5 flex flex-col gap-0.5 px-4 py-3 bg-white transition-colors ${
         highlight ? "ring-1 ring-inset ring-rose-200" : ""
       }`}
     >

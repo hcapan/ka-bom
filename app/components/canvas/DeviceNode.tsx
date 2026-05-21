@@ -223,7 +223,7 @@ export default function DeviceNode({
         className="
           relative overflow-hidden rounded-xl
           border border-slate-200/70
-          bg-gradient-to-b from-slate-50 to-white
+          bg-linear-to-b from-slate-50 to-white
           p-2 shadow-inner
         "
       >

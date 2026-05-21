@@ -109,8 +109,8 @@ export default function Navbar({ stats }: Props) {
                       <span
                         aria-hidden
                         className="
-                          absolute inset-x-2 -bottom-[15px]
-                          h-[2px] rounded-full bg-cisco-blue-500
+                          absolute inset-x-2 -bottom-3.75
+                          h-0.5 rounded-full bg-cisco-blue-500
                         "
                       />
                     )}

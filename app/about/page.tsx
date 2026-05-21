@@ -59,7 +59,7 @@ export default function About() {
         </section>
 
         {/* Mission */}
-        <section className="rounded-3xl border border-zinc-800 bg-gradient-to-br from-zinc-900 to-black p-10">
+        <section className="rounded-3xl border border-zinc-800 bg-linear-to-br from-zinc-900 to-black p-10">
           <h2 className="text-3xl font-bold mb-6">
             Our Mission
           </h2>
