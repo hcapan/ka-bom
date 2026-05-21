@@ -5,7 +5,6 @@ import { ModalProvider } from "./components/ui/Modal";
 import Navbar from "./components/chrome/Navbar";
 import { Toaster } from "sonner";
 
-
 const inter = Inter({
   subsets: ["latin"],
   variable: "--font-inter",
@@ -23,12 +22,9 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html
-      lang="en"
-      className={inter.variable}
-    >
-      <ModalProvider>
-        <body className="m-0 p-0 w-screen min-h-screen overflow-x-hidden">
+    <html lang="en" className={inter.variable}>
+      <body className="m-0 p-0 w-screen min-h-screen overflow-x-hidden">
+        <ModalProvider>
           <Navbar />
           {children}
           <Toaster
@@ -43,8 +39,8 @@ export default function RootLayout({
               },
             }}
           />
-        </body>
-      </ModalProvider>
+        </ModalProvider>
+      </body>
     </html>
   );
 }

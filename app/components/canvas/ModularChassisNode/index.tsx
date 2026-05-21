@@ -9,8 +9,11 @@ import {
   type SlotLayoutEntry,
 } from "@/app/lib/hardware/chassisHelpers";
 import { getEffectiveCatalog } from "@/app/lib/hardware/catalog";
-import { MODULAR_TOKENS, MODULAR_SIZES } from "./chassisStyles";
-import { ChassisHeader } from "./ChassisHeader";
+import {
+  MODULAR_TOKENS,
+  MODULAR_SIZES,
+  getChassisRolePalette,
+} from "./chassisStyles";
 import { SlotRow } from "./SlotRow";
 
 export type ModularChassisNodeData = {
@@ -19,6 +22,38 @@ export type ModularChassisNodeData = {
   onConfigureDevice?: (deviceId: string) => void;
 };
 
+// ───────── Decorative subcomponents (same as DeviceNode) ─────────
+function StatusLED({ tone }: { tone: "green" | "blue" | "amber" }) {
+  const palette = {
+    green: { bg: "#10b981", glow: "rgba(16,185,129,0.65)" },
+    blue: { bg: "#0ea5e9", glow: "rgba(14,165,233,0.65)" },
+    amber: { bg: "#f59e0b", glow: "rgba(245,158,11,0.65)" },
+  } as const;
+  const c = palette[tone];
+  return (
+    <span
+      aria-hidden
+      style={{
+        width: 7,
+        height: 7,
+        borderRadius: 999,
+        background: c.bg,
+        boxShadow: `0 0 6px ${c.glow}`,
+        display: "inline-block",
+      }}
+    />
+  );
+}
+
+function PsuBays() {
+  return (
+    <div aria-hidden className="flex items-center gap-0.75" title="PSU bays">
+      <span className="block h-3 w-1.25 rounded-sm bg-sky-400/80 shadow-[0_0_4px_rgba(14,165,233,0.5)]" />
+      <span className="block h-3 w-1.25 rounded-sm bg-sky-400/80 shadow-[0_0_4px_rgba(14,165,233,0.5)]" />
+    </div>
+  );
+}
+
 function ModularChassisNodeImpl({ data, selected }: NodeProps) {
   const { device, onConfigureSlot, onConfigureDevice } =
     data as ModularChassisNodeData;
@@ -26,6 +61,9 @@ function ModularChassisNodeImpl({ data, selected }: NodeProps) {
   const layout: SlotLayoutEntry[] = getChassisSlotLayout(
     device.hardware.chassisPid,
   );
+
+  // 🎨 Role-driven palette (access/distribution/core/edge/wan)
+  const palette = getChassisRolePalette(device.type);
 
   if (layout.length === 0) {
     return (
@@ -54,23 +92,50 @@ function ModularChassisNodeImpl({ data, selected }: NodeProps) {
 
   const slots = normalizeSlots(device);
   const occupied = slots.filter((s) => s.modulePid).length;
+  const totalSlots = layout.length;
+  const hasUnfilledRequired = layout.some(
+    (s) =>
+      s.required && !slots.find((x) => x.slotId === String(s.slot))?.modulePid,
+  );
 
   return (
     <div
       style={{
         position: "relative",
         width: MODULAR_SIZES.CHASSIS_WIDTH,
-        background: MODULAR_TOKENS.bodyBg,
-        border: `1px solid ${selected ? "#3b82f6" : MODULAR_TOKENS.bodyBorder}`,
-        borderRadius: 4,
+        background: `linear-gradient(180deg, 
+      ${palette.accent}08 0%, 
+      rgba(255,255,255,0.95) 40%, 
+      rgba(255,255,255,0.98) 100%)`,
+        border: `1px solid ${
+          selected ? palette.accent : MODULAR_TOKENS.bodyBorder
+        }`,
+        borderRadius: 12,
         boxShadow: selected
-          ? `0 0 0 2px rgba(59,130,246,0.35), 0 4px 10px rgba(0,0,0,0.15)`
+          ? `0 0 0 2px ${palette.accent}55, 0 4px 10px rgba(0,0,0,0.15)`
           : `0 2px 6px rgba(0,0,0,0.15)`,
         overflow: "hidden",
         cursor: "pointer",
       }}
       onDoubleClick={() => onConfigureDevice?.(device.id)}
     >
+      {/* 🎨 Ambient glow (role-driven) */}
+      <div
+        className="pointer-events-none absolute inset-0 opacity-25"
+        style={{
+          background: `radial-gradient(circle at top right, ${palette.glow}, transparent 60%)`,
+        }}
+      />
+
+      {/* 🎨 Top accent line (role-driven) */}
+      <div
+        className="pointer-events-none absolute inset-x-0 top-0 h-px"
+        style={{
+          background: `linear-gradient(to right, transparent, ${palette.accent}, transparent)`,
+          zIndex: 2,
+        }}
+      />
+
       {/* Top metal-edge highlight (matches faceplate) */}
       <div
         style={{
@@ -99,41 +164,137 @@ function ModularChassisNodeImpl({ data, selected }: NodeProps) {
         }}
       />
 
-      <ChassisHeader
-        hostname={device.name}
-        pid={device.hardware.chassisPid}
-        vendor={series?.vendor ?? "Cisco"}
-        description={chassisPidEntry?.description}
-        totalSlots={layout.length}
-        occupiedSlots={occupied}
-      />
+      {/* All content above the glow */}
+      <div style={{ position: "relative", zIndex: 1 }}>
+        {/* ⭐ NEW: DeviceNode-style top header (status dot + name + pills) */}
+        <div className="relative flex items-start justify-between gap-3 px-3 pt-3 pb-2">
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2">
+              <div
+                className="h-2 w-2 rounded-full"
+                style={{
+                  background: hasUnfilledRequired ? "#ffffff" : palette.accent,
+                  boxShadow: `0 0 10px ${
+                    hasUnfilledRequired ? "#f59e0b" : palette.accent
+                  }`,
+                }}
+              />
+              <div
+                className="truncate text-[12px] font-bold tracking-tight text-slate-800"
+                title={device.name}
+              >
+                {device.name}
+              </div>
+            </div>
+            <div className="mt-1 truncate text-[10px] text-slate-500">
+              {chassisPidEntry?.description ?? device.hardware.chassisPid}
+            </div>
+          </div>
 
-      {/* Slot tower */}
-      <div
-        style={{
-          display: "flex",
-          flexDirection: "column",
-          gap: MODULAR_SIZES.SLOT_GAP,
-          padding: `${MODULAR_SIZES.SLOT_GAP}px 0`,
-          background: MODULAR_TOKENS.slotPanelBg,
-        }}
-      >
-        {layout.map((slotSpec) => {
-          const slotId = String(slotSpec.slot);
-          const assignment = slots.find((s) => s.slotId === slotId);
-          return (
-            <SlotRow
-              key={slotId}
-              deviceId={device.id}
-              slotId={slotId}
-              slotKind={slotSpec.kind}
-              modulePid={assignment?.modulePid}
-              required={slotSpec.required}
-              note={slotSpec.note}
-              onClick={() => onConfigureSlot(device.id, slotId)}
-            />
-          );
-        })}
+          {/* Right side: slot fill pill + role badge */}
+          <div className="flex items-center gap-1.5">
+            <div
+              className={`
+                rounded-full border px-1.5 py-0.5
+                text-[9px] font-bold uppercase tracking-wider
+                backdrop-blur-sm
+                ${
+                  occupied === totalSlots
+                    ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                    : occupied > 0
+                      ? "border-sky-200 bg-sky-50 text-sky-700"
+                      : "border-slate-200 bg-white/70 text-slate-600"
+                }
+              `}
+              title={`${occupied}/${totalSlots} slots occupied`}
+            >
+              {occupied}/{totalSlots}
+            </div>
+
+            <div
+              className="
+                rounded-full border px-2 py-1
+                text-[9px] font-bold uppercase tracking-[0.12em]
+                backdrop-blur-sm
+              "
+              style={{
+                color: palette.accent,
+                borderColor: `${palette.accent}33`,
+                background: `${palette.accent}10`,
+              }}
+            >
+              {device.type?.toUpperCase() ?? "CORE"}
+            </div>
+          </div>
+        </div>
+
+        {/* ⭐ NEW: Inner panel wrapper (mirrors DeviceNode faceplate wrapper) */}
+        <div
+          className="
+            relative mx-2 mb-2 mt-1 overflow-hidden rounded-xl
+            border border-slate-200/70
+            bg-linear-to-b from-slate-50 to-white
+            p-1 shadow-inner
+          "
+        >
+          {/* subtle role-tinted grid */}
+          <div
+            className="pointer-events-none absolute inset-0 opacity-[0.04]"
+            style={{
+              backgroundImage: `
+                linear-gradient(to right, ${palette.accent} 1px, transparent 1px),
+                linear-gradient(to bottom, ${palette.accent} 1px, transparent 1px)
+              `,
+              backgroundSize: "16px 16px",
+            }}
+          />
+
+          {/* Slot tower (UNCHANGED — your original) */}
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              gap: MODULAR_SIZES.SLOT_GAP,
+              padding: `${MODULAR_SIZES.SLOT_GAP}px 0`,
+              background: MODULAR_TOKENS.slotPanelBg,
+              borderRadius: 6,
+              position: "relative",
+            }}
+          >
+            {layout.map((slotSpec) => {
+              const slotId = String(slotSpec.slot);
+              const assignment = slots.find((s) => s.slotId === slotId);
+              return (
+                <SlotRow
+                  key={slotId}
+                  deviceId={device.id}
+                  slotId={slotId}
+                  slotKind={slotSpec.kind}
+                  modulePid={assignment?.modulePid}
+                  required={slotSpec.required}
+                  note={slotSpec.note}
+                  onClick={() => onConfigureSlot(device.id, slotId)}
+                />
+              );
+            })}
+          </div>
+        </div>
+
+        {/* ⭐ NEW: Footer (PID + PSU bays + status LED cluster) */}
+        <div className="relative flex items-center justify-between gap-2 px-3 pb-2.5">
+          <div className="truncate text-[10px] text-slate-400">
+            {device.hardware.chassisPid}
+          </div>
+
+          <div className="flex items-center gap-2">
+            <PsuBays />
+            <div className="flex items-center gap-1.5">
+              <StatusLED tone="green" />
+              <StatusLED tone={hasUnfilledRequired ? "amber" : "green"} />
+              <StatusLED tone="blue" />
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Chassis-level handles for high-level diagrams */}
@@ -142,10 +303,12 @@ function ModularChassisNodeImpl({ data, selected }: NodeProps) {
         position={Position.Top}
         id={`${device.id}::chassis::top`}
         style={{
-          background: "#22c55e",
-          width: 8,
-          height: 8,
-          border: `1px solid ${MODULAR_TOKENS.bodyBorder}`,
+          background: palette.accent,
+          width: 10,
+          height: 10,
+          border: `2px solid white`,
+          boxShadow: `0 0 8px ${palette.accent}`,
+          zIndex: 10,
         }}
       />
       <Handle
@@ -153,15 +316,16 @@ function ModularChassisNodeImpl({ data, selected }: NodeProps) {
         position={Position.Bottom}
         id={`${device.id}::chassis::bottom`}
         style={{
-          background: "#22c55e",
-          width: 8,
-          height: 8,
-          border: `1px solid ${MODULAR_TOKENS.bodyBorder}`,
+          background: palette.accent,
+          width: 10,
+          height: 10,
+          border: `2px solid white`,
+          boxShadow: `0 0 8px ${palette.accent}`,
+          zIndex: 10,
         }}
       />
 
       {/* ⭐ Compatibility handles — match DeviceNode short IDs (t/b/l/r) */}
-      {/* Required for bulk-connect and other code that uses short handle IDs */}
       <Handle
         type="target"
         position={Position.Top}

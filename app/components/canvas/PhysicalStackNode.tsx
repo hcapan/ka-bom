@@ -1,6 +1,6 @@
 "use client";
 
-import { memo } from "react";
+import { memo , useMemo} from "react";
 import { Handle, Position, NodeProps } from "@xyflow/react";
 import { motion } from "framer-motion";
 import SwitchFaceplate from "./SwitchFaceplate";
@@ -16,6 +16,8 @@ export type PhysicalStackNodeData = {
   stackId: string;
   label: string;
   members: ConfiguredDevice[];
+  collapsed?: boolean;
+  onToggleCollapse?: (stackId: string) => void;
   onConvertToLogical?: (stackId: string) => void;
   onDelete?: (stackId: string) => void;
 };
@@ -46,11 +48,188 @@ function StatusLED({ tone }: { tone: "green" | "blue" | "amber" }) {
 }
 
 function PhysicalStackNodeImpl({ data, selected }: NodeProps) {
-  const { stackId, label, members, onConvertToLogical, onDelete } =
+  const { stackId, label, members,collapsed,onToggleCollapse, onConvertToLogical, onDelete } =
     data as PhysicalStackNodeData;
 
   const catalog = getEffectiveCatalog();
 
+  const pidBreakdown = useMemo(() => {
+    const counts = new Map<string, number>();
+    members.forEach((m) => {
+      const key = m.hardware.chassisPid || m.hardware.series || "Unknown";
+      counts.set(key, (counts.get(key) ?? 0) + 1);
+    });
+    return Array.from(counts.entries()).sort((a, b) => b[1] - a[1]);
+  }, [members]);
+
+  // Series label (e.g. "Catalyst 9300") — assume homogeneous stack
+  const seriesLabel = members[0]?.hardware.series ?? "Switch Stack";
+
+    // ─────────────────────────────────────────────────────────────
+  // COLLAPSED VIEW
+  // ─────────────────────────────────────────────────────────────
+  if (collapsed) {
+    return (
+      <motion.div
+        initial={false}
+        whileHover={{ y: -2 }}
+        transition={{ type: "spring", stiffness: 380, damping: 28 }}
+        className={`
+          group relative overflow-hidden rounded-2xl
+          border backdrop-blur-xl
+          transition-shadow duration-300
+          hover:shadow-xl
+          cursor-pointer
+          ${selected ? "ring-2 ring-sky-400 ring-offset-2" : ""}
+        `}
+        style={{
+          width: 320,
+          height: 170,
+          background: `
+            linear-gradient(
+              145deg,
+              rgba(255,255,255,0.98),
+              rgba(248,250,252,0.96)
+            )
+          `,
+          borderColor: selected ? "#0ea5e9" : "rgba(14,165,233,0.25)",
+          boxShadow: selected
+            ? "0 16px 36px rgba(14,165,233,0.20)"
+            : "0 8px 22px -8px rgba(15,23,42,0.18)",
+        }}
+        onDoubleClick={() => onToggleCollapse?.(stackId)}
+      >
+        {/* Ambient glow */}
+        <div
+          className="pointer-events-none absolute inset-0 opacity-25"
+          style={{
+            background:
+              "radial-gradient(circle at top right, rgba(14,165,233,0.45), transparent 60%)",
+          }}
+        />
+
+        {/* Top accent line */}
+        <div className="absolute inset-x-0 top-0 h-px bg-linear-to-r from-transparent via-sky-400 to-transparent" />
+
+        {/* Handles */}
+        <Handle
+          type="target"
+          position={Position.Top}
+          id={`${stackId}-top`}
+          style={{
+            width: 11,
+            height: 11,
+            background: "#22c55e",
+            border: "2px solid white",
+            boxShadow: "0 0 10px #22c55e",
+            zIndex:10,
+          }}
+        />
+        <Handle
+          type="source"
+          position={Position.Bottom}
+          id={`${stackId}-bottom`}
+          style={{
+            width: 11,
+            height: 11,
+            background: "#22c55e",
+            border: "2px solid white",
+            boxShadow: "0 0 10px #22c55e",
+          }}
+        />
+
+        {/* HEADER */}
+        <div className="relative flex items-center gap-2.5 px-3 py-2.5 border-b border-sky-100/60 bg-linear-to-r from-sky-50/80 to-cyan-50/60">
+          {onToggleCollapse && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onToggleCollapse(stackId);
+              }}
+              className="
+                flex h-7 w-7 items-center justify-center
+                rounded-lg border border-sky-200
+                bg-white/80 text-sky-700
+                backdrop-blur-md
+                transition hover:scale-105 hover:bg-white
+              "
+              title="Expand stack"
+            >
+              ▶
+            </button>
+          )}
+
+          <div
+            className="
+              flex h-9 w-9 items-center justify-center
+              rounded-xl bg-sky-500/10
+              text-base shadow-inner
+            "
+          >
+            ⚡
+          </div>
+
+          <div className="min-w-0 flex-1">
+            <div className="truncate text-sm font-bold text-slate-800">
+              {label}
+            </div>
+            <div className="mt-0.5 truncate text-[10px] text-slate-500">
+              {seriesLabel} · Physical Stack
+            </div>
+          </div>
+
+          <div
+            className="
+              shrink-0 rounded-full border border-sky-200
+              bg-white/70 px-2 py-0.5
+              text-[10px] font-bold text-sky-700
+              backdrop-blur-md
+            "
+          >
+            {members.length} UNITS
+          </div>
+        </div>
+
+        {/* OVERVIEW BODY */}
+        <div className="relative px-3 py-2 space-y-1">
+          {members.length === 0 ? (
+            <div className="text-[11px] italic text-slate-400">
+              Empty stack
+            </div>
+          ) : (
+            <>
+              {pidBreakdown.slice(0, 2).map(([pid, count]) => (
+                <div
+                  key={pid}
+                  className="flex items-center justify-between text-[11px]"
+                >
+                  <span className="truncate text-slate-600">{pid}</span>
+                  <span className="ml-2 shrink-0 font-mono text-sky-700">
+                    ×{count}
+                  </span>
+                </div>
+              ))}
+
+              <div className="flex items-center gap-3 border-t border-slate-200/60 pt-1.5 mt-1">
+                <div className="flex items-center gap-1.5">
+                  <StatusLED tone="green" />
+                  <StatusLED tone="green" />
+                  <StatusLED tone="blue" />
+                </div>
+                <span className="font-mono text-[10px] text-slate-500">
+                  Stack active
+                </span>
+              </div>
+            </>
+          )}
+        </div>
+      </motion.div>
+    );
+  }
+
+  // ─────────────────────────────────────────────────────────────
+  // EXPANDED VIEW (your existing implementation, unchanged)
+  // ─────────────────────────────────────────────────────────────
   return (
     <motion.div
       initial={false}
@@ -80,7 +259,7 @@ function PhysicalStackNodeImpl({ data, selected }: NodeProps) {
         position: "relative",
       }}
     >
-      {/* Ambient glow (Cisco-blue tint) */}
+      {/* ... ambient glow, accent line, handles ... */}
       <div
         className="pointer-events-none absolute inset-0 opacity-20"
         style={{
@@ -88,11 +267,8 @@ function PhysicalStackNodeImpl({ data, selected }: NodeProps) {
             "radial-gradient(circle at top right, rgba(14,165,233,0.45), transparent 60%)",
         }}
       />
-
-      {/* Top accent line */}
       <div className="absolute inset-x-0 top-0 h-px bg-linear-to-r from-transparent via-sky-400 to-transparent" />
 
-      {/* Handles */}
       <Handle
         type="target"
         position={Position.Top}
@@ -118,25 +294,30 @@ function PhysicalStackNodeImpl({ data, selected }: NodeProps) {
         }}
       />
 
-      {/* HEADER */}
-      <div
-        className="
-          relative mb-4 flex items-center justify-between
-          rounded-2xl border border-white/40
-          bg-linear-to-r from-sky-100/80 via-blue-50/80 to-cyan-100/80
-          px-4 py-3
-          backdrop-blur-xl
-        "
-      >
+      {/* HEADER — now with collapse button */}
+      <div className="relative mb-4 flex items-center justify-between rounded-2xl border border-white/40 bg-linear-to-r from-sky-100/80 via-blue-50/80 to-cyan-100/80 px-4 py-3 backdrop-blur-xl">
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-3">
-            <div
-              className="
-                flex h-10 w-10 items-center justify-center
-                rounded-2xl bg-sky-500/10
-                text-lg shadow-inner
-              "
-            >
+            {onToggleCollapse && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onToggleCollapse(stackId);
+                }}
+                className="
+                  flex h-8 w-8 items-center justify-center
+                  rounded-xl border border-sky-200
+                  bg-white/70 text-sky-700
+                  backdrop-blur-md
+                  transition hover:scale-105 hover:bg-white
+                "
+                title="Collapse stack"
+              >
+                ▼
+              </button>
+            )}
+
+            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-sky-500/10 text-lg shadow-inner">
               ⚡
             </div>
 
@@ -151,19 +332,12 @@ function PhysicalStackNodeImpl({ data, selected }: NodeProps) {
           </div>
         </div>
 
-        <div
-          className="
-            rounded-full border border-sky-200
-            bg-white/70 px-3 py-1
-            text-[10px] font-bold text-sky-700
-            backdrop-blur-md
-          "
-        >
+        <div className="rounded-full border border-sky-200 bg-white/70 px-3 py-1 text-[10px] font-bold text-sky-700 backdrop-blur-md">
           {members.length} UNITS
         </div>
       </div>
 
-      {/* STACK MEMBERS */}
+      {/* STACK MEMBERS — unchanged */}
       <div className="relative flex flex-col gap-3">
         {members.map((device, idx) => {
           const series: SwitchSeries | undefined =
@@ -177,12 +351,7 @@ function PhysicalStackNodeImpl({ data, selected }: NodeProps) {
             return (
               <div
                 key={device.id}
-                className="
-                  rounded-2xl border border-rose-400/30
-                  bg-rose-50 px-4 py-3
-                  text-[11px] text-rose-600
-                  shadow-sm
-                "
+                className="rounded-2xl border border-rose-400/30 bg-rose-50 px-4 py-3 text-[11px] text-rose-600 shadow-sm"
               >
                 ⚠ Unknown PID: {device.hardware.chassisPid}
               </div>
@@ -194,37 +363,19 @@ function PhysicalStackNodeImpl({ data, selected }: NodeProps) {
           return (
             <div
               key={device.id}
-              className="
-                group/member relative overflow-hidden
-                rounded-2xl border border-slate-200/70
-                bg-white/80
-                p-3 backdrop-blur-xl
-                transition-all duration-200
-                hover:border-sky-300 hover:shadow-lg
-              "
+              className="group/member relative overflow-hidden rounded-2xl border border-slate-200/70 bg-white/80 p-3 backdrop-blur-xl transition-all duration-200 hover:border-sky-300 hover:shadow-lg"
               data-stack-member-id={device.id}
               data-stack-member-index={idx}
             >
-              {/* subtle hover glow */}
               <div className="pointer-events-none absolute inset-0 opacity-0 transition-opacity duration-300 group-hover/member:opacity-100">
                 <div className="absolute inset-0 bg-linear-to-r from-sky-500/5 via-transparent to-cyan-500/5" />
               </div>
 
               <div className="relative flex items-start gap-3">
-                {/* Unit badge */}
-                <div
-                  className="
-                    flex h-9 w-9 items-center justify-center
-                    rounded-xl border border-sky-200
-                    bg-sky-500/10
-                    text-[12px] font-bold text-sky-700
-                    shadow-inner
-                  "
-                >
+                <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-sky-200 bg-sky-500/10 text-[12px] font-bold text-sky-700 shadow-inner">
                   {idx + 1}
                 </div>
 
-                {/* Faceplate */}
                 <div className="relative min-w-0 flex-1 overflow-hidden rounded-xl border border-slate-200 bg-slate-50 p-2 shadow-inner">
                   <div
                     className="pointer-events-none absolute inset-0 opacity-[0.03]"
@@ -249,15 +400,9 @@ function PhysicalStackNodeImpl({ data, selected }: NodeProps) {
                   />
                 </div>
 
-                {/* Right panel */}
                 <div className="flex w-22.5 flex-col items-end justify-between gap-2">
                   <div
-                    className="
-                      max-w-full truncate rounded-lg
-                      border border-slate-200
-                      bg-slate-50 px-2 py-1
-                      text-[10px] font-medium text-slate-600
-                    "
+                    className="max-w-full truncate rounded-lg border border-slate-200 bg-slate-50 px-2 py-1 text-[10px] font-medium text-slate-600"
                     title={device.name}
                   >
                     {device.name || "Unnamed"}
@@ -267,8 +412,6 @@ function PhysicalStackNodeImpl({ data, selected }: NodeProps) {
                     <div className="truncate text-[9px] font-semibold text-slate-400">
                       {device.hardware.chassisPid}
                     </div>
-
-                    {/* Decorative LED cluster: PWR · STAT · UPLINK */}
                     <div className="mt-1.5 flex items-center justify-end gap-1.5">
                       <StatusLED tone="green" />
                       <StatusLED tone="green" />
@@ -282,18 +425,9 @@ function PhysicalStackNodeImpl({ data, selected }: NodeProps) {
         })}
       </div>
 
-      {/* FOOTER */}
-      <div
-        className="
-          mt-4 flex items-center justify-between
-          border-t border-slate-200/70
-          pt-3
-        "
-      >
-        <div className="text-[10px] text-slate-400">
-          Stack ID: {stackId}
-        </div>
-
+      {/* FOOTER — unchanged */}
+      <div className="mt-4 flex items-center justify-between border-t border-slate-200/70 pt-3">
+        <div className="text-[10px] text-slate-400">Stack ID: {stackId}</div>
         <div className="flex gap-2">
           {onConvertToLogical && (
             <button
@@ -301,31 +435,18 @@ function PhysicalStackNodeImpl({ data, selected }: NodeProps) {
                 e.stopPropagation();
                 onConvertToLogical(stackId);
               }}
-              className="
-                rounded-xl border border-slate-200
-                bg-white/70 px-3 py-1.5
-                text-[10px] font-semibold text-slate-600
-                backdrop-blur-md
-                transition hover:border-sky-300 hover:text-sky-700
-              "
+              className="rounded-xl border border-slate-200 bg-white/70 px-3 py-1.5 text-[10px] font-semibold text-slate-600 backdrop-blur-md transition hover:border-sky-300 hover:text-sky-700"
             >
               Unstack
             </button>
           )}
-
           {onDelete && (
             <button
               onClick={(e) => {
                 e.stopPropagation();
                 onDelete(stackId);
               }}
-              className="
-                rounded-xl border border-rose-200
-                bg-rose-50/70 px-3 py-1.5
-                text-[10px] font-semibold text-rose-600
-                backdrop-blur-md
-                transition hover:bg-rose-100
-              "
+              className="rounded-xl border border-rose-200 bg-rose-50/70 px-3 py-1.5 text-[10px] font-semibold text-rose-600 backdrop-blur-md transition hover:bg-rose-100"
             >
               Delete
             </button>

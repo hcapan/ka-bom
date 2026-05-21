@@ -1,15 +1,17 @@
 // app/lib/utils/groupLayout.ts
 
-export const DEVICE_W = 200;
-export const DEVICE_H = 100;
-export const HEADER_H = 100;
+export const DEVICE_W = 350;
+export const DEVICE_H = 350;
+export const HEADER_H = 80;
 export const PADDING_X = 24;
 export const PADDING_Y = 24;
 export const PADDING = 24;
 export const GAP_X = 24;
 export const GAP_Y = 24;
-export const EMPTY_GROUP_W = 320;
-export const EMPTY_GROUP_H = 180;
+export const EMPTY_GROUP_W = 120;
+export const EMPTY_GROUP_H = 160;
+export const COLLAPSED_W = 280;
+export const COLLAPSED_H = 120;
 
 export interface LayoutOptions {
   cols?: number;
@@ -54,7 +56,7 @@ export function calcGroupSize(count: number, cols?: number) {
   return {
     width:  PADDING_X * 2 + c * DEVICE_W + (c - 1) * GAP_X,
     height: HEADER_H + PADDING_Y * 2 + rows * DEVICE_H + (rows - 1) * GAP_Y,
-    //      ^^^^^^^^ now correctly accounts for the header
+    
   };
 }
 /**
@@ -81,10 +83,12 @@ export function computeCenteredGridPos(
     itemsInRow * DEVICE_W + Math.max(0, itemsInRow - 1) * GAP_X;
   const rowStartX = (groupWidth - rowContentWidth) / 2;
 
-  return {
+  const result = {
     x: rowStartX + col * (DEVICE_W + GAP_X),
     y: HEADER_H + PADDING_Y + row * (DEVICE_H + GAP_Y),
   };
+
+  return result;
 }
 
 /**
@@ -119,7 +123,6 @@ export function computeGroupBox<
 >(
   groupId: string,
   devices: TDevice[],
-  _groups?: unknown,
 ): ComputedBox {
   const children = devices.filter(
     (d) => d.parentId === groupId && d.position,

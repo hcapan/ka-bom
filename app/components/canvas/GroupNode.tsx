@@ -1,14 +1,15 @@
 "use client";
 
-import { memo, useState, useRef, useEffect } from "react";
+import { memo, useState, useRef, useEffect ,useMemo} from "react";
 import { Handle, Position, NodeProps, Node } from "@xyflow/react";
 import { StackSettingsPopover } from "./StackSettingsPopover";
 import {
   layoutChildrenInGroup,
   pickColsFor,
-  HEADER_H
+  HEADER_H,
 } from "@/app/lib/utils/groupLayout";
 import { Sparkles } from "lucide-react";
+import { COLLAPSED_H, COLLAPSED_W } from "@/app/lib/utils/groupLayout";
 
 export interface GroupNodeData extends Record<string, unknown> {
   label: string;
@@ -17,6 +18,12 @@ export interface GroupNodeData extends Record<string, unknown> {
   childGroupCount: number;
   depth: number;
   color?: string;
+
+  childDevicesSummary?: Array<{
+    model: string;
+    series?: string;
+    portCount?: number;
+  }>;
 
   groupKind?: "logical" | "stack";
   stackingCablePid?: string;
@@ -84,6 +91,17 @@ const STACK_PALETTE = {
 };
 
 function GroupNode({ id, data, selected }: NodeProps<GroupNodeType>) {
+  const {
+    label,
+    collapsed,
+    childDeviceCount,
+    childGroupCount,
+    childDevicesSummary = [],
+    depth,
+    groupKind,
+    onToggleCollapse,
+  } = data;
+
   const isStack = data.groupKind === "stack";
 
   const palette = isStack
@@ -96,11 +114,6 @@ function GroupNode({ id, data, selected }: NodeProps<GroupNodeType>) {
   const [showStackPopover, setShowStackPopover] = useState(false);
 
   const inputRef = useRef<HTMLInputElement>(null);
-
-  console.group(`🟪 GroupNode render: ${id}`);
-  console.log('data:', data);
-  console.log('selected:', selected);
-  console.groupEnd();
 
   useEffect(() => {
     if (editing && inputRef.current) {
@@ -129,8 +142,6 @@ function GroupNode({ id, data, selected }: NodeProps<GroupNodeType>) {
 
   const icon = isStack ? "⚡" : "◈";
 
-
-
   const stackBadge = isStack ? (
     <div
       className="flex items-center gap-1 rounded-full border bg-white/80 px-2.5 py-1 text-[10px] font-bold backdrop-blur-sm"
@@ -156,6 +167,16 @@ function GroupNode({ id, data, selected }: NodeProps<GroupNodeType>) {
   // COLLAPSED
   // ─────────────────────────────────────
 
+  const deviceTypeBreakdown = useMemo(() => {
+    if (!data.childDevicesSummary?.length) return [];
+    const counts = new Map<string, number>();
+    data.childDevicesSummary.forEach((d) => {
+      const key = d.model || d.series || "Unknown";
+      counts.set(key, (counts.get(key) ?? 0) + 1);
+    });
+    return Array.from(counts.entries()).sort((a, b) => b[1] - a[1]);
+  }, [data.childDevicesSummary]);
+
   if (data.collapsed) {
     return (
       <div
@@ -167,10 +188,8 @@ function GroupNode({ id, data, selected }: NodeProps<GroupNodeType>) {
   `}
         style={{
           borderColor: `${accent}30`,
-          width: "100%",
-          height: "100%",
-          minWidth: 360,
-          minHeight: 240,
+          width: 300,
+          height: 140,
         }}
       >
         {/* Glow */}
@@ -262,6 +281,45 @@ function GroupNode({ id, data, selected }: NodeProps<GroupNodeType>) {
 
           {stackBadge}
         </div>
+
+        {/* 👇 PASTE THE OVERVIEW BODY HERE 👇 */}
+        <div className="relative px-4 pb-3 pt-1 space-y-1">
+          {data.childDeviceCount === 0 ? (
+            <div className="text-[11px] italic text-slate-400">Empty pod</div>
+          ) : (
+            <>
+              {deviceTypeBreakdown.slice(0, 2).map(([model, count]) => (
+                <div
+                  key={model}
+                  className="flex items-center justify-between text-[11px]"
+                >
+                  <span className="truncate text-slate-600">{model}</span>
+                  <span
+                    className="ml-2 shrink-0 font-mono"
+                    style={{ color: accent }}
+                  >
+                    ×{count}
+                  </span>
+                </div>
+              ))}
+              <div className="flex items-center gap-3 border-t border-slate-200/60 pt-1.5 mt-1">
+                <span className="font-mono text-[10px] text-slate-500">
+                  {data.childDeviceCount} device 
+                  {data.childDeviceCount > 1 ? "s" : ""}
+                </span>
+                <span>
+                </span>
+                {data.childGroupCount > 0 && (
+                  <span className="font-mono text-[10px] text-slate-500">
+                    {data.childGroupCount} sub-group
+                    {data.childGroupCount > 1 ? "s" : ""}
+                  </span>
+                )}
+              </div>
+            </>
+          )}
+        </div>
+        {/* 👆 END OVERVIEW BODY 👆 */}
 
         {isStack &&
           showStackPopover &&
@@ -464,7 +522,10 @@ function GroupNode({ id, data, selected }: NodeProps<GroupNodeType>) {
         <div className="absolute inset-3 rounded-2xl border border-dashed border-white/20" />
         <div className="pointer-events-none absolute inset-0">
           {data.childDeviceCount === 0 && (
-            <div className="flex h-full items-center justify-center" style={{ paddingTop: HEADER_H }}>
+            <div
+              className="flex h-full items-center justify-center"
+              style={{ paddingTop: HEADER_H }}
+            >
               <div className="text-[11px] text-slate-400 italic">
                 Drag devices here
               </div>

@@ -16,6 +16,7 @@ import {
   Panel,
   EdgeChange,
   applyNodeChanges,
+  NodePositionChange,
   useReactFlow,
   applyEdgeChanges,
 } from "@xyflow/react";
@@ -38,7 +39,11 @@ import {
 import { BundledEdge } from "./Edges/BundledEdge";
 import { bundleLinks } from "../../lib/utils/bundleLinks";
 import GroupNode, { GroupNodeData } from "./GroupNode";
-import { computeGroupBox, type ComputedBox } from "../../lib/utils/groupLayout";
+import {
+  computeGroupBox,
+  type ComputedBox,
+  computeCenteredGridPos,
+} from "../../lib/utils/groupLayout";
 import {
   layoutChildrenInGroup,
   calcGroupSize,
@@ -145,7 +150,7 @@ function devicesToNodes(
       // ⭐ Detect modular chassis (C9404R / C9407R / C9410R, etc.)
       const isModular = isModularChassis(d.hardware.chassisPid);
 
-      let basePosition;
+      let basePosition: { x: number; y: number };
       if (d.groupId) {
         const siblings = siblingsByGroup.get(d.groupId) ?? [];
         const localIndex = siblings.findIndex((x) => x.id === d.id);
@@ -159,10 +164,12 @@ function devicesToNodes(
         const rowWidth = itemsInRow * DEVICE_W + (itemsInRow - 1) * GAP_X;
         const startX = (groupWidth - rowWidth) / 2;
 
-        basePosition = {
-          x: startX + col * (DEVICE_W + GAP_X),
-          y: HEADER_H + PADDING_Y + row * (DEVICE_H + GAP_Y),
-        };
+        basePosition = computeCenteredGridPos(
+          localIndex,
+          siblings.length,
+          groupWidth,
+          cols,
+        );
       } else {
         // Free device — use persisted or default
         basePosition = d.position ?? {
@@ -172,17 +179,18 @@ function devicesToNodes(
       }
 
       if (isModular) {
-        return [{
-          id: d.id,
-          type: "modular",
-          position: basePosition,
-          data: { device: d, ...handlers },
-          parentId: d.groupId ?? undefined,
-          extent: d.groupId ? ("parent" as const) : undefined,
-          draggable: false,
-        }];
+        return [
+          {
+            id: d.id,
+            type: "modular",
+            position: basePosition,
+            data: { device: d, ...handlers },
+            parentId: d.groupId ?? undefined,
+            extent: d.groupId ? ("parent" as const) : undefined,
+            draggable: !d.groupId,
+          },
+        ];
       }
-
 
       // ─── Fixed-switch (existing) branch ───────────────────────
       return [
@@ -198,7 +206,7 @@ function devicesToNodes(
           },
           parentId: d.groupId ?? undefined,
           extent: d.groupId ? ("parent" as const) : undefined,
-          draggable: false,
+          draggable: !d.groupId,
         },
       ];
     });
@@ -247,6 +255,11 @@ function groupsToNodes(
       onRename: handlers.onRename,
       onDelete: handlers.onDelete,
 
+      childDevicesSummary: childDevices.map((d) => ({
+        model: d.hardware.chassisPid ?? d.hardware.series ?? "Unknown",
+        series: d.hardware.series,
+      })),
+
       // ⭐ STACK fields
       groupKind: g.kind,
       stackingCablePid: g.stackingCablePid,
@@ -263,14 +276,15 @@ function groupsToNodes(
       id: g.id,
       type: "group",
       position: g.position,
-      style: { width, height },
+      style: g.collapsed ? { width: 150, height: 100 } : { width, height },
       data,
       parentId: g.parentGroupId ?? undefined,
       extent: g.parentGroupId ? ("parent" as const) : undefined,
+
       zIndex: -1 - depth,
       deletable: false,
       selectable: true,
-      draggable: false,
+      draggable: true,
     };
   });
 }
@@ -470,7 +484,6 @@ function CanvasInner({
     [onConfigureSlot, onNodeClick],
   );
 
-
   const [nodes, setNodes] = useNodesState([
     ...groupsToNodes(groups, devices, {
       onToggleCollapse: onToggleGroupCollapse,
@@ -517,7 +530,6 @@ function CanvasInner({
       })),
     [],
   );
-
 
   // Sync refs for one-way prop→canvas
   const lastSyncedDeviceIdsRef = useRef<string>("");
@@ -587,6 +599,8 @@ function CanvasInner({
           stackId: stack.id,
           label: stack.label,
           members,
+          collapsed: stack.collapsed, // 👈 NEW
+          onToggleCollapse: onToggleGroupCollapse,
           onConvertToLogical: onConvertStackToLogical,
           onDelete: onRemoveGroup,
         },
@@ -668,15 +682,25 @@ function CanvasInner({
       setNodes(next);
 
       const hasPositionChange = changes.some(
-        (c) => c.type === "position" && !c.dragging,
+        (c) => c.type === "position" && c.dragging === false,
       );
       const hasRemoval = changes.some((c) => c.type === "remove");
 
       if (!hasPositionChange && !hasRemoval) return;
 
-      const groupNodesNow = next.filter((n) => n.type === "group");
+      const groupNodesNow = next.filter(
+        (n) => n.type === "group" || n.type === "stack",
+      );
       let groupsChanged = false;
+
+      const dragEndChanges = changes.filter(
+        (c): c is NodePositionChange =>
+          c.type === "position" && c.dragging === false,
+      );
+      const draggedIds = new Set(dragEndChanges.map((c) => c.id));
+
       const updatedGroups = groupsRef.current.map((g) => {
+        if (!draggedIds.has(g.id)) return g;
         const node = groupNodesNow.find((n) => n.id === g.id);
         if (!node) return g;
         if (
@@ -705,6 +729,7 @@ function CanvasInner({
 
       let devicesChanged = false;
       const updatedDevices: ConfiguredDevice[] = devicesRef.current.map((d) => {
+        if (d.groupId) return d;
         const newPos = positionUpdates.get(d.id);
         if (!newPos) return d; // hidden device — keep as-is
 
@@ -879,7 +904,6 @@ function CanvasInner({
             onNodeClick?.(node.id);
           }
         }}
-        fitView
         fitViewOptions={{ padding: 0.3 }}
         proOptions={{ hideAttribution: true }}
         deleteKeyCode={["Backspace", "Delete"]}

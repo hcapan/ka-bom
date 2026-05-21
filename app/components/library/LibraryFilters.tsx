@@ -31,7 +31,9 @@ const LAYERS: { value: DeviceType; label: string; color: string }[] = [
 
 const BUNDLE_STATUSES: { value: BundleStatus; label: string }[] = [
   { value: "complete", label: "✓ With Bundle" },
-  { value: "faceplate-only", label: "⚠ Faceplate Only" },
+  { value:"supervisor", label:"Supervisor"},
+  { value:"linecard", label:"Linecard"},
+  { value:"accessories",label:"Accessories"},
   { value: "stub", label: "✕ Stub" },
 ];
 

@@ -24,6 +24,7 @@ export function SupervisorSlot({ slotId, module, onClick }: Props) {
         display: "flex",
         alignItems: "center",
         gap: 10,
+        borderRadius: 3,
         padding: `0 ${MODULAR_SIZES.PADDING}px`,
         background: MODULAR_TOKENS.moduleBg,
         border: "none",
@@ -40,6 +41,7 @@ export function SupervisorSlot({ slotId, module, onClick }: Props) {
           left: 0,
           top: 0,
           bottom: 0,
+          borderRadius: 3,
           width: 3,
           background: MODULAR_TOKENS.supervisorAccent,
         }}
