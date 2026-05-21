@@ -2,6 +2,8 @@
 // SCHEMA — Project-centric, DB-migration-ready
 // ============================================================
 
+import { PortSpeed } from "./hardware/types";
+
 export const SCHEMA_VERSION = 5;
 
 // ============================================================
@@ -47,6 +49,7 @@ export type Region =
   | "IT"
   | "TW";
 
+  
 // ============================================================
 // MODULAR CHASSIS & STACKING — Type primitives
 // (Declared early because DeviceGroup and HardwareConfig reference them)
@@ -98,6 +101,15 @@ export type ModuleKind =
 export interface UISettings {
   bundleEdges: boolean;
   expandedBundles: string[];
+}
+
+// ============================================================
+// UPLINK MODULE (rendering helper — derived from catalog)
+// ============================================================
+export interface UplinkModule {
+  pid: string;          // e.g., "C9300-NM-8X"
+  portCount: number;    // e.g., 8
+  portSpeed: PortSpeed; // e.g., "10G"
 }
 
 export interface DeviceGroup {
@@ -163,6 +175,7 @@ export interface GlobalDefaults {
   licenseTermYears: ContractTermYears;
   defaultOptic: string;
 }
+
 
 // ============================================================
 // CONFIGURED DEVICE

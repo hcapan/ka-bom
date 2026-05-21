@@ -1,4 +1,5 @@
 "use client";
+import { useMemo } from "react";
 
 import { Handle, Position, NodeProps, type Node } from "@xyflow/react";
 import { motion } from "framer-motion";
@@ -8,6 +9,11 @@ import {
   getFaceplate,
 } from "../../lib/hardware/catalog";
 import SwitchFaceplate from "./SwitchFaceplate";
+import { getNetworkModuleSpec } from "@/app/lib/hardware/data/switching/networkModules";
+import type { UplinkModule } from "../../lib/types";
+import type { PortSpeed } from "../../lib/hardware/types";
+
+
 
 export type DeviceData = {
   name: string;
@@ -15,6 +21,10 @@ export type DeviceData = {
   model: string;
   type: DeviceType;
   region?: string;
+  networkModulePid?: string;
+   uplinkPortCount?: number;
+  uplinkPortSpeed?: PortSpeed;
+  hasPoe?: boolean;
   [key: string]: unknown;
 };
 
@@ -103,6 +113,19 @@ export default function DeviceNode({
     bg: "rgba(148, 163, 184, 0.05)",
     y: 0,
   };
+
+  const networkModule = getNetworkModuleSpec(data.networkModulePid);
+
+  const uplinkModules = networkModule
+  ? [
+      {
+        pid: networkModule.pid,
+        portCount: networkModule.portCount,
+        portSpeed: networkModule.portSpeed,
+      },
+    ]
+  : undefined;
+
 
   const faceplate = getFaceplate(data.model, data.pid);
 
@@ -246,6 +269,7 @@ export default function DeviceNode({
             accessPortSpeed={faceplate.accessPorts.speed}
             uplinkPortCount={faceplate.uplinkPorts?.count ?? 0}
             uplinkPortSpeed={faceplate.uplinkPorts?.speed ?? "10G"}
+            uplinkModules={uplinkModules}
             hasPoe={faceplate.accessPorts.poe}
             rackUnits={faceplate.rackUnits}
           />

@@ -21,7 +21,6 @@ import {
   applyEdgeChanges,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
-import { toast } from "sonner";
 import DeviceNode from "./DeviceNode";
 import CustomEdge from "./Edges/CustomEdge";
 import {
@@ -39,16 +38,8 @@ import {
 import { BundledEdge } from "./Edges/BundledEdge";
 import { bundleLinks } from "../../lib/utils/bundleLinks";
 import GroupNode, { GroupNodeData } from "./GroupNode";
-import {
-  computeGroupBox,
-  type ComputedBox,
-  computeCenteredGridPos,
-} from "../../lib/utils/groupLayout";
-import {
-  layoutChildrenInGroup,
-  calcGroupSize,
-  pickColsFor,
-} from "@/app/lib/utils/groupLayout";
+import { computeCenteredGridPos } from "../../lib/utils/groupLayout";
+import { calcGroupSize, pickColsFor } from "@/app/lib/utils/groupLayout";
 import {
   getChildGroups,
   getGroupDepth,
@@ -57,15 +48,6 @@ import {
 import { PhysicalStackNode } from "./PhysicalStackNode";
 import { ModularChassisNode } from "./ModularChassisNode";
 import { isModularChassis } from "@/app/lib/hardware/chassisHelpers";
-import {
-  DEVICE_W,
-  DEVICE_H,
-  HEADER_H,
-  PADDING_X,
-  PADDING_Y,
-  GAP_X,
-  GAP_Y,
-} from "../../lib/utils/groupLayout";
 
 const nodeTypes = {
   device: DeviceNode,
@@ -157,13 +139,6 @@ function devicesToNodes(
         const cols = pickColsFor(siblings.length);
         const { width: groupWidth } = calcGroupSize(siblings.length, cols);
 
-        // Always recompute for grouped devices — ignore stale persisted positions
-        const row = Math.floor(localIndex / cols);
-        const col = localIndex % cols;
-        const itemsInRow = Math.min(cols, siblings.length - row * cols);
-        const rowWidth = itemsInRow * DEVICE_W + (itemsInRow - 1) * GAP_X;
-        const startX = (groupWidth - rowWidth) / 2;
-
         basePosition = computeCenteredGridPos(
           localIndex,
           siblings.length,
@@ -203,6 +178,7 @@ function devicesToNodes(
             pid: d.hardware.chassisPid,
             model: d.hardware.series,
             type: d.type,
+            networkModulePid: d.hardware.networkModulePid,
           },
           parentId: d.groupId ?? undefined,
           extent: d.groupId ? ("parent" as const) : undefined,

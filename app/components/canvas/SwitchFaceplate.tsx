@@ -8,16 +8,28 @@ import {
 } from "./chassisStyles";
 import { LAYER_CONFIG, type DeviceType } from "../../lib/hardware/catalog";
 
+// ─── Local type used for rendering (matches lib/types UplinkModule) ───
+type UplinkModule = {
+  pid: string;
+  portCount: number;
+  portSpeed: PortSpeed;
+};
+
 type Props = {
   pid: string;
   vendor?: string;
   accessPortCount: number;
   accessPortSpeed: PortSpeed;
-  uplinkPortCount: number;
-  uplinkPortSpeed: PortSpeed;
+
+  // Fixed uplinks (9300L)
+  uplinkPortCount?: number;
+  uplinkPortSpeed?: PortSpeed;
+
+  // Modular uplinks (9300 / 9300X) — passed by DeviceNode
+  uplinkModules?: UplinkModule[];
+
   rackUnits?: number;
   hasPoe?: boolean;
-  // ⭐ NEW props
   hostname?: string;
   layer?: DeviceType;
   description?: string;
@@ -28,8 +40,9 @@ export default function SwitchFaceplate({
   vendor = "Cisco",
   accessPortCount,
   accessPortSpeed,
-  uplinkPortCount,
+  uplinkPortCount = 0,
   uplinkPortSpeed,
+  uplinkModules,
   rackUnits = 1,
   hasPoe = false,
   hostname,
@@ -41,14 +54,28 @@ export default function SwitchFaceplate({
 
   const PAD = 10;
   const GAP = 12;
+  const MODULE_GAP = 6;
 
+  // ─── Determine uplink mode ──────────────────────────────────
+  const hasModularUplinks = !!uplinkModules && uplinkModules.length > 0;
+  const hasFixedUplinks = !hasModularUplinks && uplinkPortCount > 0;
+
+  // ─── Access port layout ─────────────────────────────────────
   const portsPerRow = Math.ceil(accessPortCount / 2);
   const accessW = portsPerRow * (PORT_W + PORT_GAP) - PORT_GAP;
 
-  const uplinkW =
-    uplinkPortCount > 0 ? uplinkPortCount * (PORT_W + 3) - 3 : 0;
+  // ─── Uplink width calculation ───────────────────────────────
+  let uplinkW = 0;
+  if (hasModularUplinks) {
+    uplinkW = uplinkModules!.reduce((sum, mod, idx) => {
+      const modW = mod.portCount * (PORT_W + 3) - 3;
+      return sum + modW + (idx > 0 ? MODULE_GAP : 0);
+    }, 0);
+  } else if (hasFixedUplinks) {
+    uplinkW = uplinkPortCount * (PORT_W + 3) - 3;
+  }
 
-  // ⭐ Reserve space on the right for status LEDs
+  // ─── Right-side LED area ────────────────────────────────────
   const LED_AREA_W = 22;
 
   const totalW =
@@ -56,34 +83,61 @@ export default function SwitchFaceplate({
     BRAND_W +
     GAP +
     accessW +
-    (uplinkPortCount ? GAP + uplinkW : 0) +
+    (uplinkW > 0 ? GAP + uplinkW : 0) +
     LED_AREA_W;
 
   const totalH = rackUnits * RU_HEIGHT + PAD * 2;
 
   const accessX = PAD + BRAND_W + GAP;
   const accessY = totalH / 2 - (PORT_H * 2 + ROW_GAP) / 2;
-
   const uplinkX = accessX + accessW + GAP;
 
   const accessColor =
     PORT_SPEED_COLORS[accessPortSpeed] ?? CHASSIS_COLORS.textSecondary;
-  const uplinkColor =
-    PORT_SPEED_COLORS[uplinkPortSpeed] ?? CHASSIS_COLORS.textSecondary;
+  const fixedUplinkColor = uplinkPortSpeed
+    ? (PORT_SPEED_COLORS[uplinkPortSpeed] ?? CHASSIS_COLORS.textSecondary)
+    : CHASSIS_COLORS.textSecondary;
 
-  // ⭐ Layer accent — fall back to vendor cyan if layer unknown
   const layerColor = layer ? LAYER_CONFIG[layer].color : "#0ea5e9";
 
-  // ⭐ LED column position (right edge)
   const ledX = totalW - PAD - 6;
   const ledTop = PAD + 4;
 
-  // ⭐ Tooltip text
+  // ─── Tooltip text ───────────────────────────────────────────
+  const uplinkSummary = hasModularUplinks
+    ? uplinkModules!
+        .map((m) => `${m.portCount}× ${m.portSpeed} (${m.pid})`)
+        .join(", ")
+    : hasFixedUplinks
+      ? `${uplinkPortCount}× ${uplinkPortSpeed ?? ""}`
+      : "";
+
   const tooltipText =
     description ??
     `${pid}${hostname ? ` · ${hostname}` : ""} — ${accessPortCount}× ${accessPortSpeed}${
       hasPoe ? " PoE" : ""
-    }${uplinkPortCount > 0 ? ` + ${uplinkPortCount}× ${uplinkPortSpeed}` : ""}`;
+    }${uplinkSummary ? ` + ${uplinkSummary}` : ""}`;
+
+  // ─── Highest uplink speed (for SPD LED) ─────────────────────
+  const speedRank: Record<string, number> = {
+    "1G": 1,
+    "10G": 2,
+    "25G": 3,
+    "40G": 4,
+    "100G": 5,
+  };
+  const highestUplinkSpeed: PortSpeed | undefined = hasModularUplinks
+    ? uplinkModules!.reduce<PortSpeed | undefined>((best, m) => {
+        if (!best) return m.portSpeed;
+        return (speedRank[m.portSpeed] ?? 0) > (speedRank[best] ?? 0)
+          ? m.portSpeed
+          : best;
+      }, undefined)
+    : uplinkPortSpeed;
+
+  const spdColor = highestUplinkSpeed
+    ? (PORT_SPEED_COLORS[highestUplinkSpeed] ?? accessColor)
+    : accessColor;
 
   return (
     <div title={tooltipText} style={{ display: "inline-block", lineHeight: 0 }}>
@@ -123,9 +177,7 @@ export default function SwitchFaceplate({
           </filter>
         </defs>
 
-        {/* =========================
-            CISCO HARDWARE CHASSIS
-            ========================= */}
+        {/* ========================= CHASSIS ========================= */}
         <rect
           x={0}
           y={0}
@@ -136,18 +188,7 @@ export default function SwitchFaceplate({
           stroke="#8e959c"
           strokeWidth={0.8}
         />
-
-        {/* top metal highlight */}
-        <rect
-          x={0}
-          y={0}
-          width={totalW}
-          height={1}
-          fill="#f4f6f8"
-          opacity={0.7}
-        />
-
-        {/* bottom shadow */}
+        <rect x={0} y={0} width={totalW} height={1} fill="#f4f6f8" opacity={0.7} />
         <rect
           x={0}
           y={totalH - 1}
@@ -157,12 +198,11 @@ export default function SwitchFaceplate({
           opacity={0.5}
         />
 
-        {/* ⭐ #3 LAYER ACCENT BAR (replaces the flat brand strip) */}
+        {/* LAYER ACCENT BAR */}
         <rect x={PAD / 2} y={2} width={3} height={totalH - 4} fill={layerColor} />
 
         {/* ================= VENDOR + PID + HOSTNAME ================= */}
         <g transform={`translate(${PAD}, ${PAD + 2})`}>
-          {/* Vendor (embossed) */}
           <text
             fill="#1f2937"
             fontSize={7}
@@ -172,8 +212,6 @@ export default function SwitchFaceplate({
           >
             {vendor.toUpperCase()}
           </text>
-
-          {/* PID (embossed, monospace) */}
           <text
             y={9}
             fill="#374151"
@@ -184,8 +222,6 @@ export default function SwitchFaceplate({
           >
             {pid}
           </text>
-
-          {/* ⭐ #8 HOSTNAME (only when provided) */}
           {hostname && (
             <text
               y={16}
@@ -210,7 +246,6 @@ export default function SwitchFaceplate({
 
             return (
               <g key={i}>
-                {/* port cavity */}
                 <rect
                   x={x}
                   y={y}
@@ -221,7 +256,6 @@ export default function SwitchFaceplate({
                   stroke="#6b7280"
                   strokeWidth={0.4}
                 />
-                {/* inner port slot */}
                 <rect
                   x={x + 0.6}
                   y={y + 0.6}
@@ -230,7 +264,6 @@ export default function SwitchFaceplate({
                   rx={1}
                   fill="#2f3640"
                 />
-                {/* speed LED hint */}
                 <rect
                   x={x + 1}
                   y={y + 1}
@@ -257,49 +290,163 @@ export default function SwitchFaceplate({
           </text>
         </g>
 
-        {/* ================= UPLINKS ================= */}
-        {uplinkPortCount > 0 && (
+        {/* ================= UPLINKS — MODULAR (9300/9300X) ================= */}
+        {hasModularUplinks && (
+          <g transform={`translate(${uplinkX}, ${accessY})`}>
+            {(() => {
+              let xOffset = 0;
+              return uplinkModules!.map((mod, modIdx) => {
+                const modColor =
+                  PORT_SPEED_COLORS[mod.portSpeed] ??
+                  CHASSIS_COLORS.textSecondary;
+                const modStartX = xOffset;
+                const modWidth = mod.portCount * (PORT_W + 3) - 3;
+
+                const moduleGroup = (
+                  <g
+                    key={`mod-${modIdx}`}
+                    transform={`translate(${modStartX}, 0)`}
+                  >
+                    {/* Module backplate */}
+                    <rect
+                      x={-2}
+                      y={-2}
+                      width={modWidth + 4}
+                      height={PORT_H + 4}
+                      rx={1.5}
+                      fill="#b3b9c0"
+                      stroke="#6b7280"
+                      strokeWidth={0.3}
+                    />
+
+                    {/* Ports */}
+                    {Array.from({ length: mod.portCount }).map((_, i) => (
+                      <g key={i}>
+                        <rect
+                          x={i * (PORT_W + 3)}
+                          y={0}
+                          width={PORT_W}
+                          height={PORT_H}
+                          rx={1.2}
+                          fill="#9aa3ab"
+                          stroke={modColor}
+                          strokeWidth={0.5}
+                        />
+                        <rect
+                          x={i * (PORT_W + 3) + 0.6}
+                          y={0.6}
+                          width={PORT_W - 1.2}
+                          height={PORT_H - 1.2}
+                          rx={1}
+                          fill="#2f3640"
+                        />
+                        <rect
+                          x={i * (PORT_W + 3) + 1}
+                          y={1}
+                          width={PORT_W - 2}
+                          height={1}
+                          fill={modColor}
+                          opacity={0.7}
+                        />
+                      </g>
+                    ))}
+
+                    {/* count × speed */}
+                    <text
+                      x={modWidth / 2}
+                      y={PORT_H + 10}
+                      textAnchor="middle"
+                      fill="#374151"
+                      fontSize={4.5}
+                      fontWeight={700}
+                    >
+                      {mod.portCount} × {mod.portSpeed}
+                    </text>
+
+                    {/* model PID */}
+                    <text
+                      x={modWidth / 2}
+                      y={PORT_H + 16}
+                      textAnchor="middle"
+                      fill="#6b7280"
+                      fontSize={3.2}
+                      fontWeight={600}
+                      fontFamily="monospace"
+                    >
+                      {mod.pid}
+                    </text>
+                  </g>
+                );
+
+                xOffset += modWidth + MODULE_GAP;
+                return moduleGroup;
+              });
+            })()}
+          </g>
+        )}
+
+        {/* ================= UPLINKS — FIXED (9300L) ================= */}
+        {hasFixedUplinks && (
           <g transform={`translate(${uplinkX}, ${accessY})`}>
             {Array.from({ length: uplinkPortCount }).map((_, i) => (
-              <rect
-                key={i}
-                x={i * (PORT_W + 4)}
-                y={0}
-                width={PORT_W}
-                height={PORT_H}
-                rx={1.2}
-                fill="#9aa3ab"
-                stroke={uplinkColor}
-                strokeWidth={0.5}
-              />
+              <g key={i}>
+                <rect
+                  x={i * (PORT_W + 3)}
+                  y={0}
+                  width={PORT_W}
+                  height={PORT_H}
+                  rx={1.2}
+                  fill="#9aa3ab"
+                  stroke={fixedUplinkColor}
+                  strokeWidth={0.5}
+                />
+                <rect
+                  x={i * (PORT_W + 3) + 0.6}
+                  y={0.6}
+                  width={PORT_W - 1.2}
+                  height={PORT_H - 1.2}
+                  rx={1}
+                  fill="#2f3640"
+                />
+                <rect
+                  x={i * (PORT_W + 3) + 1}
+                  y={1}
+                  width={PORT_W - 2}
+                  height={1}
+                  fill={fixedUplinkColor}
+                  opacity={0.7}
+                />
+              </g>
             ))}
             <text
-              x={(uplinkPortCount * (PORT_W + 4)) / 2}
+              x={(uplinkPortCount * (PORT_W + 3)) / 2}
               y={PORT_H + 10}
               textAnchor="middle"
               fill="#374151"
               fontSize={4.5}
               fontWeight={700}
             >
-              {uplinkPortCount} × {uplinkPortSpeed}
+              {uplinkPortCount} × {uplinkPortSpeed ?? ""}
+            </text>
+            <text
+              x={(uplinkPortCount * (PORT_W + 3)) / 2}
+              y={PORT_H + 16}
+              textAnchor="middle"
+              fill="#6b7280"
+              fontSize={3.2}
+              fontWeight={600}
+              fontFamily="monospace"
+            >
+              FIXED
             </text>
           </g>
         )}
 
-        {/* ⭐ #1 STATUS LEDs (right edge column) */}
+        {/* ⭐ STATUS LEDs */}
         <g transform={`translate(${ledX}, ${ledTop})`}>
-          {/* SYS — solid green = system OK */}
           <Led y={0} color="#22c55e" label="SYS" />
-
-          {/* PoE — amber when device has PoE capability */}
           {hasPoe && <Led y={9} color="#fbbf24" label="PoE" />}
-
-          {/* SPD — neutral; reflects highest configured speed */}
-          <Led
-            y={hasPoe ? 18 : 9}
-            color={accessColor}
-            label="SPD"
-          />
+          <Led y={hasPoe ? 18 : 9} color={spdColor} label="SPD" />
         </g>
       </svg>
     </div>
@@ -320,13 +467,9 @@ function Led({
 }) {
   return (
     <g transform={`translate(0, ${y})`}>
-      {/* outer glow */}
       <circle cx={0} cy={2.5} r={2.4} fill={color} opacity={0.25} />
-      {/* core LED */}
       <circle cx={0} cy={2.5} r={1.4} fill={color} />
-      {/* tiny highlight (specular) */}
       <circle cx={-0.4} cy={2.0} r={0.4} fill="#ffffff" opacity={0.7} />
-      {/* label */}
       <text
         x={3.5}
         y={3.8}
