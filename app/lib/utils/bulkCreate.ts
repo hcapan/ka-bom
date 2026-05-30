@@ -4,6 +4,7 @@ import {
   NamingConfig,
   DeviceType,
   DeviceGroup,
+  HardwareConfig,           // ⭐ NEW import
 } from "../types";
 import { generateHostname } from "./nameGenerator";
 import { LAYER_CONFIG } from "../hardware/catalog";
@@ -21,7 +22,7 @@ const TYPE_PREFIX: Record<DeviceType, string> = {
 function generateDeviceId(
   type: DeviceType,
   existing: ConfiguredDevice[],
-  reserved: Set<string>
+  reserved: Set<string>,
 ): string {
   const prefix = TYPE_PREFIX[type] ?? "DEV";
   const allIds = new Set([...existing.map((d) => d.id), ...reserved]);
@@ -31,7 +32,7 @@ function generateDeviceId(
 }
 
 // ============================================================
-// AUTO-GRID PLACEMENT
+// AUTO-GRID PLACEMENT (unchanged)
 // ============================================================
 const NODE_WIDTH = 300;
 const NODE_HEIGHT = 200;
@@ -39,23 +40,19 @@ const HORIZONTAL_GAP = 40;
 const VERTICAL_GAP = 30;
 const ROW_WIDTH = 8;
 
-// Positioning inside a group container (relative coords)
 const GROUP_INTERNAL_PAD_X = 24;
-const GROUP_INTERNAL_PAD_Y = 60; // leaves room for the group header
+const GROUP_INTERNAL_PAD_Y = 60;
 
-/**
- * Position for a device when NOT inside a group (absolute canvas coords).
- */
 function nextGridPositionAbsolute(
   type: DeviceType,
   index: number,
-  existingDevices: ConfiguredDevice[]
+  existingDevices: ConfiguredDevice[],
 ): { x: number; y: number } {
   const layerCfg = LAYER_CONFIG[type];
   const baseY = layerCfg.y + 80;
 
   const existingInLayer = existingDevices.filter(
-    (d) => d.type === type && !d.groupId
+    (d) => d.type === type && !d.groupId,
   ).length;
   const totalIndex = existingInLayer + index;
 
@@ -68,10 +65,6 @@ function nextGridPositionAbsolute(
   };
 }
 
-/**
- * Position for a device INSIDE a group (relative to the group node).
- * React Flow's `parentId` + `extent: "parent"` interprets these as relative.
- */
 function nextGridPositionInGroup(index: number): { x: number; y: number } {
   const row = Math.floor(index / ROW_WIDTH);
   const col = index % ROW_WIDTH;
@@ -82,36 +75,26 @@ function nextGridPositionInGroup(index: number): { x: number; y: number } {
   };
 }
 
-/**
- * Pick a sensible canvas position for a brand-new group's top-left corner.
- * Tries to place to the right of the rightmost existing top-level group,
- * falling back to layer-based defaults.
- */
 function nextGroupPosition(
   type: DeviceType,
   groups: DeviceGroup[],
-  devices: ConfiguredDevice[],            // ✨ NEW arg
-  parentGroupId?: string
+  devices: ConfiguredDevice[],
+  parentGroupId?: string,
 ): { x: number; y: number } {
-  if (parentGroupId) {
-    return { x: 40, y: 60 };
-  }
+  if (parentGroupId) return { x: 40, y: 60 };
 
   const layerCfg = LAYER_CONFIG[type];
   const baseY = layerCfg.y + 40;
 
-  // Find rightmost edge of existing top-level groups + ungrouped devices
-  // in this layer, then place new group to the right
   const ESTIMATED_GROUP_W = 500;
   const HORIZONTAL_GAP = 60;
 
   const topLevelGroups = groups.filter((g) => !g.parentGroupId);
   const layerDevices = devices.filter(
-    (d) => d.type === type && !d.groupId && d.position
+    (d) => d.type === type && !d.groupId && d.position,
   );
 
   let rightEdge = 100;
-
   for (const g of topLevelGroups) {
     rightEdge = Math.max(rightEdge, g.position.x + ESTIMATED_GROUP_W);
   }
@@ -119,11 +102,9 @@ function nextGroupPosition(
     rightEdge = Math.max(rightEdge, d.position!.x + 200);
   }
 
-  return {
-    x: rightEdge + HORIZONTAL_GAP,
-    y: baseY,
-  };
+  return { x: rightEdge + HORIZONTAL_GAP, y: baseY };
 }
+
 // ============================================================
 // BULK SPEC + RESULT
 // ============================================================
@@ -140,15 +121,19 @@ export interface BulkCreateSpec {
   quantity: number;
   uplinks: UplinkSpec[];
 
-  // ✨ Sprint 3 — Group options
-  groupName?: string; // if set, creates a new DeviceGroup
-  parentGroupId?: string; // optional — nest under an existing group
+  // Group options
+  groupName?: string;
+  parentGroupId?: string;
+
+  // ⭐ NEW — Hardware template (applied identically to every bulk device)
+  // If omitted, devices get only { series, chassisPid }.
+  hardwareTemplate?: Partial<HardwareConfig>;
 }
 
 export interface BulkCreateResult {
   newDevices: ConfiguredDevice[];
   newLinks: Link[];
-  newGroup?: DeviceGroup; // populated when groupName was provided
+  newGroup?: DeviceGroup;
 }
 
 // ============================================================
@@ -160,40 +145,36 @@ export function createBulkDevices(
   existingDevices: ConfiguredDevice[],
   existingLinks: Link[],
   existingGroups: DeviceGroup[],
-  naming: NamingConfig
+  naming: NamingConfig,
 ): BulkCreateResult {
   const newDevices: ConfiguredDevice[] = [];
   const newLinks: Link[] = [];
   const reservedIds = new Set<string>();
   const cumulativeDevices: ConfiguredDevice[] = [...existingDevices];
 
-  // ────────────────────────────────────────────────
-  // Step 1 — Optionally create a new group
-  // ────────────────────────────────────────────────
+  // ── Step 1 — Optionally create a new group ─────────────────
   let newGroup: DeviceGroup | undefined;
 
   if (spec.groupName && spec.groupName.trim()) {
-  const groupId = generateGroupId(existingGroups);
-  newGroup = {
-    id: groupId,
-    label: spec.groupName.trim(),
-    kind: "logical",                    // ⭐ ADD THIS
-    parentGroupId: spec.parentGroupId,
-    collapsed: false,
-    position: nextGroupPosition(
-      spec.type,
-      existingGroups,
-      existingDevices,
-      spec.parentGroupId,
-    ),
-  };
-}
+    const groupId = generateGroupId(existingGroups);
+    newGroup = {
+      id: groupId,
+      label: spec.groupName.trim(),
+      kind: "logical",
+      parentGroupId: spec.parentGroupId,
+      collapsed: false,
+      position: nextGroupPosition(
+        spec.type,
+        existingGroups,
+        existingDevices,
+        spec.parentGroupId,
+      ),
+    };
+  }
 
   const targetGroupId = newGroup?.id ?? spec.parentGroupId;
 
-  // ────────────────────────────────────────────────
-  // Step 2 — Create devices
-  // ────────────────────────────────────────────────
+  // ── Step 2 — Create devices ────────────────────────────────
   for (let i = 0; i < spec.quantity; i++) {
     const id = generateDeviceId(spec.type, cumulativeDevices, reservedIds);
     reservedIds.add(id);
@@ -202,10 +183,9 @@ export function createBulkDevices(
       naming.pattern,
       spec.type,
       spec.series,
-      cumulativeDevices
+      cumulativeDevices,
     );
 
-    // Position depends on whether device lands in a group
     const position = targetGroupId
       ? nextGridPositionInGroup(i)
       : nextGridPositionAbsolute(spec.type, i, existingDevices);
@@ -216,6 +196,8 @@ export function createBulkDevices(
       type: spec.type,
       position,
       hardware: {
+        // ⭐ Apply template first — series/chassisPid below override always
+        ...(spec.hardwareTemplate ?? {}),
         series: spec.series,
         chassisPid: spec.chassisPid,
       },
@@ -225,17 +207,15 @@ export function createBulkDevices(
     newDevices.push(device);
     cumulativeDevices.push(device);
 
-    // ────────────────────────────────────────────
-    // Step 3 — Create uplinks
-    // ────────────────────────────────────────────
+    // ── Step 3 — Create uplinks ──────────────────────────────
     for (const uplink of spec.uplinks) {
       for (let j = 0; j < uplink.linkCount; j++) {
         newLinks.push({
           id: `LNK-${Date.now()}-${i}-${uplink.targetDeviceId}-${j}-${Math.random()
             .toString(36)
             .slice(2, 6)}`,
-          from: uplink.targetDeviceId, // parent (CORE/DIST) — bottom source
-          to: device.id, // new device — top target
+          from: uplink.targetDeviceId,
+          to: device.id,
           sourceHandle: "b",
           targetHandle: "t",
           optic: { pid: uplink.opticPid },

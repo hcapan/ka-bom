@@ -6,6 +6,8 @@ const TYPE_PREFIX: Record<DeviceType, string> = {
   distribution: "DIST",
   access: "ACC",
   security: "SEC",
+  wireless:"WRL",
+  management:"MGMT"
 };
 
 /**

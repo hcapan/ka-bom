@@ -99,7 +99,7 @@ export function migrateProject(raw: unknown): Project {
         ...v4.topology,
         groups: v4.topology.groups.map((g) => ({
           ...g,
-          groupKind: g.groupKind ?? "logical", // default existing groups to logical
+          groupKind: g.kind ?? "logical", // default existing groups to logical
         })),
         // devices unchanged — slots field is optional and undefined by default
       },

@@ -5,8 +5,10 @@ import { useProject } from "../../lib/storage/useProject";
 import { buildBOM, downloadCCWExcel } from "../../lib/bom";
 import Toolbar from "./Toolbar";
 import DeviceListPanel from "../panels/DeviceListPanel";
+import DeviceInventoryPanel from "../panels/DeviceInventoryPanel";
 import TopologyCanvas from "../canvas/TopologyCanvas";
 import ConfigurePanel from "../panels/ConfigurePanel";
+import DeviceCatalogPanel from "../panels/DeviceCatalogPanel";
 
 type ConfigureTarget = {
   deviceId: string;
@@ -146,64 +148,73 @@ export default function TopologyApp() {
   return (
     <>
       <main className="h-[calc(100vh-56px)] flex flex-col gap-3 p-3 bg-slate-50">
-        <Toolbar
-          project={project}
-          devices={devices}
-          links={links}
-          globalDefaults={globalDefaults}
-          setGlobalDefaults={setGlobalDefaults}
-          onExportBOM={exportBOM}
-          onExportJSON={exportJSON}
-          onImport={handleImport}
-          onReset={resetProject}
-          bundleEdges={ui.bundleEdges}
-          expandedBundleCount={ui.expandedBundles.length}
-          onToggleBundleEdges={toggleBundleEdges}
-          onCollapseAllBundles={collapseAllBundles}
-        />
+  <Toolbar
+    project={project}
+    devices={devices}
+    links={links}
+    globalDefaults={globalDefaults}
+    setGlobalDefaults={setGlobalDefaults}
+    onExportBOM={exportBOM}
+    onExportJSON={exportJSON}
+    onImport={handleImport}
+    onReset={resetProject}
+    bundleEdges={ui.bundleEdges}
+    expandedBundleCount={ui.expandedBundles.length}
+    onToggleBundleEdges={toggleBundleEdges}
+    onCollapseAllBundles={collapseAllBundles}
+  />
 
-        <div className="flex-1 grid grid-cols-1 lg:grid-cols-[300px_1fr] gap-3 min-h-0">
-          <DeviceListPanel
-            devices={devices}
-            links={links}
-            setDevices={setDevices}
-            setLinks={setLinks}
-            naming={naming}
-            setNaming={setNaming}
-            defaultLinkSku={globalDefaults.defaultOptic}
-            setDefaultLinkSku={(sku) =>
-              setGlobalDefaults({ defaultOptic: sku })
-            }
-            addDevicesWithOptionalGroup={addDevicesWithOptionalGroup}
-            onConfigureDevice={openDeviceConfig}
-            onCreateGroup={addGroup}
-            groups={groups}
-            setGroups={setGroups}
-          />
+  {/* ⭐ 3-column grid */}
+  <div className="flex-1 grid grid-cols-1 lg:grid-cols-[280px_240px_1fr] gap-3 min-h-0">
+    {/* Column 1 — Add hardware */}
+    <DeviceCatalogPanel
+      devices={devices}
+      naming={naming}
+      setNaming={setNaming}
+      groups={groups}
+      defaultLinkSku={globalDefaults.defaultOptic}
+      addDevicesWithOptionalGroup={addDevicesWithOptionalGroup}
+      onCreateGroup={addGroup}
+      globalDefaults={globalDefaults}    // ⭐ NEW
+      project={project}
+    />
 
-          <section className="min-w-0 min-h-0">
-            <TopologyCanvas
-              devices={devices}
-              links={links}
-              setDevices={setDevices}
-              setLinks={setLinks}
-              defaultLinkSku={globalDefaults.defaultOptic}
-              onExport={exportBOM}
-              onNodeClick={openDeviceConfig}
-              ui={ui}
-              onExpandBundle={expandBundle}
-              groups={groups}
-              onToggleGroupCollapse={toggleGroupCollapse}
-              onRenameGroup={renameGroup}
-              onRemoveGroup={removeGroup}
-              setGroups={setGroups}
-              onConfigureSlot={openSlotConfig}        // ⭐ wired
-              onUpdateStack={updateStackSettings}
-              onConvertStackToLogical={convertStackToLogical}
-            />
-          </section>
-        </div>
-      </main>
+    {/* Column 2 — Manage / inspect inventory */}
+    <DeviceInventoryPanel
+      devices={devices}
+      links={links}
+      setDevices={setDevices}
+      setLinks={setLinks}
+      groups={groups}
+      onConfigureDevice={openDeviceConfig}
+      defaultLinkSku={globalDefaults.defaultOptic}
+      setDefaultLinkSku={(sku) => setGlobalDefaults({ defaultOptic: sku })}
+    />
+
+    {/* Column 3 — Canvas (unchanged) */}
+    <section className="min-w-0 min-h-0">
+      <TopologyCanvas
+        devices={devices}
+        links={links}
+        setDevices={setDevices}
+        setLinks={setLinks}
+        defaultLinkSku={globalDefaults.defaultOptic}
+        onExport={exportBOM}
+        onNodeClick={openDeviceConfig}
+        ui={ui}
+        onExpandBundle={expandBundle}
+        groups={groups}
+        onToggleGroupCollapse={toggleGroupCollapse}
+        onRenameGroup={renameGroup}
+        onRemoveGroup={removeGroup}
+        setGroups={setGroups}
+        onConfigureSlot={openSlotConfig}
+        onUpdateStack={updateStackSettings}
+        onConvertStackToLogical={convertStackToLogical}
+      />
+    </section>
+  </div>
+</main>
 
       <ConfigurePanel
         device={configureDevice}

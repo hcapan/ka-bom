@@ -68,6 +68,19 @@ export const ProductCategorySchema = z.enum([
 ]);
 export type ProductCategory = z.infer<typeof ProductCategorySchema>;
 
+
+export const DeviceCategorySchema = z.enum([
+  "switching",
+  "security",
+  "wireless",
+  "routing",
+  "management",
+  "compute",
+  "appliance",
+  "saas"
+]);
+export type DeviceCategory = z.infer<typeof DeviceCategorySchema>;
+
 // ------------------------------------------------------------
 // DEVICE TOPOLOGY LAYER
 // ------------------------------------------------------------

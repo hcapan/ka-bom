@@ -141,6 +141,13 @@
               }
             ]
           }
+        },
+        "attrs": {
+          "kind": "switch",
+          "portCount": 48,
+          "portType": "mGig",
+          "poeClass": "UPOE+",
+          "uplinkType": "modular"
         }
       },
       {
@@ -279,6 +286,13 @@
               }
             ]
           }
+        },
+        "attrs": {
+          "kind": "switch",
+          "portCount": 48,
+          "portType": "mGig",
+          "poeClass": "UPOE+",
+          "uplinkType": "modular"
         }
       },
       {
@@ -412,6 +426,13 @@
               }
             ]
           }
+        },
+        "attrs": {
+          "kind": "switch",
+          "portCount": 48,
+          "portType": "mGig",
+          "poeClass": "none",
+          "uplinkType": "modular"
         }
       },
       {
@@ -545,6 +566,13 @@
               }
             ]
           }
+        },
+        "attrs": {
+          "kind": "switch",
+          "portCount": 48,
+          "portType": "mGig",
+          "poeClass": "none",
+          "uplinkType": "modular"
         }
       },
       {
@@ -683,6 +711,13 @@
               }
             ]
           }
+        },
+        "attrs": {
+          "kind": "switch",
+          "portCount": 48,
+          "portType": "mGig",
+          "poeClass": "UPOE+",
+          "uplinkType": "modular"
         }
       },
       {
@@ -821,6 +856,13 @@
               }
             ]
           }
+        },
+        "attrs": {
+          "kind": "switch",
+          "portCount": 48,
+          "portType": "mGig",
+          "poeClass": "UPOE+",
+          "uplinkType": "modular"
         }
       },
       {
@@ -959,6 +1001,13 @@
               }
             ]
           }
+        },
+        "attrs": {
+          "kind": "switch",
+          "portCount": 24,
+          "portType": "mGig",
+          "poeClass": "UPOE+",
+          "uplinkType": "modular"
         }
       },
       {
@@ -1097,6 +1146,13 @@
               }
             ]
           }
+        },
+        "attrs": {
+          "kind": "switch",
+          "portCount": 24,
+          "portType": "mGig",
+          "poeClass": "UPOE+",
+          "uplinkType": "modular"
         }
       },
       {
@@ -1230,6 +1286,13 @@
               }
             ]
           }
+        },
+        "attrs": {
+          "kind": "switch",
+          "portCount": 12,
+          "portType": "mGig",
+          "poeClass": "none",
+          "uplinkType": "modular"
         }
       },
       {
@@ -1363,6 +1426,13 @@
               }
             ]
           }
+        },
+        "attrs": {
+          "kind": "switch",
+          "portCount": 12,
+          "portType": "mGig",
+          "poeClass": "none",
+          "uplinkType": "modular"
         }
       },
       {
@@ -1496,6 +1566,13 @@
               }
             ]
           }
+        },
+        "attrs": {
+          "kind": "switch",
+          "portCount": 24,
+          "portType": "mGig",
+          "poeClass": "none",
+          "uplinkType": "modular"
         }
       },
       {
@@ -1629,6 +1706,13 @@
               }
             ]
           }
+        },
+        "attrs": {
+          "kind": "switch",
+          "portCount": 24,
+          "portType": "mGig",
+          "poeClass": "none",
+          "uplinkType": "modular"
         }
       },
       {
@@ -1762,6 +1846,13 @@
               }
             ]
           }
+        },
+        "attrs": {
+          "kind": "switch",
+          "portCount": 24,
+          "portType": "1G-Cu",
+          "poeClass": "none",
+          "uplinkType": "modular"
         }
       },
       {
@@ -1895,6 +1986,13 @@
               }
             ]
           }
+        },
+        "attrs": {
+          "kind": "switch",
+          "portCount": 24,
+          "portType": "1G-Cu",
+          "poeClass": "none",
+          "uplinkType": "modular"
         }
       },
       {
@@ -2033,6 +2131,13 @@
               }
             ]
           }
+        },
+        "attrs": {
+          "kind": "switch",
+          "portCount": 24,
+          "portType": "1G-Cu",
+          "poeClass": "PoE+",
+          "uplinkType": "modular"
         }
       },
       {
@@ -2171,6 +2276,13 @@
               }
             ]
           }
+        },
+        "attrs": {
+          "kind": "switch",
+          "portCount": 24,
+          "portType": "1G-Cu",
+          "poeClass": "PoE+",
+          "uplinkType": "modular"
         }
       },
       {
@@ -2309,6 +2421,13 @@
               }
             ]
           }
+        },
+        "attrs": {
+          "kind": "switch",
+          "portCount": 24,
+          "portType": "1G-Cu",
+          "poeClass": "UPOE",
+          "uplinkType": "modular"
         }
       },
       {
@@ -2447,6 +2566,13 @@
               }
             ]
           }
+        },
+        "attrs": {
+          "kind": "switch",
+          "portCount": 24,
+          "portType": "1G-Cu",
+          "poeClass": "UPOE",
+          "uplinkType": "modular"
         }
       },
       {
@@ -2580,6 +2706,13 @@
               }
             ]
           }
+        },
+        "attrs": {
+          "kind": "switch",
+          "portCount": 24,
+          "portType": "1G-Cu",
+          "poeClass": "UPOE",
+          "uplinkType": "modular"
         }
       },
       {
@@ -2713,6 +2846,13 @@
               }
             ]
           }
+        },
+        "attrs": {
+          "kind": "switch",
+          "portCount": 24,
+          "portType": "1G-Cu",
+          "poeClass": "UPOE",
+          "uplinkType": "modular"
         }
       },
       {
@@ -2851,6 +2991,13 @@
               }
             ]
           }
+        },
+        "attrs": {
+          "kind": "switch",
+          "portCount": 24,
+          "portType": "1G-Cu",
+          "poeClass": "UPOE+",
+          "uplinkType": "modular"
         }
       },
       {
@@ -2989,6 +3136,13 @@
               }
             ]
           }
+        },
+        "attrs": {
+          "kind": "switch",
+          "portCount": 24,
+          "portType": "1G-Cu",
+          "poeClass": "UPOE+",
+          "uplinkType": "modular"
         }
       },
       {
@@ -3127,6 +3281,13 @@
               }
             ]
           }
+        },
+        "attrs": {
+          "kind": "switch",
+          "portCount": 24,
+          "portType": "mGig",
+          "poeClass": "UPOE",
+          "uplinkType": "modular"
         }
       },
       {
@@ -3265,6 +3426,13 @@
               }
             ]
           }
+        },
+        "attrs": {
+          "kind": "switch",
+          "portCount": 24,
+          "portType": "mGig",
+          "poeClass": "UPOE",
+          "uplinkType": "modular"
         }
       },
       {
@@ -3398,6 +3566,13 @@
               }
             ]
           }
+        },
+        "attrs": {
+          "kind": "switch",
+          "portCount": 24,
+          "portType": "mGig",
+          "poeClass": "UPOE",
+          "uplinkType": "modular"
         }
       },
       {
@@ -3531,6 +3706,13 @@
               }
             ]
           }
+        },
+        "attrs": {
+          "kind": "switch",
+          "portCount": 24,
+          "portType": "mGig",
+          "poeClass": "UPOE",
+          "uplinkType": "modular"
         }
       },
       {
@@ -3664,6 +3846,13 @@
               }
             ]
           }
+        },
+        "attrs": {
+          "kind": "switch",
+          "portCount": 48,
+          "portType": "1G-Cu",
+          "poeClass": "none",
+          "uplinkType": "modular"
         }
       },
       {
@@ -3797,6 +3986,13 @@
               }
             ]
           }
+        },
+        "attrs": {
+          "kind": "switch",
+          "portCount": 48,
+          "portType": "1G-Cu",
+          "poeClass": "none",
+          "uplinkType": "modular"
         }
       },
       {
@@ -3940,6 +4136,13 @@
               }
             ]
           }
+        },
+        "attrs": {
+          "kind": "switch",
+          "portCount": 48,
+          "portType": "1G-Cu",
+          "poeClass": "PoE+",
+          "uplinkType": "modular"
         }
       },
       {
@@ -4083,6 +4286,13 @@
               }
             ]
           }
+        },
+        "attrs": {
+          "kind": "switch",
+          "portCount": 48,
+          "portType": "1G-Cu",
+          "poeClass": "PoE+",
+          "uplinkType": "modular"
         }
       },
       {
@@ -4221,6 +4431,13 @@
               }
             ]
           }
+        },
+        "attrs": {
+          "kind": "switch",
+          "portCount": 48,
+          "portType": "1G-Cu",
+          "poeClass": "UPOE",
+          "uplinkType": "modular"
         }
       },
       {
@@ -4359,6 +4576,13 @@
               }
             ]
           }
+        },
+        "attrs": {
+          "kind": "switch",
+          "portCount": 48,
+          "portType": "1G-Cu",
+          "poeClass": "UPOE",
+          "uplinkType": "modular"
         }
       },
       {
@@ -4492,6 +4716,13 @@
               }
             ]
           }
+        },
+        "attrs": {
+          "kind": "switch",
+          "portCount": 48,
+          "portType": "1G-Cu",
+          "poeClass": "UPOE",
+          "uplinkType": "modular"
         }
       },
       {
@@ -4625,6 +4856,13 @@
               }
             ]
           }
+        },
+        "attrs": {
+          "kind": "switch",
+          "portCount": 48,
+          "portType": "1G-Cu",
+          "poeClass": "UPOE",
+          "uplinkType": "modular"
         }
       },
       {
@@ -4763,6 +5001,13 @@
               }
             ]
           }
+        },
+        "attrs": {
+          "kind": "switch",
+          "portCount": 48,
+          "portType": "1G-Cu",
+          "poeClass": "UPOE+",
+          "uplinkType": "modular"
         }
       },
       {
@@ -4901,6 +5146,13 @@
               }
             ]
           }
+        },
+        "attrs": {
+          "kind": "switch",
+          "portCount": 48,
+          "portType": "1G-Cu",
+          "poeClass": "UPOE+",
+          "uplinkType": "modular"
         }
       },
       {
@@ -5039,6 +5291,13 @@
               }
             ]
           }
+        },
+        "attrs": {
+          "kind": "switch",
+          "portCount": 48,
+          "portType": "mGig",
+          "poeClass": "UPOE",
+          "uplinkType": "modular"
         }
       },
       {
@@ -5177,6 +5436,13 @@
               }
             ]
           }
+        },
+        "attrs": {
+          "kind": "switch",
+          "portCount": 48,
+          "portType": "mGig",
+          "poeClass": "UPOE",
+          "uplinkType": "modular"
         }
       },
       {
@@ -5315,6 +5581,13 @@
               }
             ]
           }
+        },
+        "attrs": {
+          "kind": "switch",
+          "portCount": 48,
+          "portType": "mGig",
+          "poeClass": "UPOE",
+          "uplinkType": "modular"
         }
       },
       {
@@ -5453,6 +5726,13 @@
               }
             ]
           }
+        },
+        "attrs": {
+          "kind": "switch",
+          "portCount": 48,
+          "portType": "mGig",
+          "poeClass": "UPOE",
+          "uplinkType": "modular"
         }
       },
       {
@@ -5586,6 +5866,13 @@
               }
             ]
           }
+        },
+        "attrs": {
+          "kind": "switch",
+          "portCount": 24,
+          "portType": "1G-Cu",
+          "poeClass": "none",
+          "uplinkType": "modular"
         }
       },
       {
@@ -5719,6 +6006,13 @@
               }
             ]
           }
+        },
+        "attrs": {
+          "kind": "switch",
+          "portCount": 24,
+          "portType": "1G-Cu",
+          "poeClass": "none",
+          "uplinkType": "modular"
         }
       },
       {
@@ -5763,18 +6057,18 @@
           },
           "smartnet": {
             "baseSkuByTier": {
-              "SNT": "CON-SNT-C930048SE",
-              "SNTP": "CON-SNTP-C930048SE"
+              "SNT": "CON-SNT-C93004SE",
+              "SNTP": "CON-SNTP-C93004SE"
             }
           },
           "license": {
             "tier": "Essentials",
-            "entitlementPid": "C9300-DNA-E-48",
+            "entitlementPid": "C9300-DNA-E-48S",
             "subscriptionByTerm": {
-              "1": "C9300-DNA-E-48-1Y",
-              "3": "C9300-DNA-E-48-3Y",
-              "5": "C9300-DNA-E-48-5Y",
-              "7": "C9300-DNA-E-48-7Y"
+              "1": "C9300-DNA-E-48S-1Y",
+              "3": "C9300-DNA-E-48S-3Y",
+              "5": "C9300-DNA-E-48S-5Y",
+              "7": "C9300-DNA-E-48S-7Y"
             }
           },
           "redundantPsu": {
@@ -5852,6 +6146,13 @@
               }
             ]
           }
+        },
+        "attrs": {
+          "kind": "switch",
+          "portCount": 48,
+          "portType": "1G-Cu",
+          "poeClass": "none",
+          "uplinkType": "modular"
         }
       },
       {
@@ -5896,18 +6197,18 @@
           },
           "smartnet": {
             "baseSkuByTier": {
-              "SNT": "CON-SNT-C930048SA",
+              "SNT": "CON-SNT-C93004SA",
               "SNTP": "CON-SNTP-C930048SA"
             }
           },
           "license": {
             "tier": "Advantage",
-            "entitlementPid": "C9300-DNA-A-48",
+            "entitlementPid": "C9300-DNA-A-48S",
             "subscriptionByTerm": {
-              "1": "C9300-DNA-A-48-1Y",
-              "3": "C9300-DNA-A-48-3Y",
-              "5": "C9300-DNA-A-48-5Y",
-              "7": "C9300-DNA-A-48-7Y"
+              "1": "C9300-DNA-A-48S-1Y",
+              "3": "C9300-DNA-A-48S-3Y",
+              "5": "C9300-DNA-A-48S-5Y",
+              "7": "C9300-DNA-A-48S-7Y"
             }
           },
           "redundantPsu": {
@@ -5985,6 +6286,13 @@
               }
             ]
           }
+        },
+        "attrs": {
+          "kind": "switch",
+          "portCount": 48,
+          "portType": "1G-Cu",
+          "poeClass": "none",
+          "uplinkType": "modular"
         }
       },
       {
@@ -6122,6 +6430,13 @@
               }
             ]
           }
+        },
+        "attrs": {
+          "kind": "switch",
+          "portCount": 24,
+          "portType": "1G-Cu",
+          "poeClass": "none",
+          "uplinkType": "fixed-1G"
         }
       },
       {
@@ -6259,6 +6574,13 @@
               }
             ]
           }
+        },
+        "attrs": {
+          "kind": "switch",
+          "portCount": 24,
+          "portType": "1G-Cu",
+          "poeClass": "none",
+          "uplinkType": "fixed-1G"
         }
       },
       {
@@ -6396,6 +6718,13 @@
               }
             ]
           }
+        },
+        "attrs": {
+          "kind": "switch",
+          "portCount": 24,
+          "portType": "1G-Cu",
+          "poeClass": "PoE+",
+          "uplinkType": "fixed-1G"
         }
       },
       {
@@ -6533,6 +6862,13 @@
               }
             ]
           }
+        },
+        "attrs": {
+          "kind": "switch",
+          "portCount": 24,
+          "portType": "1G-Cu",
+          "poeClass": "PoE+",
+          "uplinkType": "fixed-1G"
         }
       },
       {
@@ -6670,6 +7006,13 @@
               }
             ]
           }
+        },
+        "attrs": {
+          "kind": "switch",
+          "portCount": 48,
+          "portType": "1G-Cu",
+          "poeClass": "none",
+          "uplinkType": "fixed-1G"
         }
       },
       {
@@ -6807,6 +7150,13 @@
               }
             ]
           }
+        },
+        "attrs": {
+          "kind": "switch",
+          "portCount": 48,
+          "portType": "1G-Cu",
+          "poeClass": "none",
+          "uplinkType": "fixed-1G"
         }
       },
       {
@@ -6944,6 +7294,13 @@
               }
             ]
           }
+        },
+        "attrs": {
+          "kind": "switch",
+          "portCount": 48,
+          "portType": "1G-Cu",
+          "poeClass": "PoE+",
+          "uplinkType": "fixed-1G"
         }
       },
       {
@@ -7081,6 +7438,13 @@
               }
             ]
           }
+        },
+        "attrs": {
+          "kind": "switch",
+          "portCount": 48,
+          "portType": "1G-Cu",
+          "poeClass": "PoE+",
+          "uplinkType": "fixed-1G"
         }
       },
       {
@@ -7218,6 +7582,13 @@
               }
             ]
           }
+        },
+        "attrs": {
+          "kind": "switch",
+          "portCount": 48,
+          "portType": "1G-Cu",
+          "poeClass": "PoE+",
+          "uplinkType": "fixed-1G"
         }
       },
       {
@@ -7355,6 +7726,13 @@
               }
             ]
           }
+        },
+        "attrs": {
+          "kind": "switch",
+          "portCount": 48,
+          "portType": "1G-Cu",
+          "poeClass": "PoE+",
+          "uplinkType": "fixed-1G"
         }
       },
       {
@@ -7492,6 +7870,13 @@
               }
             ]
           }
+        },
+        "attrs": {
+          "kind": "switch",
+          "portCount": 24,
+          "portType": "1G-Cu",
+          "poeClass": "none",
+          "uplinkType": "fixed-10G"
         }
       },
       {
@@ -7629,6 +8014,13 @@
               }
             ]
           }
+        },
+        "attrs": {
+          "kind": "switch",
+          "portCount": 24,
+          "portType": "1G-Cu",
+          "poeClass": "none",
+          "uplinkType": "fixed-10G"
         }
       },
       {
@@ -7766,6 +8158,13 @@
               }
             ]
           }
+        },
+        "attrs": {
+          "kind": "switch",
+          "portCount": 24,
+          "portType": "1G-Cu",
+          "poeClass": "PoE+",
+          "uplinkType": "fixed-10G"
         }
       },
       {
@@ -7903,6 +8302,13 @@
               }
             ]
           }
+        },
+        "attrs": {
+          "kind": "switch",
+          "portCount": 24,
+          "portType": "1G-Cu",
+          "poeClass": "PoE+",
+          "uplinkType": "fixed-10G"
         }
       },
       {
@@ -8040,6 +8446,13 @@
               }
             ]
           }
+        },
+        "attrs": {
+          "kind": "switch",
+          "portCount": 24,
+          "portType": "mGig",
+          "poeClass": "UPOE",
+          "uplinkType": "fixed-10G"
         }
       },
       {
@@ -8177,6 +8590,13 @@
               }
             ]
           }
+        },
+        "attrs": {
+          "kind": "switch",
+          "portCount": 24,
+          "portType": "mGig",
+          "poeClass": "UPOE",
+          "uplinkType": "fixed-10G"
         }
       },
       {
@@ -8314,6 +8734,13 @@
               }
             ]
           }
+        },
+        "attrs": {
+          "kind": "switch",
+          "portCount": 48,
+          "portType": "1G-Cu",
+          "poeClass": "none",
+          "uplinkType": "fixed-10G"
         }
       },
       {
@@ -8451,6 +8878,13 @@
               }
             ]
           }
+        },
+        "attrs": {
+          "kind": "switch",
+          "portCount": 48,
+          "portType": "1G-Cu",
+          "poeClass": "none",
+          "uplinkType": "fixed-10G"
         }
       },
       {
@@ -8588,6 +9022,13 @@
               }
             ]
           }
+        },
+        "attrs": {
+          "kind": "switch",
+          "portCount": 48,
+          "portType": "1G-Cu",
+          "poeClass": "PoE+",
+          "uplinkType": "fixed-10G"
         }
       },
       {
@@ -8725,6 +9166,13 @@
               }
             ]
           }
+        },
+        "attrs": {
+          "kind": "switch",
+          "portCount": 48,
+          "portType": "1G-Cu",
+          "poeClass": "PoE+",
+          "uplinkType": "fixed-10G"
         }
       },
       {
@@ -8862,6 +9310,13 @@
               }
             ]
           }
+        },
+        "attrs": {
+          "kind": "switch",
+          "portCount": 48,
+          "portType": "1G-Cu",
+          "poeClass": "PoE+",
+          "uplinkType": "fixed-10G"
         }
       },
       {
@@ -8999,6 +9454,13 @@
               }
             ]
           }
+        },
+        "attrs": {
+          "kind": "switch",
+          "portCount": 48,
+          "portType": "1G-Cu",
+          "poeClass": "PoE+",
+          "uplinkType": "fixed-10G"
         }
       },
       {
@@ -9136,6 +9598,13 @@
               }
             ]
           }
+        },
+        "attrs": {
+          "kind": "switch",
+          "portCount": 48,
+          "portType": "mGig",
+          "poeClass": "UPOE",
+          "uplinkType": "fixed-10G"
         }
       },
       {
@@ -9273,6 +9742,13 @@
               }
             ]
           }
+        },
+        "attrs": {
+          "kind": "switch",
+          "portCount": 48,
+          "portType": "mGig",
+          "poeClass": "UPOE",
+          "uplinkType": "fixed-10G"
         }
       },
       {
@@ -9410,6 +9886,13 @@
               }
             ]
           }
+        },
+        "attrs": {
+          "kind": "switch",
+          "portCount": 24,
+          "portType": "mGig",
+          "poeClass": "UPOE",
+          "uplinkType": "fixed-40G"
         }
       },
       {
@@ -9547,6 +10030,13 @@
               }
             ]
           }
+        },
+        "attrs": {
+          "kind": "switch",
+          "portCount": 24,
+          "portType": "mGig",
+          "poeClass": "UPOE",
+          "uplinkType": "fixed-40G"
         }
       },
       {
@@ -9684,6 +10174,13 @@
               }
             ]
           }
+        },
+        "attrs": {
+          "kind": "switch",
+          "portCount": 48,
+          "portType": "mGig",
+          "poeClass": "UPOE",
+          "uplinkType": "fixed-40G"
         }
       },
       {
@@ -9821,6 +10318,13 @@
               }
             ]
           }
+        },
+        "attrs": {
+          "kind": "switch",
+          "portCount": 48,
+          "portType": "mGig",
+          "poeClass": "UPOE",
+          "uplinkType": "fixed-40G"
         }
       },
       {
@@ -9958,6 +10462,13 @@
               }
             ]
           }
+        },
+        "attrs": {
+          "kind": "switch",
+          "portCount": 48,
+          "portType": "1G-Cu",
+          "poeClass": "none",
+          "uplinkType": "fixed-10G"
         }
       },
       {
@@ -10095,6 +10606,13 @@
               }
             ]
           }
+        },
+        "attrs": {
+          "kind": "switch",
+          "portCount": 48,
+          "portType": "1G-Cu",
+          "poeClass": "none",
+          "uplinkType": "fixed-10G"
         }
       },
       {
@@ -10232,6 +10750,13 @@
               }
             ]
           }
+        },
+        "attrs": {
+          "kind": "switch",
+          "portCount": 48,
+          "portType": "1G-Cu",
+          "poeClass": "none",
+          "uplinkType": "fixed-10G"
         }
       },
       {
@@ -10369,6 +10894,13 @@
               }
             ]
           }
+        },
+        "attrs": {
+          "kind": "switch",
+          "portCount": 48,
+          "portType": "1G-Cu",
+          "poeClass": "none",
+          "uplinkType": "fixed-10G"
         }
       },
       {
@@ -10506,6 +11038,13 @@
               }
             ]
           }
+        },
+        "attrs": {
+          "kind": "switch",
+          "portCount": 48,
+          "portType": "1G-Cu",
+          "poeClass": "none",
+          "uplinkType": "fixed-10G"
         }
       },
       {
@@ -10643,6 +11182,13 @@
               }
             ]
           }
+        },
+        "attrs": {
+          "kind": "switch",
+          "portCount": 48,
+          "portType": "1G-Cu",
+          "poeClass": "none",
+          "uplinkType": "fixed-10G"
         }
       },
       {
@@ -10785,6 +11331,13 @@
               }
             ]
           }
+        },
+        "attrs": {
+          "kind": "switch",
+          "portCount": 24,
+          "portType": "1G-Cu",
+          "poeClass": "none",
+          "uplinkType": "fixed-10G"
         }
       },
       {
@@ -10927,6 +11480,13 @@
               }
             ]
           }
+        },
+        "attrs": {
+          "kind": "switch",
+          "portCount": 24,
+          "portType": "1G-Cu",
+          "poeClass": "none",
+          "uplinkType": "fixed-10G"
         }
       }
     ],

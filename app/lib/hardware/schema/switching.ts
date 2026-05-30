@@ -9,6 +9,7 @@ import {
   DeviceTypeSchema,
   ModuleKindSchema,
   SlotKindSchema,
+  DeviceCategorySchema
 } from "./base";
 import {
   BaseProductSchema,
@@ -27,6 +28,18 @@ import {
  * For module catalogs, omit `bundle` and set `kind`/`slotKind`.
  * For chassis, include `bundle` and `faceplate`.
  */
+
+export const SwitchAttrsSchema = z.object({
+  kind: z.literal("switch"),
+  portCount: z.number().int().positive(),                   // 12, 24, 48...
+  portType: z.enum(["1G-Cu", "mGig", "10G-Cu", "SFP", "SFP+"]),
+  poeClass: z.enum(["none", "PoE+", "UPOE", "UPOE+"]),
+  uplinkType: z.enum(["fixed-1G", "fixed-10G", "fixed-25G","fixed-40G", "modular"]),
+});
+export type SwitchAttrs = z.infer<typeof SwitchAttrsSchema>;
+
+
+
 export const SwitchProductSKUSchema = BaseProductSchema.extend({
   faceplate: FaceplateConfigSchema.optional(),
   bundle: ChassisBundleSchema.optional(),
@@ -34,8 +47,13 @@ export const SwitchProductSKUSchema = BaseProductSchema.extend({
   slotKind: SlotKindSchema.optional(),
   modulePorts: ModulePortGroupSchema.optional(),
   compatibleChassis: z.array(z.string()).optional(),
+  attrs: SwitchAttrsSchema.optional(),
 });
 export type SwitchProductSKU = z.infer<typeof SwitchProductSKUSchema>;
+
+
+
+
 
 // ------------------------------------------------------------
 // SWITCH SERIES (e.g., "Catalyst 9300", "Nexus 9500")
@@ -46,6 +64,7 @@ export const SwitchSeriesSchema = z.object({
   type: DeviceTypeSchema,
   vendor: z.string().min(1),
   description: z.string(),
+  category: DeviceCategorySchema.default("switching"),
   pids: z.array(SwitchProductSKUSchema),
   compatibleOptics: z.array(z.string()),
   compatibleChassis: z.array(z.string()).optional(),
