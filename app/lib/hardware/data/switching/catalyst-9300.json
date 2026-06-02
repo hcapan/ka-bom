@@ -19,7 +19,7 @@
         "bundle": {
           "autoIncluded": [
             {
-              "pid": "SC9300UK9-1718",
+              "pid": "SC9300UK9-1715",
               "qty": 1,
               "note": "IOS-XE image"
             },
@@ -47,8 +47,8 @@
           },
           "smartnet": {
             "baseSkuByTier": {
-              "SNT": "CON-SNT-C9300X48HXE",
-              "SNTP": "CON-SNTP-C9300X48HXE"
+              "SNT": "CON-SNT-C9300UX4",
+              "SNTP": "CON-SNTP-C9300UX4"
             }
           },
           "license": {
@@ -115,29 +115,25 @@
           "networkModuleOptions": {
             "options": [
               {
-                "pid": "C9300-NM-NONE",
+                "pid": "C9300X-NM-NONE",
                 "label": "No uplink module",
                 "default": true
               },
               {
-                "pid": "C9300-NM-4G",
-                "label": "Catalyst 9300 Series 4x 1G Network Module"
+                "pid": "C9300X-NM-8M",
+                "label": "Catalyst 9300 Series 8x mGig Network Module"
               },
               {
-                "pid": "C9300-NM-4M",
-                "label": "Catalyst 9300 Series 4x Multigigabit Network Module"
+                "pid": "C9300X-NM-8Y",
+                "label": "Catalyst 9300 Series 8x 10G/25G Network Module SFP+/SFP28"
               },
               {
-                "pid": "C9300-NM-8X",
-                "label": "Catalyst 9300 Series 8x 10G/1G Network Module"
+                "pid": "C9300X-NM-2C",
+                "label": "Catalyst 9300 Series 2x 40G/100G Network Module QSFP+/QSFP28"
               },
               {
-                "pid": "C9300-NM-2Q",
-                "label": "Catalyst 9300 Series 2x 40G Network Module"
-              },
-              {
-                "pid": "C9300-NM-2Y",
-                "label": "Catalyst 9300 Series 2x 25G/10G/1G Network Module"
+                "pid": "C9300X-NM-4C",
+                "label": "Catalyst 9300 Series 4x 40G/100G Network Module QSFP+/QSFP28"
               }
             ]
           }
@@ -164,7 +160,7 @@
         "bundle": {
           "autoIncluded": [
             {
-              "pid": "SC9300UK9-1718",
+              "pid": "SC9300UK9-1715",
               "qty": 1,
               "note": "IOS-XE image"
             },
@@ -192,8 +188,8 @@
           },
           "smartnet": {
             "baseSkuByTier": {
-              "SNT": "CON-SNT-C9300X48HXA",
-              "SNTP": "CON-SNTP-C9300X48HXA"
+              "SNT": "CON-SNT-C9300XX4",
+              "SNTP": "CON-SNTP-C9300XX4"
             }
           },
           "license": {
@@ -260,29 +256,25 @@
           "networkModuleOptions": {
             "options": [
               {
-                "pid": "C9300-NM-NONE",
+                "pid": "C9300X-NM-NONE",
                 "label": "No uplink module",
                 "default": true
               },
               {
-                "pid": "C9300-NM-4G",
-                "label": "Catalyst 9300 Series 4x 1G Network Module"
+                "pid": "C9300X-NM-8M",
+                "label": "Catalyst 9300 Series 8x mGig Network Module"
               },
               {
-                "pid": "C9300-NM-4M",
-                "label": "Catalyst 9300 Series 4x Multigigabit Network Module"
+                "pid": "C9300X-NM-8Y",
+                "label": "Catalyst 9300 Series 8x 10G/25G Network Module SFP+/SFP28"
               },
               {
-                "pid": "C9300-NM-8X",
-                "label": "Catalyst 9300 Series 8x 10G/1G Network Module"
+                "pid": "C9300X-NM-2C",
+                "label": "Catalyst 9300 Series 2x 40G/100G Network Module QSFP+/QSFP28"
               },
               {
-                "pid": "C9300-NM-2Q",
-                "label": "Catalyst 9300 Series 2x 40G Network Module"
-              },
-              {
-                "pid": "C9300-NM-2Y",
-                "label": "Catalyst 9300 Series 2x 25G/10G/1G Network Module"
+                "pid": "C9300X-NM-4C",
+                "label": "Catalyst 9300 Series 4x 40G/100G Network Module QSFP+/QSFP28"
               }
             ]
           }
@@ -309,7 +301,7 @@
         "bundle": {
           "autoIncluded": [
             {
-              "pid": "SC9300UK9-1718",
+              "pid": "SC9300UK9-1715",
               "qty": 1,
               "note": "IOS-XE image"
             },
@@ -337,8 +329,8 @@
           },
           "smartnet": {
             "baseSkuByTier": {
-              "SNT": "CON-SNT-C9300X48TXE",
-              "SNTP": "CON-SNTP-C9300X48TXE"
+              "SNT": "CON-SNT-C9300XZ4",
+              "SNTP": "CON-SNTP-C9300XZ4"
             }
           },
           "license": {
@@ -400,29 +392,25 @@
           "networkModuleOptions": {
             "options": [
               {
-                "pid": "C9300-NM-NONE",
+                "pid": "C9300X-NM-NONE",
                 "label": "No uplink module",
                 "default": true
               },
               {
-                "pid": "C9300-NM-4G",
-                "label": "Catalyst 9300 Series 4x 1G Network Module"
+                "pid": "C9300X-NM-8M",
+                "label": "Catalyst 9300 Series 8x mGig Network Module"
               },
               {
-                "pid": "C9300-NM-4M",
-                "label": "Catalyst 9300 Series 4x Multigigabit Network Module"
+                "pid": "C9300X-NM-8Y",
+                "label": "Catalyst 9300 Series 8x 10G/25G Network Module SFP+/SFP28"
               },
               {
-                "pid": "C9300-NM-8X",
-                "label": "Catalyst 9300 Series 8x 10G/1G Network Module"
+                "pid": "C9300X-NM-2C",
+                "label": "Catalyst 9300 Series 2x 40G/100G Network Module QSFP+/QSFP28"
               },
               {
-                "pid": "C9300-NM-2Q",
-                "label": "Catalyst 9300 Series 2x 40G Network Module"
-              },
-              {
-                "pid": "C9300-NM-2Y",
-                "label": "Catalyst 9300 Series 2x 25G/10G/1G Network Module"
+                "pid": "C9300X-NM-4C",
+                "label": "Catalyst 9300 Series 4x 40G/100G Network Module QSFP+/QSFP28"
               }
             ]
           }
@@ -449,7 +437,7 @@
         "bundle": {
           "autoIncluded": [
             {
-              "pid": "SC9300UK9-1718",
+              "pid": "SC9300UK9-1715",
               "qty": 1,
               "note": "IOS-XE image"
             },
@@ -477,8 +465,8 @@
           },
           "smartnet": {
             "baseSkuByTier": {
-              "SNT": "CON-SNT-C9300X48TXA",
-              "SNTP": "CON-SNTP-C9300X48TXA"
+              "SNT": "CON-SNT-C9300XA4",
+              "SNTP": "CON-SNTP-C9300XA4"
             }
           },
           "license": {
@@ -540,29 +528,25 @@
           "networkModuleOptions": {
             "options": [
               {
-                "pid": "C9300-NM-NONE",
+                "pid": "C9300X-NM-NONE",
                 "label": "No uplink module",
                 "default": true
               },
               {
-                "pid": "C9300-NM-4G",
-                "label": "Catalyst 9300 Series 4x 1G Network Module"
+                "pid": "C9300X-NM-8M",
+                "label": "Catalyst 9300 Series 8x mGig Network Module"
               },
               {
-                "pid": "C9300-NM-4M",
-                "label": "Catalyst 9300 Series 4x Multigigabit Network Module"
+                "pid": "C9300X-NM-8Y",
+                "label": "Catalyst 9300 Series 8x 10G/25G Network Module SFP+/SFP28"
               },
               {
-                "pid": "C9300-NM-8X",
-                "label": "Catalyst 9300 Series 8x 10G/1G Network Module"
+                "pid": "C9300X-NM-2C",
+                "label": "Catalyst 9300 Series 2x 40G/100G Network Module QSFP+/QSFP28"
               },
               {
-                "pid": "C9300-NM-2Q",
-                "label": "Catalyst 9300 Series 2x 40G Network Module"
-              },
-              {
-                "pid": "C9300-NM-2Y",
-                "label": "Catalyst 9300 Series 2x 25G/10G/1G Network Module"
+                "pid": "C9300X-NM-4C",
+                "label": "Catalyst 9300 Series 4x 40G/100G Network Module QSFP+/QSFP28"
               }
             ]
           }
@@ -589,7 +573,7 @@
         "bundle": {
           "autoIncluded": [
             {
-              "pid": "SC9300UK9-1718",
+              "pid": "SC9300UK9-1715",
               "qty": 1,
               "note": "IOS-XE image"
             },
@@ -617,8 +601,8 @@
           },
           "smartnet": {
             "baseSkuByTier": {
-              "SNT": "CON-SNT-C9300X48HXNE",
-              "SNTP": "CON-SNTP-C9300X48HXNE"
+              "SNT": "CON-SNT-C9300XEU",
+              "SNTP": "CON-SNTP-C9300XEU"
             }
           },
           "license": {
@@ -685,29 +669,25 @@
           "networkModuleOptions": {
             "options": [
               {
-                "pid": "C9300-NM-NONE",
+                "pid": "C9300X-NM-NONE",
                 "label": "No uplink module",
                 "default": true
               },
               {
-                "pid": "C9300-NM-4G",
-                "label": "Catalyst 9300 Series 4x 1G Network Module"
+                "pid": "C9300X-NM-8M",
+                "label": "Catalyst 9300 Series 8x mGig Network Module"
               },
               {
-                "pid": "C9300-NM-4M",
-                "label": "Catalyst 9300 Series 4x Multigigabit Network Module"
+                "pid": "C9300X-NM-8Y",
+                "label": "Catalyst 9300 Series 8x 10G/25G Network Module SFP+/SFP28"
               },
               {
-                "pid": "C9300-NM-8X",
-                "label": "Catalyst 9300 Series 8x 10G/1G Network Module"
+                "pid": "C9300X-NM-2C",
+                "label": "Catalyst 9300 Series 2x 40G/100G Network Module QSFP+/QSFP28"
               },
               {
-                "pid": "C9300-NM-2Q",
-                "label": "Catalyst 9300 Series 2x 40G Network Module"
-              },
-              {
-                "pid": "C9300-NM-2Y",
-                "label": "Catalyst 9300 Series 2x 25G/10G/1G Network Module"
+                "pid": "C9300X-NM-4C",
+                "label": "Catalyst 9300 Series 4x 40G/100G Network Module QSFP+/QSFP28"
               }
             ]
           }
@@ -734,7 +714,7 @@
         "bundle": {
           "autoIncluded": [
             {
-              "pid": "SC9300UK9-1718",
+              "pid": "SC9300UK9-1715",
               "qty": 1,
               "note": "IOS-XE image"
             },
@@ -762,8 +742,8 @@
           },
           "smartnet": {
             "baseSkuByTier": {
-              "SNT": "CON-SNT-C9300X48HXNA",
-              "SNTP": "CON-SNTP-C9300X48HXNA"
+              "SNT": "CON-SNT-C9300XHN",
+              "SNTP": "CON-SNTP-C9300XHN"
             }
           },
           "license": {
@@ -830,29 +810,25 @@
           "networkModuleOptions": {
             "options": [
               {
-                "pid": "C9300-NM-NONE",
+                "pid": "C9300X-NM-NONE",
                 "label": "No uplink module",
                 "default": true
               },
               {
-                "pid": "C9300-NM-4G",
-                "label": "Catalyst 9300 Series 4x 1G Network Module"
+                "pid": "C9300X-NM-8M",
+                "label": "Catalyst 9300 Series 8x mGig Network Module"
               },
               {
-                "pid": "C9300-NM-4M",
-                "label": "Catalyst 9300 Series 4x Multigigabit Network Module"
+                "pid": "C9300X-NM-8Y",
+                "label": "Catalyst 9300 Series 8x 10G/25G Network Module SFP+/SFP28"
               },
               {
-                "pid": "C9300-NM-8X",
-                "label": "Catalyst 9300 Series 8x 10G/1G Network Module"
+                "pid": "C9300X-NM-2C",
+                "label": "Catalyst 9300 Series 2x 40G/100G Network Module QSFP+/QSFP28"
               },
               {
-                "pid": "C9300-NM-2Q",
-                "label": "Catalyst 9300 Series 2x 40G Network Module"
-              },
-              {
-                "pid": "C9300-NM-2Y",
-                "label": "Catalyst 9300 Series 2x 25G/10G/1G Network Module"
+                "pid": "C9300X-NM-4C",
+                "label": "Catalyst 9300 Series 4x 40G/100G Network Module QSFP+/QSFP28"
               }
             ]
           }
@@ -879,7 +855,7 @@
         "bundle": {
           "autoIncluded": [
             {
-              "pid": "SC9300UK9-1718",
+              "pid": "SC9300UK9-1715",
               "qty": 1,
               "note": "IOS-XE image"
             },
@@ -907,8 +883,8 @@
           },
           "smartnet": {
             "baseSkuByTier": {
-              "SNT": "CON-SNT-C9300X24HXE",
-              "SNTP": "CON-SNTP-C9300X24HXE"
+              "SNT": "CON-SNT-C9300X2E",
+              "SNTP": "CON-SNTP-C9300X2E"
             }
           },
           "license": {
@@ -975,29 +951,25 @@
           "networkModuleOptions": {
             "options": [
               {
-                "pid": "C9300-NM-NONE",
+                "pid": "C9300X-NM-NONE",
                 "label": "No uplink module",
                 "default": true
               },
               {
-                "pid": "C9300-NM-4G",
-                "label": "Catalyst 9300 Series 4x 1G Network Module"
+                "pid": "C9300X-NM-8M",
+                "label": "Catalyst 9300 Series 8x mGig Network Module"
               },
               {
-                "pid": "C9300-NM-4M",
-                "label": "Catalyst 9300 Series 4x Multigigabit Network Module"
+                "pid": "C9300X-NM-8Y",
+                "label": "Catalyst 9300 Series 8x 10G/25G Network Module SFP+/SFP28"
               },
               {
-                "pid": "C9300-NM-8X",
-                "label": "Catalyst 9300 Series 8x 10G/1G Network Module"
+                "pid": "C9300X-NM-2C",
+                "label": "Catalyst 9300 Series 2x 40G/100G Network Module QSFP+/QSFP28"
               },
               {
-                "pid": "C9300-NM-2Q",
-                "label": "Catalyst 9300 Series 2x 40G Network Module"
-              },
-              {
-                "pid": "C9300-NM-2Y",
-                "label": "Catalyst 9300 Series 2x 25G/10G/1G Network Module"
+                "pid": "C9300X-NM-4C",
+                "label": "Catalyst 9300 Series 4x 40G/100G Network Module QSFP+/QSFP28"
               }
             ]
           }
@@ -1024,7 +996,7 @@
         "bundle": {
           "autoIncluded": [
             {
-              "pid": "SC9300UK9-1718",
+              "pid": "SC9300UK9-1715",
               "qty": 1,
               "note": "IOS-XE image"
             },
@@ -1052,8 +1024,8 @@
           },
           "smartnet": {
             "baseSkuByTier": {
-              "SNT": "CON-SNT-C9300X24HXA",
-              "SNTP": "CON-SNTP-C9300X24HXA"
+              "SNT": "CON-SNT-C9300X3A",
+              "SNTP": "CON-SNTP-C9300X3A"
             }
           },
           "license": {
@@ -1120,29 +1092,25 @@
           "networkModuleOptions": {
             "options": [
               {
-                "pid": "C9300-NM-NONE",
+                "pid": "C9300X-NM-NONE",
                 "label": "No uplink module",
                 "default": true
               },
               {
-                "pid": "C9300-NM-4G",
-                "label": "Catalyst 9300 Series 4x 1G Network Module"
+                "pid": "C9300X-NM-8M",
+                "label": "Catalyst 9300 Series 8x mGig Network Module"
               },
               {
-                "pid": "C9300-NM-4M",
-                "label": "Catalyst 9300 Series 4x Multigigabit Network Module"
+                "pid": "C9300X-NM-8Y",
+                "label": "Catalyst 9300 Series 8x 10G/25G Network Module SFP+/SFP28"
               },
               {
-                "pid": "C9300-NM-8X",
-                "label": "Catalyst 9300 Series 8x 10G/1G Network Module"
+                "pid": "C9300X-NM-2C",
+                "label": "Catalyst 9300 Series 2x 40G/100G Network Module QSFP+/QSFP28"
               },
               {
-                "pid": "C9300-NM-2Q",
-                "label": "Catalyst 9300 Series 2x 40G Network Module"
-              },
-              {
-                "pid": "C9300-NM-2Y",
-                "label": "Catalyst 9300 Series 2x 25G/10G/1G Network Module"
+                "pid": "C9300X-NM-4C",
+                "label": "Catalyst 9300 Series 4x 40G/100G Network Module QSFP+/QSFP28"
               }
             ]
           }
@@ -1169,7 +1137,7 @@
         "bundle": {
           "autoIncluded": [
             {
-              "pid": "SC9300UK9-1718",
+              "pid": "SC9300UK9-1715",
               "qty": 1,
               "note": "IOS-XE image"
             },
@@ -1197,8 +1165,8 @@
           },
           "smartnet": {
             "baseSkuByTier": {
-              "SNT": "CON-SNT-C9300X12YE",
-              "SNTP": "CON-SNTP-C9300X12YE"
+              "SNT": "CON-SNT-C9300XY1",
+              "SNTP": "CON-SNTP-C9300XY1"
             }
           },
           "license": {
@@ -1260,29 +1228,25 @@
           "networkModuleOptions": {
             "options": [
               {
-                "pid": "C9300-NM-NONE",
+                "pid": "C9300X-NM-NONE",
                 "label": "No uplink module",
                 "default": true
               },
               {
-                "pid": "C9300-NM-4G",
-                "label": "Catalyst 9300 Series 4x 1G Network Module"
+                "pid": "C9300X-NM-8M",
+                "label": "Catalyst 9300 Series 8x mGig Network Module"
               },
               {
-                "pid": "C9300-NM-4M",
-                "label": "Catalyst 9300 Series 4x Multigigabit Network Module"
+                "pid": "C9300X-NM-8Y",
+                "label": "Catalyst 9300 Series 8x 10G/25G Network Module SFP+/SFP28"
               },
               {
-                "pid": "C9300-NM-8X",
-                "label": "Catalyst 9300 Series 8x 10G/1G Network Module"
+                "pid": "C9300X-NM-2C",
+                "label": "Catalyst 9300 Series 2x 40G/100G Network Module QSFP+/QSFP28"
               },
               {
-                "pid": "C9300-NM-2Q",
-                "label": "Catalyst 9300 Series 2x 40G Network Module"
-              },
-              {
-                "pid": "C9300-NM-2Y",
-                "label": "Catalyst 9300 Series 2x 25G/10G/1G Network Module"
+                "pid": "C9300X-NM-4C",
+                "label": "Catalyst 9300 Series 4x 40G/100G Network Module QSFP+/QSFP28"
               }
             ]
           }
@@ -1309,7 +1273,7 @@
         "bundle": {
           "autoIncluded": [
             {
-              "pid": "SC9300UK9-1718",
+              "pid": "SC9300UK9-1715",
               "qty": 1,
               "note": "IOS-XE image"
             },
@@ -1337,8 +1301,8 @@
           },
           "smartnet": {
             "baseSkuByTier": {
-              "SNT": "CON-SNT-C9300X12YA",
-              "SNTP": "CON-SNTP-C9300X12YA"
+              "SNT": "CON-SNT-C9300XA1",
+              "SNTP": "CON-SNTP-C9300XA1"
             }
           },
           "license": {
@@ -1400,29 +1364,25 @@
           "networkModuleOptions": {
             "options": [
               {
-                "pid": "C9300-NM-NONE",
+                "pid": "C9300X-NM-NONE",
                 "label": "No uplink module",
                 "default": true
               },
               {
-                "pid": "C9300-NM-4G",
-                "label": "Catalyst 9300 Series 4x 1G Network Module"
+                "pid": "C9300X-NM-8M",
+                "label": "Catalyst 9300 Series 8x mGig Network Module"
               },
               {
-                "pid": "C9300-NM-4M",
-                "label": "Catalyst 9300 Series 4x Multigigabit Network Module"
+                "pid": "C9300X-NM-8Y",
+                "label": "Catalyst 9300 Series 8x 10G/25G Network Module SFP+/SFP28"
               },
               {
-                "pid": "C9300-NM-8X",
-                "label": "Catalyst 9300 Series 8x 10G/1G Network Module"
+                "pid": "C9300X-NM-2C",
+                "label": "Catalyst 9300 Series 2x 40G/100G Network Module QSFP+/QSFP28"
               },
               {
-                "pid": "C9300-NM-2Q",
-                "label": "Catalyst 9300 Series 2x 40G Network Module"
-              },
-              {
-                "pid": "C9300-NM-2Y",
-                "label": "Catalyst 9300 Series 2x 25G/10G/1G Network Module"
+                "pid": "C9300X-NM-4C",
+                "label": "Catalyst 9300 Series 4x 40G/100G Network Module QSFP+/QSFP28"
               }
             ]
           }
@@ -1449,7 +1409,7 @@
         "bundle": {
           "autoIncluded": [
             {
-              "pid": "SC9300UK9-1718",
+              "pid": "SC9300UK9-1715",
               "qty": 1,
               "note": "IOS-XE image"
             },
@@ -1477,18 +1437,18 @@
           },
           "smartnet": {
             "baseSkuByTier": {
-              "SNT": "CON-SNT-C9300X24YE",
-              "SNTP": "CON-SNTP-C9300X24YE"
+              "SNT": "CON-SNT-C9300XYE",
+              "SNTP": "CON-SNTP-C9300XYE"
             }
           },
           "license": {
             "tier": "Essentials",
-            "entitlementPid": "C9300-DNA-E-24",
+            "entitlementPid": "C9300X-DNA-24Y-E",
             "subscriptionByTerm": {
-              "1": "C9300-DNA-E-24-1Y",
-              "3": "C9300-DNA-E-24-3Y",
-              "5": "C9300-DNA-E-24-5Y",
-              "7": "C9300-DNA-E-24-7Y"
+              "1": "C9300-DNA-L-E-1Y",
+              "3": "C9300-DNA-L-E-3Y",
+              "5": "C9300-DNA-L-E-5Y",
+              "7": "C9300-DNA-L-E-7Y"
             }
           },
           "redundantPsu": {
@@ -1540,29 +1500,25 @@
           "networkModuleOptions": {
             "options": [
               {
-                "pid": "C9300-NM-NONE",
+                "pid": "C9300X-NM-NONE",
                 "label": "No uplink module",
                 "default": true
               },
               {
-                "pid": "C9300-NM-4G",
-                "label": "Catalyst 9300 Series 4x 1G Network Module"
+                "pid": "C9300X-NM-8M",
+                "label": "Catalyst 9300 Series 8x mGig Network Module"
               },
               {
-                "pid": "C9300-NM-4M",
-                "label": "Catalyst 9300 Series 4x Multigigabit Network Module"
+                "pid": "C9300X-NM-8Y",
+                "label": "Catalyst 9300 Series 8x 10G/25G Network Module SFP+/SFP28"
               },
               {
-                "pid": "C9300-NM-8X",
-                "label": "Catalyst 9300 Series 8x 10G/1G Network Module"
+                "pid": "C9300X-NM-2C",
+                "label": "Catalyst 9300 Series 2x 40G/100G Network Module QSFP+/QSFP28"
               },
               {
-                "pid": "C9300-NM-2Q",
-                "label": "Catalyst 9300 Series 2x 40G Network Module"
-              },
-              {
-                "pid": "C9300-NM-2Y",
-                "label": "Catalyst 9300 Series 2x 25G/10G/1G Network Module"
+                "pid": "C9300X-NM-4C",
+                "label": "Catalyst 9300 Series 4x 40G/100G Network Module QSFP+/QSFP28"
               }
             ]
           }
@@ -1589,7 +1545,7 @@
         "bundle": {
           "autoIncluded": [
             {
-              "pid": "SC9300UK9-1718",
+              "pid": "SC9300UK9-1715",
               "qty": 1,
               "note": "IOS-XE image"
             },
@@ -1617,18 +1573,18 @@
           },
           "smartnet": {
             "baseSkuByTier": {
-              "SNT": "CON-SNT-C9300X24YA",
-              "SNTP": "CON-SNTP-C9300X24YA"
+              "SNT": "CON-SNT-C9300XYX",
+              "SNTP": "CON-SNTP-C9300XYX"
             }
           },
           "license": {
             "tier": "Advantage",
-            "entitlementPid": "C9300-DNA-A-24",
+            "entitlementPid": "C9300X-DNA-A-24",
             "subscriptionByTerm": {
-              "1": "C9300-DNA-A-24-1Y",
-              "3": "C9300-DNA-A-24-3Y",
-              "5": "C9300-DNA-A-24-5Y",
-              "7": "C9300-DNA-A-24-7Y"
+              "1": "C9300X-DNA-A-24-1Y",
+              "3": "C9300X-DNA-A-24-3Y",
+              "5": "C9300X-DNA-A-24-5Y",
+              "7": "C9300X-DNA-A-24-7Y"
             }
           },
           "redundantPsu": {
@@ -1680,29 +1636,25 @@
           "networkModuleOptions": {
             "options": [
               {
-                "pid": "C9300-NM-NONE",
+                "pid": "C9300X-NM-NONE",
                 "label": "No uplink module",
                 "default": true
               },
               {
-                "pid": "C9300-NM-4G",
-                "label": "Catalyst 9300 Series 4x 1G Network Module"
+                "pid": "C9300X-NM-8M",
+                "label": "Catalyst 9300 Series 8x mGig Network Module"
               },
               {
-                "pid": "C9300-NM-4M",
-                "label": "Catalyst 9300 Series 4x Multigigabit Network Module"
+                "pid": "C9300X-NM-8Y",
+                "label": "Catalyst 9300 Series 8x 10G/25G Network Module SFP+/SFP28"
               },
               {
-                "pid": "C9300-NM-8X",
-                "label": "Catalyst 9300 Series 8x 10G/1G Network Module"
+                "pid": "C9300X-NM-2C",
+                "label": "Catalyst 9300 Series 2x 40G/100G Network Module QSFP+/QSFP28"
               },
               {
-                "pid": "C9300-NM-2Q",
-                "label": "Catalyst 9300 Series 2x 40G Network Module"
-              },
-              {
-                "pid": "C9300-NM-2Y",
-                "label": "Catalyst 9300 Series 2x 25G/10G/1G Network Module"
+                "pid": "C9300X-NM-4C",
+                "label": "Catalyst 9300 Series 4x 40G/100G Network Module QSFP+/QSFP28"
               }
             ]
           }
@@ -1729,7 +1681,7 @@
         "bundle": {
           "autoIncluded": [
             {
-              "pid": "SC9300UK9-1718",
+              "pid": "SC9300UK9-1715",
               "qty": 1,
               "note": "IOS-XE image"
             },
@@ -1757,8 +1709,8 @@
           },
           "smartnet": {
             "baseSkuByTier": {
-              "SNT": "CON-SNT-C930024TE",
-              "SNTP": "CON-SNTP-C930024TE"
+              "SNT": "CON-SNT-C9300XZ4",
+              "SNTP": "CON-SNTP-C9300XZ4"
             }
           },
           "license": {
@@ -1869,7 +1821,7 @@
         "bundle": {
           "autoIncluded": [
             {
-              "pid": "SC9300UK9-1718",
+              "pid": "SC9300UK9-1715",
               "qty": 1,
               "note": "IOS-XE image"
             },
@@ -2009,7 +1961,7 @@
         "bundle": {
           "autoIncluded": [
             {
-              "pid": "SC9300UK9-1718",
+              "pid": "SC9300UK9-1715",
               "qty": 1,
               "note": "IOS-XE image"
             },
@@ -2154,7 +2106,7 @@
         "bundle": {
           "autoIncluded": [
             {
-              "pid": "SC9300UK9-1718",
+              "pid": "SC9300UK9-1715",
               "qty": 1,
               "note": "IOS-XE image"
             },
@@ -2299,7 +2251,7 @@
         "bundle": {
           "autoIncluded": [
             {
-              "pid": "SC9300UK9-1718",
+              "pid": "SC9300UK9-1715",
               "qty": 1,
               "note": "IOS-XE image"
             },
@@ -2444,7 +2396,7 @@
         "bundle": {
           "autoIncluded": [
             {
-              "pid": "SC9300UK9-1718",
+              "pid": "SC9300UK9-1715",
               "qty": 1,
               "note": "IOS-XE image"
             },
@@ -2589,7 +2541,7 @@
         "bundle": {
           "autoIncluded": [
             {
-              "pid": "SC9300UK9-1718",
+              "pid": "SC9300UK9-1715",
               "qty": 1,
               "note": "IOS-XE image"
             },
@@ -2729,7 +2681,7 @@
         "bundle": {
           "autoIncluded": [
             {
-              "pid": "SC9300UK9-1718",
+              "pid": "SC9300UK9-1715",
               "qty": 1,
               "note": "IOS-XE image"
             },
@@ -2869,7 +2821,7 @@
         "bundle": {
           "autoIncluded": [
             {
-              "pid": "SC9300UK9-1718",
+              "pid": "SC9300UK9-1715",
               "qty": 1,
               "note": "IOS-XE image"
             },
@@ -2897,8 +2849,8 @@
           },
           "smartnet": {
             "baseSkuByTier": {
-              "SNT": "CON-SNT-C930024HE",
-              "SNTP": "CON-SNTP-C930024HE"
+              "SNT": "CON-SNT-C9300X2H",
+              "SNTP": "CON-SNTP-C9300X2H"
             }
           },
           "license": {
@@ -3014,7 +2966,7 @@
         "bundle": {
           "autoIncluded": [
             {
-              "pid": "SC9300UK9-1718",
+              "pid": "SC9300UK9-1715",
               "qty": 1,
               "note": "IOS-XE image"
             },
@@ -3159,7 +3111,7 @@
         "bundle": {
           "autoIncluded": [
             {
-              "pid": "SC9300UK9-1718",
+              "pid": "SC9300UK9-1715",
               "qty": 1,
               "note": "IOS-XE image"
             },
@@ -3187,8 +3139,8 @@
           },
           "smartnet": {
             "baseSkuByTier": {
-              "SNT": "CON-SNT-C930024UXE",
-              "SNTP": "CON-SNTP-C930024UXE"
+              "SNT": "CON-SNT-C9300X2E",
+              "SNTP": "CON-SNTP-C9300X2E"
             }
           },
           "license": {
@@ -3304,7 +3256,7 @@
         "bundle": {
           "autoIncluded": [
             {
-              "pid": "SC9300UK9-1718",
+              "pid": "SC9300UK9-1715",
               "qty": 1,
               "note": "IOS-XE image"
             },
@@ -3332,8 +3284,8 @@
           },
           "smartnet": {
             "baseSkuByTier": {
-              "SNT": "CON-SNT-C930024UXA",
-              "SNTP": "CON-SNTP-C930024UXA"
+              "SNT": "CON-SNT-C9300X3A",
+              "SNTP": "CON-SNTP-C9300X3A"
             }
           },
           "license": {
@@ -3449,7 +3401,7 @@
         "bundle": {
           "autoIncluded": [
             {
-              "pid": "SC9300UK9-1718",
+              "pid": "SC9300UK9-1715",
               "qty": 1,
               "note": "IOS-XE image"
             },
@@ -3477,8 +3429,8 @@
           },
           "smartnet": {
             "baseSkuByTier": {
-              "SNT": "CON-SNT-C930024UXBE",
-              "SNTP": "CON-SNTP-C930024UXBE"
+              "SNT": "CON-SNT-C9300XAX",
+              "SNTP": "CON-SNTP-C9300XAX"
             }
           },
           "license": {
@@ -3589,7 +3541,7 @@
         "bundle": {
           "autoIncluded": [
             {
-              "pid": "SC9300UK9-1718",
+              "pid": "SC9300UK9-1715",
               "qty": 1,
               "note": "IOS-XE image"
             },
@@ -3617,8 +3569,8 @@
           },
           "smartnet": {
             "baseSkuByTier": {
-              "SNT": "CON-SNT-C930024UXBA",
-              "SNTP": "CON-SNTP-C930024UXBA"
+              "SNT": "CON-SNT-C9300XEC",
+              "SNTP": "CON-SNTP-C9300XEC"
             }
           },
           "license": {
@@ -3729,7 +3681,7 @@
         "bundle": {
           "autoIncluded": [
             {
-              "pid": "SC9300UK9-1718",
+              "pid": "SC9300UK9-1715",
               "qty": 1,
               "note": "IOS-XE image"
             },
@@ -3757,8 +3709,8 @@
           },
           "smartnet": {
             "baseSkuByTier": {
-              "SNT": "CON-SNT-C930048TE",
-              "SNTP": "CON-SNTP-C930048TE"
+              "SNT": "CON-SNT-C9300XZ4",
+              "SNTP": "CON-SNTP-C9300XZ4"
             }
           },
           "license": {
@@ -3869,7 +3821,7 @@
         "bundle": {
           "autoIncluded": [
             {
-              "pid": "SC9300UK9-1718",
+              "pid": "SC9300UK9-1715",
               "qty": 1,
               "note": "IOS-XE image"
             },
@@ -3897,8 +3849,8 @@
           },
           "smartnet": {
             "baseSkuByTier": {
-              "SNT": "CON-SNT-C930048TA",
-              "SNTP": "CON-SNTP-C930048TA"
+              "SNT": "CON-SNT-C9300X47",
+              "SNTP": "CON-SNTP-C9300X47"
             }
           },
           "license": {
@@ -4014,7 +3966,7 @@
               "note": "Network Essentials"
             },
             {
-              "pid": "SC9300UK9-1718",
+              "pid": "SC9300UK9-1715",
               "qty": 1,
               "note": "IOS-XE image"
             },
@@ -4164,7 +4116,7 @@
               "note": "Network Advantage"
             },
             {
-              "pid": "SC9300UK9-1718",
+              "pid": "SC9300UK9-1715",
               "qty": 1,
               "note": "IOS-XE image"
             },
@@ -4192,8 +4144,8 @@
           },
           "smartnet": {
             "baseSkuByTier": {
-              "SNT": "CON-SNT-C930048PA",
-              "SNTP": "CON-SNTP-C930048PA"
+              "SNT": "CON-SNT-C9300XY4",
+              "SNTP": "CON-SNTP-C9300XY4"
             }
           },
           "license": {
@@ -4309,7 +4261,7 @@
         "bundle": {
           "autoIncluded": [
             {
-              "pid": "SC9300UK9-1718",
+              "pid": "SC9300UK9-1715",
               "qty": 1,
               "note": "IOS-XE image"
             },
@@ -4454,7 +4406,7 @@
         "bundle": {
           "autoIncluded": [
             {
-              "pid": "SC9300UK9-1718",
+              "pid": "SC9300UK9-1715",
               "qty": 1,
               "note": "IOS-XE image"
             },
@@ -4599,7 +4551,7 @@
         "bundle": {
           "autoIncluded": [
             {
-              "pid": "SC9300UK9-1718",
+              "pid": "SC9300UK9-1715",
               "qty": 1,
               "note": "IOS-XE image"
             },
@@ -4739,7 +4691,7 @@
         "bundle": {
           "autoIncluded": [
             {
-              "pid": "SC9300UK9-1718",
+              "pid": "SC9300UK9-1715",
               "qty": 1,
               "note": "IOS-XE image"
             },
@@ -4879,7 +4831,7 @@
         "bundle": {
           "autoIncluded": [
             {
-              "pid": "SC9300UK9-1718",
+              "pid": "SC9300UK9-1715",
               "qty": 1,
               "note": "IOS-XE image"
             },
@@ -5024,7 +4976,7 @@
         "bundle": {
           "autoIncluded": [
             {
-              "pid": "SC9300UK9-1718",
+              "pid": "SC9300UK9-1715",
               "qty": 1,
               "note": "IOS-XE image"
             },
@@ -5052,8 +5004,8 @@
           },
           "smartnet": {
             "baseSkuByTier": {
-              "SNT": "CON-SNT-C930048HA",
-              "SNTP": "CON-SNTP-C930048HA"
+              "SNT": "CON-SNT-C9300X14",
+              "SNTP": "CON-SNTP-C9300X14"
             }
           },
           "license": {
@@ -5169,7 +5121,7 @@
         "bundle": {
           "autoIncluded": [
             {
-              "pid": "SC9300UK9-1718",
+              "pid": "SC9300UK9-1715",
               "qty": 1,
               "note": "IOS-XE image"
             },
@@ -5197,8 +5149,8 @@
           },
           "smartnet": {
             "baseSkuByTier": {
-              "SNT": "CON-SNT-C930048UXME",
-              "SNTP": "CON-SNTP-C930048UXME"
+              "SNT": "CON-SNT-C9300X44",
+              "SNTP": "CON-SNTP-C9300X44"
             }
           },
           "license": {
@@ -5314,7 +5266,7 @@
         "bundle": {
           "autoIncluded": [
             {
-              "pid": "SC9300UK9-1718",
+              "pid": "SC9300UK9-1715",
               "qty": 1,
               "note": "IOS-XE image"
             },
@@ -5342,8 +5294,8 @@
           },
           "smartnet": {
             "baseSkuByTier": {
-              "SNT": "CON-SNT-C930048UXMA",
-              "SNTP": "CON-SNTP-C930048UXMA"
+              "SNT": "CON-SNT-C9300UX4",
+              "SNTP": "CON-SNTP-C9300UX4"
             }
           },
           "license": {
@@ -5459,7 +5411,7 @@
         "bundle": {
           "autoIncluded": [
             {
-              "pid": "SC9300UK9-1718",
+              "pid": "SC9300UK9-1715",
               "qty": 1,
               "note": "IOS-XE image"
             },
@@ -5487,8 +5439,8 @@
           },
           "smartnet": {
             "baseSkuByTier": {
-              "SNT": "CON-SNT-C930048UNE",
-              "SNTP": "CON-SNTP-C930048UNE"
+              "SNT": "CON-SNT-C9300XA4",
+              "SNTP": "CON-SNTP-C9300XA4"
             }
           },
           "license": {
@@ -5604,7 +5556,7 @@
         "bundle": {
           "autoIncluded": [
             {
-              "pid": "SC9300UK9-1718",
+              "pid": "SC9300UK9-1715",
               "qty": 1,
               "note": "IOS-XE image"
             },
@@ -5632,8 +5584,8 @@
           },
           "smartnet": {
             "baseSkuByTier": {
-              "SNT": "CON-SNT-C930048UNA",
-              "SNTP": "CON-SNTP-C930048UNA"
+              "SNT": "CON-SNT-C9300XE4",
+              "SNTP": "CON-SNTP-C9300XE4"
             }
           },
           "license": {
@@ -5749,7 +5701,7 @@
         "bundle": {
           "autoIncluded": [
             {
-              "pid": "SC9300UK9-1718",
+              "pid": "SC9300UK9-1715",
               "qty": 1,
               "note": "IOS-XE image"
             },
@@ -5889,7 +5841,7 @@
         "bundle": {
           "autoIncluded": [
             {
-              "pid": "SC9300UK9-1718",
+              "pid": "SC9300UK9-1715",
               "qty": 1,
               "note": "IOS-XE image"
             },
@@ -6029,7 +5981,7 @@
         "bundle": {
           "autoIncluded": [
             {
-              "pid": "SC9300UK9-1718",
+              "pid": "SC9300UK9-1715",
               "qty": 1,
               "note": "IOS-XE image"
             },
@@ -6169,7 +6121,7 @@
         "bundle": {
           "autoIncluded": [
             {
-              "pid": "SC9300UK9-1718",
+              "pid": "SC9300UK9-1715",
               "qty": 1,
               "note": "IOS-XE image"
             },
@@ -6313,7 +6265,7 @@
         "bundle": {
           "autoIncluded": [
             {
-              "pid": "SC9300UK9-1718",
+              "pid": "SC9300UK9-1715",
               "qty": 1,
               "note": "IOS-XE image"
             },
@@ -6457,7 +6409,7 @@
         "bundle": {
           "autoIncluded": [
             {
-              "pid": "SC9300UK9-1718",
+              "pid": "SC9300UK9-1715",
               "qty": 1,
               "note": "IOS-XE image"
             },
@@ -6601,7 +6553,7 @@
         "bundle": {
           "autoIncluded": [
             {
-              "pid": "SC9300UK9-1718",
+              "pid": "SC9300UK9-1715",
               "qty": 1,
               "note": "IOS-XE image"
             },
@@ -6745,7 +6697,7 @@
         "bundle": {
           "autoIncluded": [
             {
-              "pid": "SC9300UK9-1718",
+              "pid": "SC9300UK9-1715",
               "qty": 1,
               "note": "IOS-XE image"
             },
@@ -6889,7 +6841,7 @@
         "bundle": {
           "autoIncluded": [
             {
-              "pid": "SC9300UK9-1718",
+              "pid": "SC9300UK9-1715",
               "qty": 1,
               "note": "IOS-XE image"
             },
@@ -7033,7 +6985,7 @@
         "bundle": {
           "autoIncluded": [
             {
-              "pid": "SC9300UK9-1718",
+              "pid": "SC9300UK9-1715",
               "qty": 1,
               "note": "IOS-XE image"
             },
@@ -7177,7 +7129,7 @@
         "bundle": {
           "autoIncluded": [
             {
-              "pid": "SC9300UK9-1718",
+              "pid": "SC9300UK9-1715",
               "qty": 1,
               "note": "IOS-XE image"
             },
@@ -7321,7 +7273,7 @@
         "bundle": {
           "autoIncluded": [
             {
-              "pid": "SC9300UK9-1718",
+              "pid": "SC9300UK9-1715",
               "qty": 1,
               "note": "IOS-XE image"
             },
@@ -7465,7 +7417,7 @@
         "bundle": {
           "autoIncluded": [
             {
-              "pid": "SC9300UK9-1718",
+              "pid": "SC9300UK9-1715",
               "qty": 1,
               "note": "IOS-XE image"
             },
@@ -7493,8 +7445,8 @@
           },
           "smartnet": {
             "baseSkuByTier": {
-              "SNT": "CON-SNT-C9300L48PF4GE",
-              "SNTP": "CON-SNTP-C9300L48PF4GE"
+              "SNT": "CON-SNT-C9300X10",
+              "SNTP": "CON-SNTP-C9300X10"
             }
           },
           "license": {
@@ -7609,7 +7561,7 @@
         "bundle": {
           "autoIncluded": [
             {
-              "pid": "SC9300UK9-1718",
+              "pid": "SC9300UK9-1715",
               "qty": 1,
               "note": "IOS-XE image"
             },
@@ -7637,8 +7589,8 @@
           },
           "smartnet": {
             "baseSkuByTier": {
-              "SNT": "CON-SNT-C9300L48PF4GA",
-              "SNTP": "CON-SNTP-C9300L48PF4GA"
+              "SNT": "CON-SNT-C9300X1A",
+              "SNTP": "CON-SNTP-C9300X1A"
             }
           },
           "license": {
@@ -7753,7 +7705,7 @@
         "bundle": {
           "autoIncluded": [
             {
-              "pid": "SC9300UK9-1718",
+              "pid": "SC9300UK9-1715",
               "qty": 1,
               "note": "IOS-XE image"
             },
@@ -7781,8 +7733,8 @@
           },
           "smartnet": {
             "baseSkuByTier": {
-              "SNT": "CON-SNT-C9300L24T4XE",
-              "SNTP": "CON-SNTP-C9300L24T4XE"
+              "SNT": "CON-SNT-C9300XEU",
+              "SNTP": "CON-SNTP-C9300XEU"
             }
           },
           "license": {
@@ -7897,7 +7849,7 @@
         "bundle": {
           "autoIncluded": [
             {
-              "pid": "SC9300UK9-1718",
+              "pid": "SC9300UK9-1715",
               "qty": 1,
               "note": "IOS-XE image"
             },
@@ -7925,8 +7877,8 @@
           },
           "smartnet": {
             "baseSkuByTier": {
-              "SNT": "CON-SNT-C9300L24T4XA",
-              "SNTP": "CON-SNTP-C9300L24T4XA"
+              "SNT": "CON-SNT-C9300XHN",
+              "SNTP": "CON-SNTP-C9300XHN"
             }
           },
           "license": {
@@ -8041,7 +7993,7 @@
         "bundle": {
           "autoIncluded": [
             {
-              "pid": "SC9300UK9-1718",
+              "pid": "SC9300UK9-1715",
               "qty": 1,
               "note": "IOS-XE image"
             },
@@ -8185,7 +8137,7 @@
         "bundle": {
           "autoIncluded": [
             {
-              "pid": "SC9300UK9-1718",
+              "pid": "SC9300UK9-1715",
               "qty": 1,
               "note": "IOS-XE image"
             },
@@ -8329,7 +8281,7 @@
         "bundle": {
           "autoIncluded": [
             {
-              "pid": "SC9300UK9-1718",
+              "pid": "SC9300UK9-1715",
               "qty": 1,
               "note": "IOS-XE image"
             },
@@ -8357,8 +8309,8 @@
           },
           "smartnet": {
             "baseSkuByTier": {
-              "SNT": "CON-SNT-C9300L24UXG4XE",
-              "SNTP": "CON-SNTP-C9300L24UXG4XE"
+              "SNT": "CON-SNT-C9300XM4",
+              "SNTP": "CON-SNTP-C9300XM4"
             }
           },
           "license": {
@@ -8473,7 +8425,7 @@
         "bundle": {
           "autoIncluded": [
             {
-              "pid": "SC9300UK9-1718",
+              "pid": "SC9300UK9-1715",
               "qty": 1,
               "note": "IOS-XE image"
             },
@@ -8501,8 +8453,8 @@
           },
           "smartnet": {
             "baseSkuByTier": {
-              "SNT": "CON-SNT-C9300L24UXG4XA",
-              "SNTP": "CON-SNTP-C9300L24UXG4XA"
+              "SNT": "CON-SNT-C9300XM8",
+              "SNTP": "CON-SNTP-C9300XM8"
             }
           },
           "license": {
@@ -8617,7 +8569,7 @@
         "bundle": {
           "autoIncluded": [
             {
-              "pid": "SC9300UK9-1718",
+              "pid": "SC9300UK9-1715",
               "qty": 1,
               "note": "IOS-XE image"
             },
@@ -8761,7 +8713,7 @@
         "bundle": {
           "autoIncluded": [
             {
-              "pid": "SC9300UK9-1718",
+              "pid": "SC9300UK9-1715",
               "qty": 1,
               "note": "IOS-XE image"
             },
@@ -8905,7 +8857,7 @@
         "bundle": {
           "autoIncluded": [
             {
-              "pid": "SC9300UK9-1718",
+              "pid": "SC9300UK9-1715",
               "qty": 1,
               "note": "IOS-XE image"
             },
@@ -9049,7 +9001,7 @@
         "bundle": {
           "autoIncluded": [
             {
-              "pid": "SC9300UK9-1718",
+              "pid": "SC9300UK9-1715",
               "qty": 1,
               "note": "IOS-XE image"
             },
@@ -9193,7 +9145,7 @@
         "bundle": {
           "autoIncluded": [
             {
-              "pid": "SC9300UK9-1718",
+              "pid": "SC9300UK9-1715",
               "qty": 1,
               "note": "IOS-XE image"
             },
@@ -9337,7 +9289,7 @@
         "bundle": {
           "autoIncluded": [
             {
-              "pid": "SC9300UK9-1718",
+              "pid": "SC9300UK9-1715",
               "qty": 1,
               "note": "IOS-XE image"
             },
@@ -9481,7 +9433,7 @@
         "bundle": {
           "autoIncluded": [
             {
-              "pid": "SC9300UK9-1718",
+              "pid": "SC9300UK9-1715",
               "qty": 1,
               "note": "IOS-XE image"
             },
@@ -9625,7 +9577,7 @@
         "bundle": {
           "autoIncluded": [
             {
-              "pid": "SC9300UK9-1718",
+              "pid": "SC9300UK9-1715",
               "qty": 1,
               "note": "IOS-XE image"
             },
@@ -9769,7 +9721,7 @@
         "bundle": {
           "autoIncluded": [
             {
-              "pid": "SC9300UK9-1718",
+              "pid": "SC9300UK9-1715",
               "qty": 1,
               "note": "IOS-XE image"
             },
@@ -9797,8 +9749,8 @@
           },
           "smartnet": {
             "baseSkuByTier": {
-              "SNT": "CON-SNT-C9300L24UXG2QE",
-              "SNTP": "CON-SNTP-C9300L24UXG2QE"
+              "SNT": "CON-SNT-C9300XP4",
+              "SNTP": "CON-SNTP-C9300XP4"
             }
           },
           "license": {
@@ -9913,7 +9865,7 @@
         "bundle": {
           "autoIncluded": [
             {
-              "pid": "SC9300UK9-1718",
+              "pid": "SC9300UK9-1715",
               "qty": 1,
               "note": "IOS-XE image"
             },
@@ -9941,8 +9893,8 @@
           },
           "smartnet": {
             "baseSkuByTier": {
-              "SNT": "CON-SNT-C9300L24UXG2QA",
-              "SNTP": "CON-SNTP-C9300L24UXG2QA"
+              "SNT": "CON-SNT-C9300XX4",
+              "SNTP": "CON-SNTP-C9300XX4"
             }
           },
           "license": {
@@ -10057,7 +10009,7 @@
         "bundle": {
           "autoIncluded": [
             {
-              "pid": "SC9300UK9-1718",
+              "pid": "SC9300UK9-1715",
               "qty": 1,
               "note": "IOS-XE image"
             },
@@ -10085,8 +10037,8 @@
           },
           "smartnet": {
             "baseSkuByTier": {
-              "SNT": "CON-SNT-C9300L48UXG2QE",
-              "SNTP": "CON-SNTP-C9300L48UXG2QE"
+              "SNT": "CON-SNT-C9300XXE",
+              "SNTP": "CON-SNTP-C9300XXE"
             }
           },
           "license": {
@@ -10201,7 +10153,7 @@
         "bundle": {
           "autoIncluded": [
             {
-              "pid": "SC9300UK9-1718",
+              "pid": "SC9300UK9-1715",
               "qty": 1,
               "note": "IOS-XE image"
             },
@@ -10345,7 +10297,7 @@
         "bundle": {
           "autoIncluded": [
             {
-              "pid": "SC9300UK9-1718",
+              "pid": "S9300LUK9-1718",
               "qty": 1,
               "note": "IOS-XE image"
             },
@@ -10373,8 +10325,8 @@
           },
           "smartnet": {
             "baseSkuByTier": {
-              "SNT": "CON-SNT-C9300LM48UX4YE",
-              "SNTP": "CON-SNTP-C9300LM48UX4YE"
+              "SNT": "CON-SNT-C9300XCX",
+              "SNTP": "CON-SNTP-C9300XCX"
             }
           },
           "license": {
@@ -10489,7 +10441,7 @@
         "bundle": {
           "autoIncluded": [
             {
-              "pid": "SC9300UK9-1718",
+              "pid": "S9300LUK9-1718",
               "qty": 1,
               "note": "IOS-XE image"
             },
@@ -10633,7 +10585,7 @@
         "bundle": {
           "autoIncluded": [
             {
-              "pid": "SC9300UK9-1718",
+              "pid": "S9300LUK9-1718",
               "qty": 1,
               "note": "IOS-XE image"
             },
@@ -10777,7 +10729,7 @@
         "bundle": {
           "autoIncluded": [
             {
-              "pid": "SC9300UK9-1718",
+              "pid": "S9300LUK9-1718",
               "qty": 1,
               "note": "IOS-XE image"
             },
@@ -10921,7 +10873,7 @@
         "bundle": {
           "autoIncluded": [
             {
-              "pid": "SC9300UK9-1718",
+              "pid": "S9300LUK9-1718",
               "qty": 1,
               "note": "IOS-XE image"
             },
@@ -11065,7 +11017,7 @@
         "bundle": {
           "autoIncluded": [
             {
-              "pid": "SC9300UK9-1718",
+              "pid": "S9300LUK9-1718",
               "qty": 1,
               "note": "IOS-XE image"
             },
@@ -11209,7 +11161,7 @@
         "bundle": {
           "autoIncluded": [
             {
-              "pid": "SC9300UK9-1718",
+              "pid": "S9300LUK9-1718",
               "qty": 1,
               "note": "IOS-XE image"
             },
@@ -11358,7 +11310,7 @@
         "bundle": {
           "autoIncluded": [
             {
-              "pid": "SC9300UK9-1718",
+              "pid": "S9300LUK9-1718",
               "qty": 1,
               "note": "IOS-XE image"
             },

@@ -43,6 +43,13 @@ export function buildBOM(project: Project): BOMBuildResult {
   const allLines: BOMLine[] = [];
   const warnings: BOMWarning[] = [];
 
+  console.log("[BOM DEBUG] buildBOM start", {
+    deviceCount: project.topology.devices.length,
+    groups: project.topology.groups,
+    groupKinds: project.topology.groups?.map(g => ({ id: g.id, kind: g.kind, label: g.label })),
+  });
+
+
   // ⭐ Group ID is per chassis PID (identical chassis share an anchor)
   const groupIdByChassis = new Map<string, number>();
   let nextGroupId = STARTING_GROUP_ID;
@@ -128,6 +135,8 @@ export function buildBOM(project: Project): BOMBuildResult {
     const memberCount = project.topology.devices.filter(
       (d) => d.parentGroupId === group.id || d.groupId === group.id,
     ).length;
+
+    
 
     const stackResult = buildGroupStackingLines(group, memberCount);
     allLines.push(...stackResult.lines);
@@ -239,6 +248,7 @@ const CATEGORY_ORDER: Record<BOMLine["category"], number> = {
   fan: 11,
   "auto-included": 12,
   "stack-adapter": 13,
+  "stack-kit": 14, 
   "stack-cable": 14,
   "stack-power": 15,
   optic: 16,

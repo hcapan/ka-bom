@@ -1,160 +1,166 @@
-"use client"
+"use client";
 
-import { motion } from "framer-motion"
+import { motion } from "framer-motion";
+import { Network, Server, Cpu, Layers, Shield, Wifi, HardDrive } from "lucide-react";
 
 export default function HeroIllustration() {
   return (
-    <svg
-      viewBox="0 0 1100 700"
-      className="w-full h-auto"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-    >
-      {/* ================= DARK HOLOGRAPHIC BASE ================= */}
-      <defs>
-        <radialGradient id="coreGlow" cx="50%" cy="50%" r="50%">
-          <stop offset="0%" stopColor="#22D3EE" stopOpacity="0.22" />
-          <stop offset="40%" stopColor="#3B82F6" stopOpacity="0.10" />
-          <stop offset="100%" stopColor="#020617" stopOpacity="0" />
-        </radialGradient>
+    <div className="relative h-112.5 w-full max-w-137.5 select-none">
+      {/* Ambient background glows */}
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-75 w-75 bg-blue-400/10 rounded-full blur-[100px] pointer-events-none" />
+      <div className="absolute top-1/4 right-0 h-50 w-50 bg-sky-300/10 rounded-full blur-[80px] pointer-events-none" />
 
-        <linearGradient id="ringGlow" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0%" stopColor="#38BDF8" />
-          <stop offset="50%" stopColor="#6366F1" />
-          <stop offset="100%" stopColor="#22D3EE" />
-        </linearGradient>
-      </defs>
+      {/* Main Illustration Container */}
+      <div className="relative h-full w-full flex items-center justify-center">
+        
+        {/* Animated Connection Lines */}
+        <svg className="absolute inset-0 h-full w-full" style={{ filter: 'drop-shadow(0 0 4px rgba(14, 165, 233, 0.2))' }}>
+          <motion.path
+            d="M 275 225 L 140 140"
+            stroke="#e2e8f0"
+            strokeWidth="2"
+            strokeDasharray="4 4"
+            fill="none"
+            initial={{ pathLength: 0, opacity: 0 }}
+            animate={{ pathLength: 1, opacity: 1 }}
+            transition={{ duration: 1.5, delay: 0.5 }}
+          />
+          <motion.path
+            d="M 275 225 L 410 140"
+            stroke="#e2e8f0"
+            strokeWidth="2"
+            strokeDasharray="4 4"
+            fill="none"
+            initial={{ pathLength: 0, opacity: 0 }}
+            animate={{ pathLength: 1, opacity: 1 }}
+            transition={{ duration: 1.5, delay: 0.7 }}
+          />
+          <motion.path
+            d="M 275 225 L 150 340"
+            stroke="#e2e8f0"
+            strokeWidth="1.5"
+            strokeDasharray="4 4"
+            fill="none"
+            initial={{ pathLength: 0, opacity: 0 }}
+            animate={{ pathLength: 1, opacity: 0.8 }}
+            transition={{ duration: 1.5, delay: 1.1 }}
+          />
+          <motion.path
+            d="M 275 225 L 80 225"
+            stroke="#e2e8f0"
+            strokeWidth="1.5"
+            strokeDasharray="4 4"
+            fill="none"
+            initial={{ pathLength: 0, opacity: 0 }}
+            animate={{ pathLength: 1, opacity: 0.8 }}
+            transition={{ duration: 1.5, delay: 1.3 }}
+          />
+          <motion.path
+            d="M 275 225 L 275 360"
+            stroke="#0ea5e9"
+            strokeWidth="2"
+            fill="none"
+            initial={{ pathLength: 0, opacity: 0 }}
+            animate={{ pathLength: 1, opacity: 0.4 }}
+            transition={{ duration: 1.5, delay: 0.9 }}
+          />
+        </svg>
 
-      <rect width="1100" height="700" fill="#ffffff" />
-      <circle cx="550" cy="350" r="300" fill="url(#coreGlow)" />
-
-      {/* ================= CENTRAL HOLOGRAM CORE ================= */}
-      <motion.circle
-        cx="550"
-        cy="350"
-        r="90"
-        stroke="url(#ringGlow)"
-        strokeWidth="2"
-        animate={{ rotate: 360 }}
-        transition={{ repeat: Infinity, duration: 12, ease: "linear" }}
-        style={{ transformOrigin: "550px 350px" }}
-      />
-
-      <motion.circle
-        cx="550"
-        cy="350"
-        r="140"
-        stroke="#3B82F6"
-        strokeWidth="1.5"
-        opacity="0.6"
-        animate={{ rotate: -360 }}
-        transition={{ repeat: Infinity, duration: 18, ease: "linear" }}
-        style={{ transformOrigin: "550px 350px" }}
-      />
-
-      <motion.circle
-        cx="550"
-        cy="350"
-        r="200"
-        stroke="#6366F1"
-        strokeWidth="1"
-        opacity="0.4"
-        animate={{ rotate: 360 }}
-        transition={{ repeat: Infinity, duration: 25, ease: "linear" }}
-        style={{ transformOrigin: "550px 350px" }}
-      />
-
-      {/* ================= CENTER CORE LABEL ================= */}
-      <motion.g
-        animate={{ scale: [1, 1.05, 1] }}
-        transition={{ duration: 2.5, repeat: Infinity }}
-      >
-        <rect x="495" y="330" width="110" height="40" rx="12" fill="#0EA5E9" />
-        <text x="525" y="355" fill="white" fontSize="12">
-          CCW CORE
-        </text>
-      </motion.g>
-
-      {/* ================= FLOATING BOM NODES ================= */}
-      {[
-        { x: 280, y: 220, color: "#22D3EE", label: "Switch" },
-        { x: 820, y: 220, color: "#3B82F6", label: "Router" },
-        { x: 260, y: 500, color: "#6366F1", label: "License" },
-        { x: 840, y: 500, color: "#8B5CF6", label: "Support" },
-      ].map((n, i) => (
-        <motion.g
-          key={i}
-          animate={{
-            y: [0, -10, 0],
-            opacity: [0.7, 1, 0.7],
-          }}
-          transition={{
-            duration: 3 + i * 0.3,
-            repeat: Infinity,
-          }}
+        {/* Center "Core" Node */}
+        <motion.div
+          initial={{ scale: 0, opacity: 0, rotate: -10 }}
+          animate={{ scale: 1, opacity: 1, rotate: 0 }}
+          transition={{ type: "spring", damping: 12, stiffness: 90, delay: 0.2 }}
+          className="relative z-20 flex h-28 w-28 items-center justify-center rounded-[2.5rem] border border-white/50 bg-white/80 p-1 shadow-2xl backdrop-blur-xl"
         >
-          <circle cx={n.x} cy={n.y} r="28" fill={n.color} opacity="0.9" />
-          <text x={n.x - 22} y={n.y + 50} fill="#CBD5E1" fontSize="12">
-            {n.label}
-          </text>
-        </motion.g>
-      ))}
+          <div className="flex h-full w-full items-center justify-center rounded-4xl bg-linear-to-br from-blue-500 to-sky-600 shadow-inner">
+            <Server className="h-10 w-10 text-white" />
+          </div>
+          {/* Status dots */}
+          <div className="absolute -top-1 -right-1 flex gap-1">
+            <div className="h-3 w-3 rounded-full bg-green-500 border-2 border-white animate-pulse" />
+          </div>
+        </motion.div>
 
-      {/* ================= ENERGY LINKS (ORBITAL CONNECTIONS) ================= */}
-      <motion.path
-        d="M300 220 C420 280, 480 320, 550 350"
-        stroke="#22D3EE"
-        strokeWidth="2"
-        strokeDasharray="8 8"
-        animate={{ strokeDashoffset: [0, -40] }}
-        transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
-      />
+        {/* Access Node 1 (Top Left) */}
+        <motion.div
+          animate={{ y: [0, -12, 0] }}
+          transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}
+          className="absolute left-[10%] top-[15%] z-10 flex h-16 w-16 items-center justify-center rounded-2xl border border-slate-200 bg-white shadow-lg"
+        >
+          <Network className="h-7 w-7 text-slate-400" />
+        </motion.div>
 
-      <motion.path
-        d="M820 220 C700 280, 640 320, 550 350"
-        stroke="#3B82F6"
-        strokeWidth="2"
-        strokeDasharray="8 8"
-        animate={{ strokeDashoffset: [0, -40] }}
-        transition={{ duration: 1.8, repeat: Infinity, ease: "linear" }}
-      />
+        {/* Access Node 2 (Top Right) */}
+        <motion.div
+          animate={{ y: [0, -18, 0] }}
+          transition={{ duration: 6, repeat: Infinity, ease: "easeInOut", delay: 1 }}
+          className="absolute right-[10%] top-[15%] z-10 flex h-16 w-16 items-center justify-center rounded-2xl border border-slate-200 bg-white shadow-lg"
+        >
+          <Layers className="h-7 w-7 text-slate-400" />
+        </motion.div>
 
-      <motion.path
-        d="M260 500 C400 420, 480 380, 550 350"
-        stroke="#6366F1"
-        strokeWidth="2"
-        strokeDasharray="8 8"
-        animate={{ strokeDashoffset: [0, -40] }}
-        transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
-      />
+        {/* Security Node (Bottom Left) */}
+        <motion.div
+          animate={{ y: [0, 10, 0], x: [0, 5, 0] }}
+          transition={{ duration: 7, repeat: Infinity, ease: "easeInOut" }}
+          className="absolute left-[15%] bottom-[20%] z-10 flex h-14 w-14 items-center justify-center rounded-2xl border border-slate-200 bg-white shadow-md"
+        >
+          <Shield className="h-6 w-6 text-slate-400" />
+        </motion.div>
 
-      <motion.path
-        d="M840 500 C700 420, 620 380, 550 350"
-        stroke="#8B5CF6"
-        strokeWidth="2"
-        strokeDasharray="8 8"
-        animate={{ strokeDashoffset: [0, -40] }}
-        transition={{ duration: 2.2, repeat: Infinity, ease: "linear" }}
-      />
+        {/* Wireless Node (Top center-ish) */}
+        <motion.div
+          animate={{ scale: [1, 1.1, 1], opacity: [0.7, 1, 0.7] }}
+          transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+          className="absolute right-[30%] top-[8%] z-10 flex h-12 w-12 items-center justify-center rounded-full border border-sky-100 bg-sky-50/50 shadow-sm"
+        >
+          <Wifi className="h-5 w-5 text-sky-400" />
+        </motion.div>
 
-      {/* ================= DATA PARTICLES ================= */}
-      {Array.from({ length: 18 }).map((_, i) => (
-        <motion.circle
-          key={i}
-          cx={550 + Math.cos(i) * 220}
-          cy={350 + Math.sin(i) * 140}
-          r="2"
-          fill="#38BDF8"
-          animate={{
-            opacity: [0.2, 1, 0.2],
-            scale: [1, 1.6, 1],
-          }}
-          transition={{
-            duration: 2 + i * 0.1,
-            repeat: Infinity,
-          }}
-        />
-      ))}
-    </svg>
-  )
+        {/* Appliance/Storage Node (Mid Left) */}
+        <motion.div
+          animate={{ x: [0, -8, 0] }}
+          transition={{ duration: 5.5, repeat: Infinity, ease: "easeInOut", delay: 0.5 }}
+          className="absolute left-[5%] top-[45%] z-10 flex h-14 w-14 items-center justify-center rounded-2xl border border-slate-200 bg-white shadow-md"
+        >
+          <HardDrive className="h-6 w-6 text-slate-400" />
+        </motion.div>
+
+        {/* BOM Preview UI (Bottom) */}
+        <motion.div
+          initial={{ y: 50, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ delay: 1, duration: 0.8 }}
+          className="absolute bottom-[10%] z-30 w-56 overflow-hidden rounded-2xl border border-slate-200 bg-white/90 p-4 shadow-2xl backdrop-blur-md"
+        >
+          <div className="flex items-center justify-between mb-3">
+             <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Bill of Materials</div>
+             <div className="h-2 w-2 rounded-full bg-sky-500" />
+          </div>
+          <div className="space-y-2">
+            <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
+              <motion.div initial={{ x: '-100%' }} animate={{ x: '0%' }} transition={{ delay: 1.5, duration: 1 }} className="h-full w-2/3 bg-sky-400" />
+            </div>
+            <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
+              <motion.div initial={{ x: '-100%' }} animate={{ x: '0%' }} transition={{ delay: 1.7, duration: 1 }} className="h-full w-1/2 bg-sky-300" />
+            </div>
+            <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
+              <motion.div initial={{ x: '-100%' }} animate={{ x: '0%' }} transition={{ delay: 1.9, duration: 1 }} className="h-full w-4/5 bg-slate-200" />
+            </div>
+          </div>
+          <div className="mt-4 flex justify-end">
+            <div className="h-5 w-16 bg-blue-500 rounded-lg flex items-center justify-center text-[9px] font-bold text-white shadow-sm">
+              EXPORT
+            </div>
+          </div>
+        </motion.div>
+
+        {/* Decorative Floating Icon (CPU/Logic) */}
+        <motion.div animate={{ rotate: 360 }} transition={{ duration: 20, repeat: Infinity, ease: "linear" }} className="absolute right-[20%] bottom-[25%] opacity-20">
+           <Cpu className="h-12 w-12 text-blue-900" />
+        </motion.div>
+      </div>
+    </div>
+  );
 }

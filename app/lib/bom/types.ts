@@ -37,7 +37,7 @@ export type BOMLineCategory =
   | "stack-power"
   | "stack-adapter"
   | "optic"
-  // ⭐ M2 additions — modular chassis components
+  | "stack-kit"
   | "supervisor"
   | "linecard"
   | "fabric-module"

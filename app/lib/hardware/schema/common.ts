@@ -54,7 +54,6 @@ export const NetworkModuleOptionsSchema = z.object({
 export type NetworkModuleOption = z.infer<typeof NetworkModuleOptionSchema>;
 export type NetworkModuleOptions = z.infer<typeof NetworkModuleOptionsSchema>;
 
-
 // ------------------------------------------------------------
 // MODULAR CHASSIS SLOT SPECIFICATION
 // ------------------------------------------------------------
@@ -104,7 +103,7 @@ export const LicenseSpecSchema = z.object({
   entitlementPid: z.string().min(1),
   subscriptionByTerm: z.record(
     z.string().regex(/^[1357]$/, "Term must be '1', '3', '5', or '7'"),
-    z.string()
+    z.string(),
   ),
 });
 export type LicenseSpec = z.infer<typeof LicenseSpecSchema>;
@@ -121,7 +120,15 @@ export type StackingCableSpec = z.infer<typeof StackingCableSpecSchema>;
 
 export const StackingSpecSchema = z.object({
   adapterRequired: z.boolean(),
-  adapterKits: z.array(z.string()).optional(),
+  adapterKits: z
+    .array(
+      z.object({
+        pid: z.string().min(1),
+        label: z.string().min(1),
+        default: z.boolean().optional(),
+      }),
+    )
+    .optional(),
   dataCables: z.array(StackingCableSpecSchema).optional(),
   powerCables: z.array(StackingCableSpecSchema).optional(),
 });
@@ -164,10 +171,8 @@ export const LegacyRedundantPsuSchema = z.object({
   description: z.string().optional(),
 });
 
-
 export type PsuOption = z.infer<typeof PsuOptionSchema>;
 export type PsuOptions = z.infer<typeof PsuOptionsSchema>;
-
 
 // ------------------------------------------------------------
 // CHASSIS BUNDLE (the full auto-included config for a chassis)
@@ -178,7 +183,7 @@ export const ChassisBundleSchema = z.object({
   powerCord: PowerCordSpecSchema,
   redundantPsu: LegacyRedundantPsuSchema.optional(),
   psuOptions: PsuOptionsSchema.optional(),
-  psuConfig: PsuConfigSchema.optional(), 
+  psuConfig: PsuConfigSchema.optional(),
   networkModuleOptions: NetworkModuleOptionsSchema.optional(),
   smartnet: SmartnetSpecSchema,
   license: LicenseSpecSchema,

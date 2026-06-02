@@ -114,8 +114,8 @@
           },
           "smartnet": {
              "baseSkuByTier": {
-              "SNT": "CON-SNT-C9404R",
-              "SNTP": "CON-SNTP-C9404R"
+              "SNT": "CON-SNT-C9407R",
+              "SNTP": "CON-SNTP-C9407R"
             }
           },
           "license": {
@@ -171,8 +171,8 @@
           },
           "smartnet": {
             "baseSkuByTier": {
-              "SNT": "CON-SNT-C9404R",
-              "SNTP": "CON-SNTP-C9404R"
+              "SNT": "CON-SNT-C9410R",
+              "SNTP": "CON-SNTP-C9410R"
             }
           },
           "license": {

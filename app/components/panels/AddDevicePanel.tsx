@@ -18,6 +18,7 @@ const TYPE_PREFIX: Record<DeviceType, string> = {
   management: "MGT",
 };
 
+
 function generateDeviceId(
   type: DeviceType,
   existing: ConfiguredDevice[],

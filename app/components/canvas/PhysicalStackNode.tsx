@@ -1,6 +1,6 @@
 "use client";
 
-import { memo , useMemo} from "react";
+import { memo, useMemo, useCallback } from "react";
 import { Handle, Position, NodeProps } from "@xyflow/react";
 import { motion } from "framer-motion";
 import SwitchFaceplate from "./SwitchFaceplate";
@@ -19,8 +19,12 @@ export type PhysicalStackNodeData = {
   collapsed?: boolean;
   onToggleCollapse?: (stackId: string) => void;
   onConvertToLogical?: (stackId: string) => void;
+  onUnstack?: (stackId: string) => void;
   onDelete?: (stackId: string) => void;
 };
+
+
+
 
 // ──────────────────────────────────────────────────────────────────────────
 // Decorative status LED
@@ -48,8 +52,44 @@ function StatusLED({ tone }: { tone: "green" | "blue" | "amber" }) {
 }
 
 function PhysicalStackNodeImpl({ data, selected }: NodeProps) {
-  const { stackId, label, members,collapsed,onToggleCollapse, onConvertToLogical, onDelete } =
+  const { stackId, label, members,collapsed,onToggleCollapse, onConvertToLogical, onDelete, onUnstack } =
     data as PhysicalStackNodeData;
+
+  
+  
+
+  const handleToggleCollapse = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    onToggleCollapse?.(stackId);
+  }, [onToggleCollapse, stackId]);
+
+  const handleDoubleClick = useCallback(() => {
+    onToggleCollapse?.(stackId);
+  }, [onToggleCollapse, stackId]);
+
+  const handleUnstack = useCallback(
+  (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (
+      confirm(
+        "Unstack and free the member devices? They'll be placed side-by-side on the canvas.",
+      )
+    ) {
+      onUnstack?.(stackId);
+    }
+  },
+  [onUnstack, stackId],
+);
+
+  const handleConvertToLogical = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    onConvertToLogical?.(stackId);
+  }, [onConvertToLogical, stackId]);
+
+  const handleDelete = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    onDelete?.(stackId);
+  }, [onDelete, stackId]);
 
   const catalog = getEffectiveCatalog();
 
@@ -75,10 +115,10 @@ function PhysicalStackNodeImpl({ data, selected }: NodeProps) {
         whileHover={{ y: -2 }}
         transition={{ type: "spring", stiffness: 380, damping: 28 }}
         className={`
-          group relative overflow-hidden rounded-2xl
-          border backdrop-blur-xl
+          group relative overflow-visible rounded-2xl
+          border backdrop-blur-2xl
           transition-shadow duration-300
-          hover:shadow-xl
+          hover:shadow-2xl
           cursor-pointer
           ${selected ? "ring-2 ring-sky-400 ring-offset-2" : ""}
         `}
@@ -88,8 +128,8 @@ function PhysicalStackNodeImpl({ data, selected }: NodeProps) {
           background: `
             linear-gradient(
               145deg,
-              rgba(255,255,255,0.98),
-              rgba(248,250,252,0.96)
+              rgba(255,255,255,0.92),
+              rgba(248,250,252,0.88)
             )
           `,
           borderColor: selected ? "#0ea5e9" : "rgba(14,165,233,0.25)",
@@ -97,14 +137,14 @@ function PhysicalStackNodeImpl({ data, selected }: NodeProps) {
             ? "0 16px 36px rgba(14,165,233,0.20)"
             : "0 8px 22px -8px rgba(15,23,42,0.18)",
         }}
-        onDoubleClick={() => onToggleCollapse?.(stackId)}
+        onDoubleClick={handleDoubleClick}
       >
         {/* Ambient glow */}
         <div
-          className="pointer-events-none absolute inset-0 opacity-25"
+          className="pointer-events-none absolute inset-0 opacity-30"
           style={{
             background:
-              "radial-gradient(circle at top right, rgba(14,165,233,0.45), transparent 60%)",
+              "radial-gradient(circle at top right, rgba(14,165,233,0.2), transparent 70%)",
           }}
         />
 
@@ -139,19 +179,16 @@ function PhysicalStackNodeImpl({ data, selected }: NodeProps) {
         />
 
         {/* HEADER */}
-        <div className="relative flex items-center gap-2.5 px-3 py-2.5 border-b border-sky-100/60 bg-linear-to-r from-sky-50/80 to-cyan-50/60">
+        <div className="relative flex items-center gap-2.5 px-3 py-2.5 border-b border-sky-100/40 bg-linear-to-r from-sky-50/90 via-blue-50/40 to-cyan-50/80 rounded-t-2xl">
           {onToggleCollapse && (
             <button
-              onClick={(e) => {
-                e.stopPropagation();
-                onToggleCollapse(stackId);
-              }}
+              onClick={handleToggleCollapse}
               className="
                 flex h-7 w-7 items-center justify-center
-                rounded-lg border border-sky-200
-                bg-white/80 text-sky-700
-                backdrop-blur-md
-                transition hover:scale-105 hover:bg-white
+                rounded-lg border border-sky-200/60
+                bg-white/60 text-sky-700
+                backdrop-blur-xl
+                transition-all hover:scale-105 hover:bg-white/90 hover:shadow-sm
               "
               title="Expand stack"
             >
@@ -162,8 +199,8 @@ function PhysicalStackNodeImpl({ data, selected }: NodeProps) {
           <div
             className="
               flex h-9 w-9 items-center justify-center
-              rounded-xl bg-sky-500/10
-              text-base shadow-inner
+              rounded-xl bg-sky-500/15
+              text-base shadow-inner border border-sky-200/10
             "
           >
             ⚡
@@ -180,9 +217,9 @@ function PhysicalStackNodeImpl({ data, selected }: NodeProps) {
 
           <div
             className="
-              shrink-0 rounded-full border border-sky-200
-              bg-white/70 px-2 py-0.5
-              text-[10px] font-bold text-sky-700
+              shrink-0 rounded-full border border-sky-300/30
+              bg-sky-100/50 px-2 py-0.5
+              text-[10px] font-bold text-sky-800
               backdrop-blur-md
             "
           >
@@ -191,7 +228,7 @@ function PhysicalStackNodeImpl({ data, selected }: NodeProps) {
         </div>
 
         {/* OVERVIEW BODY */}
-        <div className="relative px-3 py-2 space-y-1">
+        <div className="relative px-4 py-3 space-y-1.5">
           {members.length === 0 ? (
             <div className="text-[11px] italic text-slate-400">
               Empty stack
@@ -236,35 +273,35 @@ function PhysicalStackNodeImpl({ data, selected }: NodeProps) {
       whileHover={{ y: -2 }}
       transition={{ type: "spring", stiffness: 380, damping: 28 }}
       className={`
-        group relative overflow-hidden rounded-3xl
-        border backdrop-blur-xl
+        group relative overflow-visible rounded-3xl
+        border backdrop-blur-2xl
         transition-shadow duration-300
-        hover:shadow-2xl
+        hover:shadow-[0_25px_50px_-12px_rgba(14,165,233,0.15)]
         ${selected ? "ring-2 ring-sky-400 ring-offset-2" : ""}
       `}
       style={{
         background: `
           linear-gradient(
             145deg,
-            rgba(255,255,255,0.98),
-            rgba(248,250,252,0.96)
+            rgba(255,255,255,0.95),
+            rgba(248,250,252,0.9)
           )
         `,
-        borderColor: selected ? "#0ea5e9" : "rgba(14,165,233,0.22)",
+        borderColor: selected ? "#0ea5e9" : "rgba(14,165,233,0.18)",
         boxShadow: selected
-          ? "0 20px 45px rgba(14,165,233,0.18)"
-          : "0 12px 32px -10px rgba(15,23,42,0.18)",
+          ? "0 25px 60px rgba(14,165,233,0.15)"
+          : "0 15px 35px -10px rgba(15,23,42,0.12)",
         minWidth: 430,
-        padding: 12,
+        padding: 14,
         position: "relative",
       }}
     >
       {/* ... ambient glow, accent line, handles ... */}
       <div
-        className="pointer-events-none absolute inset-0 opacity-20"
+        className="pointer-events-none absolute inset-0 opacity-30"
         style={{
           background:
-            "radial-gradient(circle at top right, rgba(14,165,233,0.45), transparent 60%)",
+            "radial-gradient(circle at top right, rgba(14,165,233,0.2), transparent 70%)",
         }}
       />
       <div className="absolute inset-x-0 top-0 h-px bg-linear-to-r from-transparent via-sky-400 to-transparent" />
@@ -295,21 +332,18 @@ function PhysicalStackNodeImpl({ data, selected }: NodeProps) {
       />
 
       {/* HEADER — now with collapse button */}
-      <div className="relative mb-4 flex items-center justify-between rounded-2xl border border-white/40 bg-linear-to-r from-sky-100/80 via-blue-50/80 to-cyan-100/80 px-4 py-3 backdrop-blur-xl">
+      <div className="relative mb-5 flex items-center justify-between rounded-2xl border border-sky-100/30 bg-linear-to-r from-sky-100/50 via-blue-50/20 to-cyan-100/50 px-4 py-3 shadow-sm backdrop-blur-xl">
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-3">
             {onToggleCollapse && (
               <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onToggleCollapse(stackId);
-                }}
+                onClick={handleToggleCollapse}
                 className="
                   flex h-8 w-8 items-center justify-center
-                  rounded-xl border border-sky-200
-                  bg-white/70 text-sky-700
-                  backdrop-blur-md
-                  transition hover:scale-105 hover:bg-white
+                  rounded-xl border border-sky-200/60
+                  bg-white/60 text-sky-700
+                  backdrop-blur-xl
+                  transition-all hover:scale-105 hover:bg-white/90 hover:shadow-sm
                 "
                 title="Collapse stack"
               >
@@ -317,7 +351,7 @@ function PhysicalStackNodeImpl({ data, selected }: NodeProps) {
               </button>
             )}
 
-            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-sky-500/10 text-lg shadow-inner">
+            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-sky-500/15 text-lg shadow-inner border border-sky-200/20">
               ⚡
             </div>
 
@@ -332,7 +366,7 @@ function PhysicalStackNodeImpl({ data, selected }: NodeProps) {
           </div>
         </div>
 
-        <div className="rounded-full border border-sky-200 bg-white/70 px-3 py-1 text-[10px] font-bold text-sky-700 backdrop-blur-md">
+        <div className="rounded-full border border-sky-300/30 bg-sky-50/80 px-3 py-1 text-[10px] font-bold text-sky-800 backdrop-blur-md shadow-sm">
           {members.length} UNITS
         </div>
       </div>
@@ -363,7 +397,7 @@ function PhysicalStackNodeImpl({ data, selected }: NodeProps) {
           return (
             <div
               key={device.id}
-              className="group/member relative overflow-hidden rounded-2xl border border-slate-200/70 bg-white/80 p-3 backdrop-blur-xl transition-all duration-200 hover:border-sky-300 hover:shadow-lg"
+              className="group/member relative overflow-hidden rounded-2xl border border-slate-200/60 bg-white/70 p-3 backdrop-blur-xl transition-all duration-200 hover:border-sky-300/80 hover:bg-white/95 hover:shadow-xl"
               data-stack-member-id={device.id}
               data-stack-member-index={idx}
             >
@@ -373,10 +407,10 @@ function PhysicalStackNodeImpl({ data, selected }: NodeProps) {
 
               <div className="relative flex items-start gap-3">
                 <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-sky-200 bg-sky-500/10 text-[12px] font-bold text-sky-700 shadow-inner">
-                  {idx + 1}
+                  {String(idx + 1).padStart(2, '0')}
                 </div>
 
-                <div className="relative min-w-0 flex-1 overflow-hidden rounded-xl border border-slate-200 bg-slate-50 p-2 shadow-inner">
+                <div className="relative min-w-0 flex-1 overflow-hidden rounded-xl border border-slate-200/70 bg-slate-50/40 p-2 shadow-inner">
                   <div
                     className="pointer-events-none absolute inset-0 opacity-[0.03]"
                     style={{
@@ -431,10 +465,7 @@ function PhysicalStackNodeImpl({ data, selected }: NodeProps) {
         <div className="flex gap-2">
           {onConvertToLogical && (
             <button
-              onClick={(e) => {
-                e.stopPropagation();
-                onConvertToLogical(stackId);
-              }}
+              onClick={handleUnstack}
               className="rounded-xl border border-slate-200 bg-white/70 px-3 py-1.5 text-[10px] font-semibold text-slate-600 backdrop-blur-md transition hover:border-sky-300 hover:text-sky-700"
             >
               Unstack
@@ -442,10 +473,7 @@ function PhysicalStackNodeImpl({ data, selected }: NodeProps) {
           )}
           {onDelete && (
             <button
-              onClick={(e) => {
-                e.stopPropagation();
-                onDelete(stackId);
-              }}
+              onClick={handleDelete}
               className="rounded-xl border border-rose-200 bg-rose-50/70 px-3 py-1.5 text-[10px] font-semibold text-rose-600 backdrop-blur-md transition hover:bg-rose-100"
             >
               Delete

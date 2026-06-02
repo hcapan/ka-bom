@@ -37,7 +37,7 @@ import {
 } from "../../lib/hardware/catalog";
 import { BundledEdge } from "./Edges/BundledEdge";
 import { bundleLinks } from "../../lib/utils/bundleLinks";
-import GroupNode, { GroupNodeData } from "./GroupNode";
+import GroupNode, { GroupNodeData, StackPatch } from "./GroupNode";
 import { computeCenteredGridPos } from "../../lib/utils/groupLayout";
 import { calcGroupSize, pickColsFor } from "@/app/lib/utils/groupLayout";
 import {
@@ -73,16 +73,11 @@ type Props = {
   onRenameGroup: (id: string, label: string) => void;
   onRemoveGroup: (id: string) => void;
   onConfigureSlot: (deviceId: string, slotId: string) => void;
-  onUpdateStack?: (
-    id: string,
-    patch: {
-      stackingCablePid?: string;
-      stackingCableQty?: number;
-      stackPowerCablePid?: string | null;
-      stackPowerCableQty?: number;
-    },
-  ) => void;
+  onUpdateStack?: (id: string, patch: Partial<StackPatch>) => void;
   onConvertStackToLogical?: (id: string) => void;
+  onTidyGroup?: (id: string) => void;
+  onSelectionChange?: (selectedIds: string[]) => void;
+  onUnstackGroup?: (id: string) => void;
 };
 
 // ============================================================
@@ -101,15 +96,25 @@ function devicesToNodes(
 
   const siblingsByGroup = new Map<string, ConfiguredDevice[]>();
   devices.forEach((d) => {
-    if (d.groupId) {
+    if (d.groupId && groupById.has(d.groupId)) {
       if (!siblingsByGroup.has(d.groupId)) siblingsByGroup.set(d.groupId, []);
       siblingsByGroup.get(d.groupId)!.push(d);
+    }
+  });
+
+  // Group free devices by type to calculate horizontal offsets
+  const freeDevicesByType = new Map<DeviceType, ConfiguredDevice[]>();
+  devices.forEach((d) => {
+    if (!d.groupId || !groupById.has(d.groupId)) {
+      if (!freeDevicesByType.has(d.type)) freeDevicesByType.set(d.type, []);
+      freeDevicesByType.get(d.type)!.push(d);
     }
   });
 
   const isHidden = (deviceGroupId: string | null | undefined): boolean => {
     if (!deviceGroupId) return false;
     let cur = groupById.get(deviceGroupId);
+    if (!cur) return false;
     while (cur) {
       if (cur.collapsed) return true;
       cur = cur.parentGroupId ? groupById.get(cur.parentGroupId) : undefined;
@@ -119,10 +124,10 @@ function devicesToNodes(
 
   return devices
     .filter((d) => !isHidden(d.groupId))
-    .flatMap<Node>((d, i) => {
+    .flatMap<Node>((d) => {
       // ⭐ Detect if device is a stack member
       const parentGroup = d.groupId ? groupById.get(d.groupId) : undefined;
-      const isStackMember = parentGroup?.kind === "stack";
+      const isStackMember = parentGroup?.kind === "stack" && !!parentGroup;
 
       // Stack members are rendered by PhysicalStackNode — skip them here.
       if (isStackMember) {
@@ -133,7 +138,7 @@ function devicesToNodes(
       const isModular = isModularChassis(d.hardware.chassisPid);
 
       let basePosition: { x: number; y: number };
-      if (d.groupId) {
+      if (d.groupId && parentGroup) {
         const siblings = siblingsByGroup.get(d.groupId) ?? [];
         const localIndex = siblings.findIndex((x) => x.id === d.id);
         const cols = pickColsFor(siblings.length);
@@ -147,8 +152,12 @@ function devicesToNodes(
         );
       } else {
         // Free device — use persisted or default
+        const siblingsInLayer = freeDevicesByType.get(d.type) ?? [];
+        const typeIndex = siblingsInLayer.findIndex((x) => x.id === d.id);
+
+        // Spacing: 250px apart horizontally, starting at x:100
         basePosition = d.position ?? {
-          x: 100,
+          x: 100 + typeIndex * 250,
           y: LAYER_CONFIG[d.type].y + 50,
         };
       }
@@ -198,6 +207,7 @@ function groupsToNodes(
     // ⭐ STACK
     onUpdateStack?: GroupNodeData["onUpdateStack"];
     onConvertToLogical?: GroupNodeData["onConvertToLogical"];
+    onTidy?: (id: string) => void;
   },
 ): Node[] {
   return groups.map((g) => {
@@ -230,6 +240,7 @@ function groupsToNodes(
       onToggleCollapse: handlers.onToggleCollapse,
       onRename: handlers.onRename,
       onDelete: handlers.onDelete,
+      onTidy: handlers.onTidy,
 
       childDevicesSummary: childDevices.map((d) => ({
         model: d.hardware.chassisPid ?? d.hardware.series ?? "Unknown",
@@ -451,7 +462,12 @@ function CanvasInner({
   onRemoveGroup,
   onUpdateStack,
   onConvertStackToLogical,
+  onTidyGroup,
+  onSelectionChange,
+  onUnstackGroup
 }: Props) {
+  const { getNodes } = useReactFlow();
+
   const deviceHandlers = useMemo(
     () => ({
       onConfigureSlot,
@@ -460,16 +476,80 @@ function CanvasInner({
     [onConfigureSlot, onNodeClick],
   );
 
-  const [nodes, setNodes] = useNodesState([
-    ...groupsToNodes(groups, devices, {
-      onToggleCollapse: onToggleGroupCollapse,
-      onRename: onRenameGroup,
-      onDelete: onRemoveGroup,
-      onUpdateStack, // ⭐ STACK
-      onConvertToLogical: onConvertStackToLogical, // ⭐ STACK
-    }),
-    ...devicesToNodes(devices, groups, deviceHandlers),
-  ]);
+  // ⭐ Consolidate node generation logic.
+  // Note: We use the currentDevices argument to avoid stale closures.
+  const buildAllNodes = useCallback(
+    (currentDevices: ConfiguredDevice[], currentGroups: DeviceGroup[]) => {
+      const stackGroups = currentGroups.filter((g) => g.kind === "stack");
+      const logicalGroups = currentGroups.filter((g) => g.kind === "logical");
+      const stackMemberIds = new Set<string>(
+        stackGroups.flatMap((g) => g.memberOrder ?? []),
+      );
+
+      const stackNodes: Node[] = stackGroups.map((stack) => {
+        const foundMembers = (stack.memberOrder ?? [])
+          .map((id) => currentDevices.find((d) => d.id === id))
+          .filter((d): d is ConfiguredDevice => Boolean(d));
+
+
+        return {
+          id: stack.id,
+          type: "stack",
+          position: stack.position,
+          data: {
+            stackId: stack.id,
+            label: stack.label,
+            members: foundMembers,
+            collapsed: stack.collapsed,
+            onToggleCollapse: onToggleGroupCollapse,
+            onConvertToLogical: onConvertStackToLogical,
+            onUnstack:onUnstackGroup,
+            onDelete: onRemoveGroup,
+          },
+        };
+      });
+
+      const logicalGroupNodes = groupsToNodes(logicalGroups, currentDevices, {
+        onToggleCollapse: onToggleGroupCollapse,
+        onRename: onRenameGroup,
+        onDelete: onRemoveGroup,
+        onUpdateStack,
+        onConvertToLogical: onConvertStackToLogical,
+        onTidy: onTidyGroup,
+      });
+
+      const standaloneDevices = currentDevices.filter(
+        (d) => !stackMemberIds.has(d.id),
+      );
+      const deviceNodes = devicesToNodes(
+        standaloneDevices,
+        logicalGroups,
+        deviceHandlers,
+      );
+
+      return orderNodesParentFirst([
+        ...logicalGroupNodes,
+        ...stackNodes,
+        ...deviceNodes,
+      ]);
+    },
+    [
+      onToggleGroupCollapse,
+      onConvertStackToLogical,
+      onRemoveGroup,
+      onUpdateStack,
+      onTidyGroup,
+      onRenameGroup,
+      deviceHandlers,
+    ],
+  );
+
+  const initialNodes = useMemo(
+    () => buildAllNodes(devices as ConfiguredDevice[], groups),
+    [devices, groups, buildAllNodes],
+  );
+
+  const [nodes, setNodes] = useNodesState(initialNodes);
 
   const [edges, setEdges] = useEdgesState(
     buildEdges(links, devices, groups, ui, onExpandBundle),
@@ -508,119 +588,61 @@ function CanvasInner({
   );
 
   // Sync refs for one-way prop→canvas
-  const lastSyncedDeviceIdsRef = useRef<string>("");
+  const lastSyncedDevicesKeyRef = useRef<string>("");
   const lastSyncedGroupKeyRef = useRef<string>("");
   const lastSyncedLinkIdsRef = useRef<string>("");
   const lastSyncedUIRef = useRef<string>("");
   const lastSyncedCollapseKeyRef = useRef<string>("");
 
+  // Unified key generator to ensure useEffect and onNodesChange speak the same language
+  const generateDevicesKey = useCallback(
+    (devs: ConfiguredDevice[]) =>
+      devs
+        .map(
+          (d) =>
+            `${d.id}:${d.name}:${d.groupId ?? ""}:${JSON.stringify(d.hardware)}:${d.position?.x},${d.position?.y}`,
+        )
+        .sort()
+        .join("|"),
+    [],
+  );
+
+  const generateGroupsKey = useCallback(
+    (grps: DeviceGroup[]) =>
+      grps
+        .map(
+          (g) =>
+            `${g.id}:${g.kind}:${g.label}:${g.collapsed}:${g.parentGroupId ?? ""}:${g.position.x},${g.position.y}:${(g.memberOrder ?? []).join(",")}`,
+        )
+        .sort()
+        .join("|"),
+    [],
+  );
+
   // Re-sync NODES when devices or groups change
   useEffect(() => {
-    // ─── Build sync keys ──────────────────────────────────────────
-    const incomingDeviceIds = devices
-      .map((d) => d.id)
-      .sort()
-      .join("|");
+    const incomingDevicesKey = generateDevicesKey(devices);
+    const incomingGroupKey = generateGroupsKey(groups);
 
-    const incomingGroupKey = groups
-      .map(
-        (g) =>
-          `${g.id}:${g.kind}:${g.label}:${g.collapsed}:${g.parentGroupId ?? ""}:${
-            g.position.x
-          },${g.position.y}:${(g.memberOrder ?? []).join(",")}`,
-      )
-      .sort()
-      .join("|");
-
-    const devicesChanged = incomingDeviceIds !== lastSyncedDeviceIdsRef.current;
+    const devicesChanged =
+      incomingDevicesKey !== lastSyncedDevicesKeyRef.current;
     const groupsChanged = incomingGroupKey !== lastSyncedGroupKeyRef.current;
 
     if (!devicesChanged && !groupsChanged) {
       return;
     }
 
-    lastSyncedDeviceIdsRef.current = incomingDeviceIds;
+    lastSyncedDevicesKeyRef.current = incomingDevicesKey;
     lastSyncedGroupKeyRef.current = incomingGroupKey;
 
-    // ⭐ DEFENSIVE: strip orphan parent references
-    const validGroupIds = new Set(groups.map((g) => g.id));
-    const sanitizedDevices = devices.map((d) => {
-      const groupRef = d.groupId ?? d.parentGroupId;
-      if (groupRef && !validGroupIds.has(groupRef)) {
-        return { ...d, groupId: undefined, parentGroupId: undefined };
-      }
-      return d;
-    });
-
-    // ─── Partition groups by kind ─────────────────────────────────
-    const stackGroups = groups.filter((g) => g.kind === "stack");
-    const logicalGroups = groups.filter((g) => g.kind === "logical");
-
-    // ─── Identify devices that live INSIDE a stack ────────────────
-    const stackMemberIds = new Set<string>(
-      stackGroups.flatMap((g) => g.memberOrder ?? []),
-    );
-
-    // ─── Build stack nodes (composite) ────────────────────────────
-    const stackNodes: Node[] = stackGroups.map((stack) => {
-      const members = (stack.memberOrder ?? [])
-        .map((id) => sanitizedDevices.find((d) => d.id === id))
-        .filter((d): d is Device => Boolean(d));
-
-      return {
-        id: stack.id,
-        type: "stack",
-        position: stack.position,
-        data: {
-          stackId: stack.id,
-          label: stack.label,
-          members,
-          collapsed: stack.collapsed, // 👈 NEW
-          onToggleCollapse: onToggleGroupCollapse,
-          onConvertToLogical: onConvertStackToLogical,
-          onDelete: onRemoveGroup,
-        },
-        // No parentId. No extent. Just a normal draggable node.
-      };
-    });
-
-    // ─── Build logical group nodes (existing behavior) ────────────
-    const logicalGroupNodes = groupsToNodes(logicalGroups, devices, {
-      onToggleCollapse: onToggleGroupCollapse,
-      onRename: onRenameGroup,
-      onDelete: onRemoveGroup,
-      onUpdateStack,
-      onConvertToLogical: onConvertStackToLogical,
-    });
-
-    // ─── Build standalone device nodes (NOT in a stack) ───────────
-    const standaloneDevices = devices.filter((d) => !stackMemberIds.has(d.id));
-    const deviceNodes = devicesToNodes(
-      standaloneDevices,
-      logicalGroups,
-      deviceHandlers,
-    );
-
-    // ─── Compose final node list ──────────────────────────────────
-    // Order: logical groups → stacks → standalone devices
-    // (logical groups must precede their child devices for parentId to work)
-    const newNodes: Node[] = orderNodesParentFirst([
-      ...logicalGroupNodes,
-      ...stackNodes,
-      ...deviceNodes,
-    ]);
-
-    setNodes(newNodes);
+    setNodes(buildAllNodes(devices, groups));
   }, [
     devices,
     groups,
-    onToggleGroupCollapse,
-    deviceHandlers,
-    onRenameGroup,
-    onRemoveGroup,
-    onUpdateStack,
-    onConvertStackToLogical,
+    buildAllNodes,
     setNodes,
+    generateDevicesKey,
+    generateGroupsKey,
   ]);
 
   // Re-sync EDGES when links, devices, groups, or ui change
@@ -654,17 +676,28 @@ function CanvasInner({
   // ---------- Imperative sync: CANVAS → PARENT ----------
   const onNodesChange = useCallback(
     (changes: NodeChange[]) => {
-      const next = applyNodeChanges(changes, nodes);
-      setNodes(next);
+      const prevNodes = getNodes();
+      const nextNodes = applyNodeChanges(changes, prevNodes);
+      setNodes(nextNodes);
+
+      // ⭐ Selection Sync: Notify parent/sidebar of current selection
+      const selectionChanges = changes.filter((c) => c.type === "select");
+      if (selectionChanges.length > 0 && onSelectionChange) {
+        const selectedIds = nextNodes
+          .filter((n) => n.selected)
+          .map((n) => n.id);
+        onSelectionChange(selectedIds);
+      }
 
       const hasPositionChange = changes.some(
         (c) => c.type === "position" && c.dragging === false,
       );
       const hasRemoval = changes.some((c) => c.type === "remove");
+      const hasAddition = changes.some((c) => c.type === "add");
 
-      if (!hasPositionChange && !hasRemoval) return;
+      if (!hasPositionChange && !hasRemoval && !hasAddition) return;
 
-      const groupNodesNow = next.filter(
+      const groupNodesNow = nextNodes.filter(
         (n) => n.type === "group" || n.type === "stack",
       );
       let groupsChanged = false;
@@ -689,11 +722,12 @@ function CanvasInner({
         return g;
       });
       if (groupsChanged) {
+        lastSyncedGroupKeyRef.current = generateGroupsKey(updatedGroups);
         setGroups(updatedGroups);
       }
 
       // Sync DEVICE nodes — MERGE, don't replace (preserves hidden devices)
-      const deviceNodesNow = next.filter(
+      const deviceNodesNow = nextNodes.filter(
         (n) => n.type === "device" || n.type === "modular",
       );
       const visibleNodeIds = new Set(deviceNodesNow.map((n) => n.id));
@@ -704,7 +738,7 @@ function CanvasInner({
       }
 
       let devicesChanged = false;
-      const updatedDevices: ConfiguredDevice[] = devicesRef.current.map((d) => {
+      let finalDevices: ConfiguredDevice[] = devicesRef.current.map((d) => {
         if (d.groupId) return d;
         const newPos = positionUpdates.get(d.id);
         if (!newPos) return d; // hidden device — keep as-is
@@ -720,11 +754,37 @@ function CanvasInner({
         return d;
       });
 
+      // ✨ Addition: Sync newly added nodes from Canvas -> Parent
+      if (hasAddition) {
+        const existingIds = new Set(devicesRef.current.map((d) => d.id));
+        const newNodes = deviceNodesNow.filter((n) => !existingIds.has(n.id));
+
+        if (newNodes.length > 0) {
+          const newDevices: ConfiguredDevice[] = newNodes.map(
+            (n) =>
+              ({
+                id: n.id,
+                name: n.data.name as string,
+                type: n.data.type as DeviceType,
+                position: n.position,
+                groupId: null,
+                hardware: {
+                  series: n.data.model as string,
+                  chassisPid: n.data.pid as string,
+                  networkModulePid: n.data.networkModulePid as string,
+                },
+              }) as ConfiguredDevice,
+          );
+
+          finalDevices = [...finalDevices, ...newDevices];
+          devicesChanged = true;
+        }
+      }
+
       // Removal: detect by comparing previously-visible to currently-visible device sets
-      let finalDevices = updatedDevices;
       if (hasRemoval) {
         const previouslyVisibleIds = new Set(
-          nodes
+          prevNodes
             .filter((n) => n.type === "device" || n.type === "modular")
             .map((n) => n.id),
         );
@@ -733,16 +793,13 @@ function CanvasInner({
           if (!visibleNodeIds.has(id)) removedIds.add(id);
         }
         if (removedIds.size > 0) {
-          finalDevices = updatedDevices.filter((d) => !removedIds.has(d.id));
+          finalDevices = finalDevices.filter((d) => !removedIds.has(d.id));
           devicesChanged = true;
         }
       }
 
       if (devicesChanged) {
-        lastSyncedDeviceIdsRef.current = finalDevices
-          .map((d) => d.id)
-          .sort()
-          .join("|");
+        lastSyncedDevicesKeyRef.current = generateDevicesKey(finalDevices);
         setDevices(finalDevices);
 
         if (hasRemoval) {
@@ -769,7 +826,17 @@ function CanvasInner({
         }
       }
     },
-    [nodes, setNodes, setEdges, setDevices, setLinks, setGroups],
+    [
+      getNodes,
+      setNodes,
+      setEdges,
+      setDevices,
+      setLinks,
+      setGroups,
+      onSelectionChange,
+      generateGroupsKey,
+      generateDevicesKey,
+    ],
   );
 
   const onEdgesChange = useCallback(
@@ -821,6 +888,20 @@ function CanvasInner({
     (params: Connection) => {
       if (!params.source || !params.target) return;
       if (params.source === params.target) return;
+
+      // Validation: Check if a link already exists between these specific handles
+      const exists = linksRef.current.some(
+        (l) =>
+          l.from === params.source &&
+          l.to === params.target &&
+          l.sourceHandle === params.sourceHandle &&
+          l.targetHandle === params.targetHandle,
+      );
+
+      if (exists) {
+        console.warn("Link already exists between these ports.");
+        return;
+      }
 
       const isLateral =
         (params.sourceHandle === "left" || params.sourceHandle === "right") &&

@@ -56,6 +56,8 @@ export default function SwitchFaceplate({
   const GAP = 12;
   const MODULE_GAP = 6;
 
+
+
   // ─── Determine uplink mode ──────────────────────────────────
   const hasModularUplinks = !!uplinkModules && uplinkModules.length > 0;
   const hasFixedUplinks = !hasModularUplinks && uplinkPortCount > 0;
@@ -74,6 +76,8 @@ export default function SwitchFaceplate({
   } else if (hasFixedUplinks) {
     uplinkW = uplinkPortCount * (PORT_W + 3) - 3;
   }
+
+
 
   // ─── Right-side LED area ────────────────────────────────────
   const LED_AREA_W = 22;

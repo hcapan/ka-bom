@@ -43,6 +43,7 @@ export default function TopologyApp() {
     setGroups,
     updateStackSettings,
     convertStackToLogical,
+    unstackGroup,
     addDevicesWithOptionalGroup
   } = useProject();
 
@@ -211,6 +212,7 @@ export default function TopologyApp() {
         onConfigureSlot={openSlotConfig}
         onUpdateStack={updateStackSettings}
         onConvertStackToLogical={convertStackToLogical}
+        onUnstackGroup={unstackGroup}
       />
     </section>
   </div>

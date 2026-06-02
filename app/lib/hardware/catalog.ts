@@ -357,9 +357,10 @@ export function getEffectiveCatalog(): Record<string, SwitchSeries> {
         productCategory: "fixed-switch",
         type: "core",
         vendor: "Cisco",
+        category: "switching", // Added missing 'category' property
         description: `${seriesName} (override-only — not yet in source catalog)`,
         compatibleOptics: [],
-        pids: [],
+        pids: []
       };
       merged[seriesName] = series;
     }

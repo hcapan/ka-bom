@@ -142,7 +142,9 @@ export default function ConfigurePanel({
 
   // Auto-open the slot section if user clicked a slot to open the panel
   const slotSectionOpen = !!selectedSlotId;
-
+  
+  // Visibility check: Only show modular uplink options for non-fixed models (non-L)
+  const uplinkSectionOpen = !device.hardware.chassisPid.includes("L") 
   return (
     <AnimatePresence>
       <motion.div
@@ -390,8 +392,12 @@ export default function ConfigurePanel({
           </Accordion>
 
           {/* Uplink Module (card picker) */}
-          {networkModuleOptions && (
-            <Accordion title="Uplink Module" icon={<UplinkIcon size={14} />} defaultOpen={false}>
+          {networkModuleOptions && uplinkSectionOpen && (
+            <Accordion
+              title="Uplink Module"
+              icon={<UplinkIcon size={14} />}
+              defaultOpen={uplinkSectionOpen}
+            >
               <FieldStacked label="Module">
                 <RadioCardGroup
                   name={`netmod-${device.id}`}

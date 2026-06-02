@@ -19,12 +19,12 @@ import {
   emitPsuLines as emitPsuLinesFromHelper,
   bundleUsesPsuOptions,
 } from "./psuEmitter";
-import {
-  emitNetworkModuleLines,
-} from "./networkModuleEmitter";
+import { emitNetworkModuleLines } from "./networkModuleEmitter";
 import { bundleUsesPsuConfig, emitModularPsuLines } from "./modularPsuEmitter";
-import { getChassisSlotLayout,getSecondaryModulePid } from "../hardware/chassisHelpers";
-
+import {
+  getChassisSlotLayout,
+  getSecondaryModulePid,
+} from "../hardware/chassisHelpers";
 
 // ============================================================
 // EFFECTIVE VALUE RESOLVERS
@@ -61,12 +61,10 @@ export function getEffectiveSmartnetTerm(
 // CHASSIS LOOKUP
 // ============================================================
 export function getChassisInfo(device: ConfiguredDevice) {
-  const catalog = getEffectiveCatalog()
+  const catalog = getEffectiveCatalog();
   const series = catalog[device.hardware.series];
   if (!series) return null;
-  const product = series.pids.find(
-    (p) => p.pid === device.hardware.chassisPid,
-  );
+  const product = series.pids.find((p) => p.pid === device.hardware.chassisPid);
   if (!product) return null;
   return { series, product };
 }
@@ -89,8 +87,6 @@ function isPsuPid(pid: string): boolean {
  * Returns true if the device's chassis uses the modular psuConfig pattern
  * (count + SKU model picker). Used to switch BOM emission paths.
  */
-
-
 
 /**
  * Builds the chassis line + auto-included items.
@@ -161,7 +157,6 @@ export function buildChassisLines(
   return { lines, warnings: [] };
 }
 
-
 /**
  * Builds the network module line for fixed-switch chassis.
  * No-op for chassis without networkModuleOptions in catalog.
@@ -179,14 +174,13 @@ export function buildNetworkModuleLines(
       partNumber: line.pid,
       quantity: line.qty,
       sourceDeviceId: device.id,
-      category: "auto-included",   // groups with other auto-include items in BOM
+      category: "auto-included", // groups with other auto-include items in BOM
       description: line.description,
     });
   }
 
   return { lines, warnings };
 }
-
 
 /**
  * Builds PSU lines.
@@ -231,14 +225,11 @@ export function buildPsuLines(
   return { lines, warnings };
 }
 
-
 /**
  * PIDs that should emit ONE line PER populated supervisor slot
  * (not aggregated). CCW expects separate rows for these.
  */
-const PER_SUPERVISOR_PIDS = new Set([
-  "C9400-SSD-NONE",
-]);
+const PER_SUPERVISOR_PIDS = new Set(["C9400-SSD-NONE"]);
 
 function getPopulatedSupervisorSlotIds(device: ConfiguredDevice): string[] {
   return (device.hardware.slots ?? [])
@@ -413,6 +404,7 @@ export function buildStackingLines(device: ConfiguredDevice): Result {
       category: "stack-adapter",
     });
   }
+
   if (cfg.dataCablePid) {
     lines.push({
       partNumber: cfg.dataCablePid,
@@ -485,9 +477,7 @@ export function buildSlotLines(device: ConfiguredDevice): Result {
   // ⭐ FIX 1: Compute redundant slot IDs from the chassis layout
   const layout = getChassisSlotLayout(device.hardware.chassisPid);
   const redundantSlotIds = new Set(
-    layout
-      .filter((s) => s.isRedundantSlot)
-      .map((s) => String(s.slot)),
+    layout.filter((s) => s.isRedundantSlot).map((s) => String(s.slot)),
   );
 
   const excluded = new Set(device.hardware.excludedAutoIncludes ?? []);
@@ -529,7 +519,7 @@ export function buildSlotLines(device: ConfiguredDevice): Result {
     }
 
     lines.push({
-      partNumber: emittedPid,                    // ⭐ FIX 2: was slot.modulePid
+      partNumber: emittedPid, // ⭐ FIX 2: was slot.modulePid
       quantity: 1,
       sourceDeviceId: device.id,
       category: categoryForSlotKind(slot.slotKind),
@@ -542,9 +532,8 @@ export function buildSlotLines(device: ConfiguredDevice): Result {
   return { lines, warnings };
 }
 
-
 export function hasModularPsus(device: ConfiguredDevice): boolean {
-  const catalog = getEffectiveCatalog()
+  const catalog = getEffectiveCatalog();
   const series = catalog[device.hardware.series];
   const chassisPidEntry = series?.pids.find(
     (p) => p.pid === device.hardware.chassisPid,
@@ -577,7 +566,6 @@ export function buildModularPsuLines(
  * Builds PSU lines for modular chassis (count + SKU model).
  */
 
-
 export function buildModularPowerCordLines(
   device: ConfiguredDevice,
   bundle: ChassisBundle,
@@ -586,8 +574,7 @@ export function buildModularPowerCordLines(
   if (!bundle.powerCord) return { lines: [], warnings: [] };
 
   const psuConfig = bundle.psuConfig;
-  const psuCount =
-    device.hardware.modularPsuQty ?? psuConfig?.defaultQty ?? 0;
+  const psuCount = device.hardware.modularPsuQty ?? psuConfig?.defaultQty ?? 0;
 
   if (psuCount === 0) return { lines: [], warnings: [] };
 
@@ -633,45 +620,53 @@ export function buildGroupStackingLines(
   group: DeviceGroup,
   memberCount: number,
 ): Result {
+   console.log("[BOM DEBUG] buildGroupStackingLines called", {
+    label: group.label,
+    kind: group.kind,
+    stackAdapterKitPid: group.stackAdapterKitPid,
+    stackAdapterKitQty: group.stackAdapterKitQty,
+    stackingCablePid: group.stackingCablePid,
+  });
   const lines: BOMLine[] = [];
   const warnings: BOMWarning[] = [];
 
-  // ⭐ FIELD NAME: your DeviceGroup uses `kind` (not `groupKind`)
   if (group.kind !== "stack") return { lines, warnings };
 
-  if (memberCount < 2) {
-    if (memberCount === 1) {
-      warnings.push({
-        severity: "info",
-        message: `Stack group "${group.label}" has only 1 member. No stacking cables emitted.`,
-      });
-    }
-    return { lines, warnings };
+  // ⭐ NEW — Stack adapter kit (for 9200, 9200L, 9300L, 9300LM)
+  if (group.stackAdapterKitPid && (group.stackAdapterKitQty ?? 0) > 0) {
+    lines.push({
+      partNumber: group.stackAdapterKitPid,
+      quantity: group.stackAdapterKitQty!,
+      category: "stack-kit",
+    });
   }
 
-  const cablePid = group.stackingCablePid ?? DEFAULT_STACK_CABLE_PID;
-  const cableQty = group.stackingCableQty ?? memberCount;
 
-  lines.push({
-    partNumber: cablePid,
-    quantity: cableQty,
-    category: "stack-cable",
-    description: `Stack data cable (${memberCount}-member stack)`,
-  });
+  // Stack data cable
+  if (group.stackingCablePid && (group.stackingCableQty ?? 0) > 0) {
+    lines.push({
+      partNumber: group.stackingCablePid,
+      quantity: group.stackingCableQty!,
+      category: "stack-cable",
+    });
+  } else if (memberCount >= 2) {
+    warnings.push({
+      severity: "warning",
+      message: `Stack "${group.label}" has no data cable PID — review before quoting.`,
+    });
+  }
 
-  if (group.stackPowerCablePid) {
-    const powerQty = group.stackPowerCableQty ?? memberCount;
+  // Stack power cable
+  if (group.stackPowerCablePid && (group.stackPowerCableQty ?? 0) > 0) {
     lines.push({
       partNumber: group.stackPowerCablePid,
-      quantity: powerQty,
+      quantity: group.stackPowerCableQty!,
       category: "stack-power",
-      description: `StackPower cable (${memberCount}-member stack)`,
     });
   }
 
   return { lines, warnings };
 }
-
 /**
  * ⭐ FIELD NAME: your DeviceGroup uses `kind` (not `groupKind`)
  */

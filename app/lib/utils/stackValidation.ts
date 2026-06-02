@@ -1,7 +1,5 @@
 import { ConfiguredDevice } from "../types";
-import { HARDWARE_LIBRARY } from "../hardware/catalog";
-
-
+import { getEffectiveCatalog } from "../hardware/catalog";
 
 export type StackValidationSeverity = "block" | "warn" | "info";
 
@@ -26,14 +24,24 @@ export function validateStackComposition(
   devices: ConfiguredDevice[]
 ): StackValidationResult {
   const issues: StackValidationIssue[] = [];
+  const catalog = getEffectiveCatalog();
+
 
   if (devices.length === 0) {
     issues.push({
       severity: "block",
       code: "NO_MEMBERS",
-      message: "Stack requires at least 1 member.",
+      message: "Stack requires at least 2 devices (found 0).",
     });
     return { canStack: false, issues };
+  }
+
+  if (devices.length < 2) {
+    issues.push({
+      severity: "block",
+      code: "TOO_FEW_MEMBERS",
+      message: `Stack requires at least 2 devices (found ${devices.length}).`,
+    });
   }
 
   if (devices.length > MAX_STACK_SIZE) {
@@ -56,7 +64,7 @@ export function validateStackComposition(
 
   // The shared series must be stackable.
   const seriesName = devices[0].hardware.series;
-  const series = HARDWARE_LIBRARY[seriesName];
+  const series = catalog[seriesName];
   if (!series) {
     issues.push({
       severity: "block",
@@ -78,11 +86,11 @@ export function validateStackComposition(
   }
 
   // SOFT WARN: license tier consistency
-const tiers = new Set(
-  devices
-    .map((d) => extractTierFromPid(d.hardware.chassisPid))
-    .filter((t): t is string => t !== null)
-);
+  const tiers = new Set(
+    devices
+      .map((d) => extractTierFromPid(d.hardware.chassisPid))
+      .filter((t): t is string => t !== null)
+  );
   if (tiers.size > 1) {
     issues.push({
       severity: "warn",

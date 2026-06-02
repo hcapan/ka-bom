@@ -76,7 +76,47 @@ export const NETWORK_MODULE_CATALOG: Record<string, NetworkModuleSpec> = {
     portSpeed: "25G",
     compatibleSeries: ["C9300X"],
   },
+
+  // ─── Catalyst 9300 modules ─────────────────────────────────
+  "C9200-NM-2Y": {
+    pid: "C9200-NM-2Y",
+    description: "2 x 25G network module",
+    portCount: 2,
+    portSpeed: "25G",
+    compatibleSeries: ["C9200"],
+  },
+  "C9200-NM-2Q": {
+    pid: "C9200-NM-2Q",
+    description: "2 x 40G network module",
+    portCount: 2,
+    portSpeed: "40G",
+    compatibleSeries: ["C9200"],
+  },
+  "C9200-NM-4G": {
+    pid: "C9200-NM-4G",
+    description: "4 x 1G network module",
+    portCount: 4,
+    portSpeed: "1G",
+    compatibleSeries: ["C9200"],
+  },
+  "C9200-NM-4X": {
+    pid: "C9200-NM-4X",
+    description: "4x 1G/10G network module",
+    portCount: 4,
+    portSpeed: "10G",
+    compatibleSeries: ["C9200"],
+  },
+  "C9200-NM-BLANK": {
+    pid: "C9200-NM-BLANK",
+    description: "No network module",
+    portCount: 0,
+    portSpeed: "10G",
+    compatibleSeries: ["C9200"],
+  },
 };
+
+
+
 
 // ─── Helpers ──────────────────────────────────────────────────
 export function getNetworkModuleSpec(

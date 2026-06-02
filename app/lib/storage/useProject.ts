@@ -52,6 +52,8 @@ function migrateGroup(
     stackPowerCablePid: g.stackPowerCablePid,
     stackPowerCableQty: g.stackPowerCableQty,
     memberOrder: g.memberOrder,
+     stackAdapterKitPid: g.stackAdapterKitPid,
+    stackAdapterKitQty: g.stackAdapterKitQty,
   };
 }
 
@@ -328,6 +330,48 @@ export function useProject() {
     });
   }, []);
 
+  const unstackGroup = useCallback((stackGroupId: string) => {
+  setProject((prev): Project | null => {
+    if (!prev) return null;
+
+    const group = prev.topology.groups.find((g) => g.id === stackGroupId);
+    if (!group || group.kind !== "stack") return prev;
+
+    // Find member devices in their stored order
+    const memberOrder = group.memberOrder ?? [];
+
+    // Spread freed devices horizontally starting at the stack's position
+    const SPACING_X = 250;
+    const startX = group.position.x;
+    const startY = group.position.y;
+
+    const updatedDevices = prev.topology.devices.map((d) => {
+      if (d.groupId !== stackGroupId) return d;
+
+      const idx = memberOrder.indexOf(d.id);
+      const safeIdx = idx >= 0 ? idx : 0;
+
+      return {
+        ...d,
+        groupId: null,
+        position: {
+          x: startX + safeIdx * SPACING_X,
+          y: startY,
+        },
+      };
+    });
+
+    return {
+      ...prev,
+      topology: {
+        ...prev.topology,
+        groups: prev.topology.groups.filter((g) => g.id !== stackGroupId),
+        devices: updatedDevices,
+      },
+    };
+  });
+}, []);
+
   const convertStackToLogical = useCallback((groupId: string) => {
     setProject((prev) => {
       if (!prev) return prev;
@@ -341,10 +385,10 @@ export function useProject() {
               ? {
                   ...g,
                   kind: "logical" as const, // ⭐ correct field name
-                  stackingCablePid: undefined,
-                  stackingCableQty: undefined,
-                  stackPowerCablePid: undefined,
-                  stackPowerCableQty: undefined,
+                  //  stackingCablePid: undefined,
+                  // stackingCableQty: undefined,
+                  // stackPowerCablePid: undefined,
+                 //  stackPowerCableQty: undefined,
                   memberOrder: undefined, // ⭐ logical groups don't need order
                 }
               : g,
@@ -438,13 +482,44 @@ export function useProject() {
           if (!ok) return prev;
         }
 
+        // ─── Catalog-driven defaults ─────────────────────────────
         const seriesName = members[0].hardware.series;
+        const chassisPid = members[0].hardware.chassisPid; // ⭐ NEW
         const defaultCable = getDefaultStackingCable(seriesName);
         const defaultPowerCable = getDefaultStackPowerCable(seriesName);
         const effectiveCatalog = getEffectiveCatalog();
         const series = effectiveCatalog[seriesName];
 
-        // Stack origin = centroid of member positions
+        // ⭐ FIXED — look up the bundle by the chassis the user is actually stacking
+        const pidObj = series?.pids?.find((p) => p.pid === chassisPid);
+        const stackingSpec = pidObj?.bundle?.stacking;
+
+        console.log("[STACK DEBUG]", {
+          seriesName,
+          chassisPid: members[0].hardware.chassisPid,
+          pids0_pid: series?.pids?.[0]?.pid,
+          pids0_hasBundle: !!series?.pids?.[0]?.bundle,
+          pids0_stacking: series?.pids?.[0]?.bundle?.stacking,
+          stackingSpec,
+          matchedByPid: series?.pids?.find(
+            (p) => p.pid === members[0].hardware.chassisPid,
+          )?.bundle?.stacking,
+        });
+
+        // Auto-pick stack adapter kit if family requires one
+        // Cisco convention: 1 kit per stack member
+        let stackAdapterKitPid: string | undefined;
+        let stackAdapterKitQty: number | undefined;
+
+        if (stackingSpec?.adapterRequired && stackingSpec.adapterKits?.length) {
+          const defaultKit =
+            stackingSpec.adapterKits.find((k) => k.default) ??
+            stackingSpec.adapterKits[0];
+          stackAdapterKitPid = defaultKit.pid;
+          stackAdapterKitQty = members.length;
+        }
+
+        // ─── Position the stack at member centroid ───────────────
         const positions = members
           .map((d) => d.position)
           .filter((p): p is { x: number; y: number } => !!p);
@@ -457,7 +532,6 @@ export function useProject() {
 
         const newGroupId = `stack-${Date.now()}`;
 
-        // Order members top-to-bottom by their current y-coordinate
         const orderedMembers = [...members].sort((a, b) => {
           const ay = a.position?.y ?? 0;
           const by = b.position?.y ?? 0;
@@ -468,12 +542,18 @@ export function useProject() {
         const newGroup: DeviceGroup = {
           id: newGroupId,
           label,
-          kind: "stack", // ⭐ REQUIRED
+          kind: "stack",
           collapsed: false,
-          position: { x: cx, y: cy }, // composite node positions itself here
+          position: { x: cx, y: cy },
           memberOrder,
+
           stackingCablePid: defaultCable ?? undefined,
           stackingCableQty: members.length,
+
+          ...(stackAdapterKitPid && stackAdapterKitQty
+            ? { stackAdapterKitPid, stackAdapterKitQty }
+            : {}),
+
           ...(series?.supportsStackPower && defaultPowerCable
             ? {
                 stackPowerCablePid: defaultPowerCable,
@@ -482,8 +562,7 @@ export function useProject() {
             : {}),
         };
 
-        // ⭐ Tag devices with groupId (logical link only — NO position mutation).
-        // The composite PhysicalStackNode renders members from memberOrder.
+        console.log("[STACK DEBUG 2] newGroup before save:", newGroup); // ⭐ ADD THIS
         const memberIdSet = new Set(deviceIds);
         const updatedDevices = prev.topology.devices.map((d) =>
           memberIdSet.has(d.id) ? { ...d, groupId: newGroupId } : d,
@@ -749,6 +828,7 @@ export function useProject() {
     convertStackToLogical,
     updateStackSettings,
     createStackFromDevices,
+    unstackGroup
   };
 }
 

@@ -115,6 +115,7 @@ export default function DeviceNode({
   };
 
   const networkModule = getNetworkModuleSpec(data.networkModulePid);
+  
 
   const uplinkModules = networkModule
   ? [
@@ -125,6 +126,7 @@ export default function DeviceNode({
       },
     ]
   : undefined;
+
 
 
   const faceplate = getFaceplate(data.model, data.pid);

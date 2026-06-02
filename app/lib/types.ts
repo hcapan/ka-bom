@@ -130,6 +130,10 @@ export interface DeviceGroup {
   stackPowerCablePid?: string; // optional, only for supportsStackPower series
   stackPowerCableQty?: number;
 
+    // ⭐ NEW
+  stackAdapterKitPid?: string;
+  stackAdapterKitQty?: number;
+
   memberOrder?: string[];
 }
 

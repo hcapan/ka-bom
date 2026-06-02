@@ -1,15 +1,9 @@
 "use client";
 
-import { memo, useState, useRef, useEffect ,useMemo} from "react";
+import { memo, useState, useRef, useEffect, useMemo, useCallback } from "react";
 import { Handle, Position, NodeProps, Node } from "@xyflow/react";
 import { StackSettingsPopover } from "./StackSettingsPopover";
-import {
-  layoutChildrenInGroup,
-  pickColsFor,
-  HEADER_H,
-} from "@/app/lib/utils/groupLayout";
-import { Sparkles } from "lucide-react";
-import { COLLAPSED_H, COLLAPSED_W } from "@/app/lib/utils/groupLayout";
+import { HEADER_H } from "@/app/lib/utils/groupLayout";
 
 export interface GroupNodeData extends Record<string, unknown> {
   label: string;
@@ -91,17 +85,6 @@ const STACK_PALETTE = {
 };
 
 function GroupNode({ id, data, selected }: NodeProps<GroupNodeType>) {
-  const {
-    label,
-    collapsed,
-    childDeviceCount,
-    childGroupCount,
-    childDevicesSummary = [],
-    depth,
-    groupKind,
-    onToggleCollapse,
-  } = data;
-
   const isStack = data.groupKind === "stack";
 
   const palette = isStack
@@ -122,7 +105,7 @@ function GroupNode({ id, data, selected }: NodeProps<GroupNodeType>) {
     }
   }, [editing]);
 
-  const commitRename = () => {
+  const commitRename = useCallback(() => {
     const trimmed = inputRef.current?.value.trim() ?? "";
 
     if (trimmed && trimmed !== data.label) {
@@ -130,15 +113,46 @@ function GroupNode({ id, data, selected }: NodeProps<GroupNodeType>) {
     }
 
     setEditing(false);
-  };
+  }, [id, data, setEditing]);
 
-  const cancelRename = () => {
+  const cancelRename = useCallback(() => {
     if (inputRef.current) {
       inputRef.current.value = data.label;
     }
 
     setEditing(false);
-  };
+  }, [data, setEditing]);
+
+  const handleToggleCollapse = useCallback(() => {
+    data.onToggleCollapse(id);
+  }, [id, data]);
+
+  const handleUpdateStack = useCallback(
+    (patch: Partial<StackPatch>) => {
+      console.log(`[DEBUG] GroupNode: handleUpdateStack for ${id}`, patch);
+      data.onUpdateStack?.(id, patch);
+    },
+    [id, data],
+  );
+
+  const handleConvertToLogical = useCallback(() => {
+    console.log(`[DEBUG] GroupNode: handleConvertToLogical for ${id}`);
+    data.onConvertToLogical?.(id);
+    setShowStackPopover(false);
+  }, [id, data, setShowStackPopover]);
+
+  const handleClosePopover = useCallback(
+    () => setShowStackPopover(false),
+    [setShowStackPopover],
+  );
+
+  const handleToggleStackPopover = useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation();
+      setShowStackPopover((v) => !v);
+    },
+    [setShowStackPopover],
+  );
 
   const icon = isStack ? "⚡" : "◈";
 
@@ -175,7 +189,7 @@ function GroupNode({ id, data, selected }: NodeProps<GroupNodeType>) {
       counts.set(key, (counts.get(key) ?? 0) + 1);
     });
     return Array.from(counts.entries()).sort((a, b) => b[1] - a[1]);
-  }, [data.childDevicesSummary]);
+  }, [data]);
 
   if (data.collapsed) {
     return (
@@ -235,12 +249,11 @@ function GroupNode({ id, data, selected }: NodeProps<GroupNodeType>) {
               backdrop-blur-md
               transition hover:scale-105 hover:bg-white
             "
-            onClick={() => data.onToggleCollapse(id)}
+            onClick={handleToggleCollapse}
             title="Expand group"
           >
             ▶
           </button>
-
           <div
             className="flex h-10 w-10 items-center justify-center rounded-xl text-lg shadow-inner"
             style={{
@@ -250,7 +263,6 @@ function GroupNode({ id, data, selected }: NodeProps<GroupNodeType>) {
           >
             {icon}
           </div>
-
           <div className="min-w-0 flex-1">
             <div className="truncate text-sm font-bold text-slate-800">
               {data.label}
@@ -260,7 +272,6 @@ function GroupNode({ id, data, selected }: NodeProps<GroupNodeType>) {
               {isStack ? "Stack Group" : "Logical Group"}
             </div>
           </div>
-
           {isStack && (
             <button
               className="
@@ -270,15 +281,11 @@ function GroupNode({ id, data, selected }: NodeProps<GroupNodeType>) {
                 backdrop-blur-md
                 transition hover:rotate-90 hover:bg-white
               "
-              onClick={(e) => {
-                e.stopPropagation();
-                setShowStackPopover((v) => !v);
-              }}
+              onClick={handleToggleStackPopover}
             >
               ⚙
             </button>
           )}
-
           {stackBadge}
         </div>
 
@@ -304,11 +311,10 @@ function GroupNode({ id, data, selected }: NodeProps<GroupNodeType>) {
               ))}
               <div className="flex items-center gap-3 border-t border-slate-200/60 pt-1.5 mt-1">
                 <span className="font-mono text-[10px] text-slate-500">
-                  {data.childDeviceCount} device 
+                  {data.childDeviceCount} device
                   {data.childDeviceCount > 1 ? "s" : ""}
                 </span>
-                <span>
-                </span>
+                <span></span>
                 {data.childGroupCount > 0 && (
                   <span className="font-mono text-[10px] text-slate-500">
                     {data.childGroupCount} sub-group
@@ -335,12 +341,9 @@ function GroupNode({ id, data, selected }: NodeProps<GroupNodeType>) {
               stackingCableQty={data.stackingCableQty}
               stackPowerCablePid={data.stackPowerCablePid}
               stackPowerCableQty={data.stackPowerCableQty}
-              onUpdate={(patch) => data.onUpdateStack!(id, patch)}
-              onConvertToLogical={() => {
-                data.onConvertToLogical!(id);
-                setShowStackPopover(false);
-              }}
-              onClose={() => setShowStackPopover(false)}
+              onUpdate={handleUpdateStack}
+              onConvertToLogical={handleConvertToLogical}
+              onClose={handleClosePopover}
             />
           )}
       </div>
@@ -354,7 +357,7 @@ function GroupNode({ id, data, selected }: NodeProps<GroupNodeType>) {
   return (
     <div
       className={`
-      group relative flex flex-col overflow-hidden
+      group relative flex flex-col overflow-visible
       rounded-3xl border
       bg-white/70 
       backdrop-blur-xl
@@ -416,7 +419,7 @@ function GroupNode({ id, data, selected }: NodeProps<GroupNodeType>) {
       {/* HEADER */}
       <div
         className={`
-        relative flex items-center gap-3
+        relative flex items-center gap-3 rounded-t-3xl
         border-b border-white/30
         bg-linear-to-r ${palette.header}
         px-4 py-3
@@ -426,7 +429,7 @@ function GroupNode({ id, data, selected }: NodeProps<GroupNodeType>) {
       >
         <button
           className="flex h-8 w-8 items-center justify-center rounded-xl border border-white/50 bg-white/70 text-slate-700 backdrop-blur-md transition hover:scale-105 hover:bg-white"
-          onClick={() => data.onToggleCollapse(id)}
+          onClick={handleToggleCollapse}
         >
           ▼
         </button>
@@ -477,10 +480,7 @@ function GroupNode({ id, data, selected }: NodeProps<GroupNodeType>) {
         {isStack && (
           <button
             className="flex h-8 w-8 items-center justify-center rounded-xl border border-white/50 bg-white/70 text-slate-600 backdrop-blur-md transition hover:rotate-90 hover:bg-white"
-            onClick={(e) => {
-              e.stopPropagation();
-              setShowStackPopover((v) => !v);
-            }}
+            onClick={handleToggleStackPopover}
           >
             ⚙
           </button>
@@ -533,30 +533,6 @@ function GroupNode({ id, data, selected }: NodeProps<GroupNodeType>) {
           )}
         </div>
       </div>
-
-      {/* STACK POPOVER (unchanged logic) */}
-      {isStack &&
-        showStackPopover &&
-        data.onUpdateStack &&
-        data.onConvertToLogical && (
-          <StackSettingsPopover
-            groupId={id}
-            label={data.label}
-            series={data.stackSeries ?? "Unknown series"}
-            memberCount={data.childDeviceCount}
-            maxSize={data.stackMaxSize ?? 8}
-            stackingCablePid={data.stackingCablePid}
-            stackingCableQty={data.stackingCableQty}
-            stackPowerCablePid={data.stackPowerCablePid}
-            stackPowerCableQty={data.stackPowerCableQty}
-            onUpdate={(patch) => data.onUpdateStack!(id, patch)}
-            onConvertToLogical={() => {
-              data.onConvertToLogical!(id);
-              setShowStackPopover(false);
-            }}
-            onClose={() => setShowStackPopover(false)}
-          />
-        )}
     </div>
   );
 }
