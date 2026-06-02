@@ -10,7 +10,8 @@ import {
 } from "../../lib/types";
 import { LAYER_CONFIG } from "../../lib/hardware/catalog";
 import { validateStackComposition } from "@/app/lib/utils/stackValidation";
-import { useProject } from "@/app/lib/storage";
+//import { useProject } from "@/app/lib/storage";
+import { useProject } from "@/app/lib/storage/ProjectContext";
 import {
   ConfigureIcon,
   SearchIcon,

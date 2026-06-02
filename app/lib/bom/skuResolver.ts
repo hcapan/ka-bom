@@ -620,13 +620,7 @@ export function buildGroupStackingLines(
   group: DeviceGroup,
   memberCount: number,
 ): Result {
-   console.log("[BOM DEBUG] buildGroupStackingLines called", {
-    label: group.label,
-    kind: group.kind,
-    stackAdapterKitPid: group.stackAdapterKitPid,
-    stackAdapterKitQty: group.stackAdapterKitQty,
-    stackingCablePid: group.stackingCablePid,
-  });
+
   const lines: BOMLine[] = [];
   const warnings: BOMWarning[] = [];
 

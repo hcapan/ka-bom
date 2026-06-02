@@ -43,11 +43,6 @@ export function buildBOM(project: Project): BOMBuildResult {
   const allLines: BOMLine[] = [];
   const warnings: BOMWarning[] = [];
 
-  console.log("[BOM DEBUG] buildBOM start", {
-    deviceCount: project.topology.devices.length,
-    groups: project.topology.groups,
-    groupKinds: project.topology.groups?.map(g => ({ id: g.id, kind: g.kind, label: g.label })),
-  });
 
 
   // ⭐ Group ID is per chassis PID (identical chassis share an anchor)

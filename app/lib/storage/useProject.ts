@@ -52,13 +52,33 @@ function migrateGroup(
     stackPowerCablePid: g.stackPowerCablePid,
     stackPowerCableQty: g.stackPowerCableQty,
     memberOrder: g.memberOrder,
-     stackAdapterKitPid: g.stackAdapterKitPid,
+    stackAdapterKitPid: g.stackAdapterKitPid,
     stackAdapterKitQty: g.stackAdapterKitQty,
   };
 }
 
 export function useProject() {
-  const [project, setProject] = useState<Project | null>(null);
+  const [project, setProjectRaw] = useState<Project | null>(null);
+
+  const setProject: typeof setProjectRaw = useCallback((updaterOrValue) => {
+  setProjectRaw((prev) => {
+    const next =
+      typeof updaterOrValue === "function"
+        ? (updaterOrValue as (p: Project | null) => Project | null)(prev)
+        : updaterOrValue;   
+
+    return next;
+  });
+}, []);
+  const projectRef = useRef<Project | null>(null);
+  useEffect(() => {
+    projectRef.current = project;
+    console.log("[REF SYNC]", project?.topology.devices ?? 0);
+  });
+  const getCurrentDevices = useCallback(
+    (): ConfiguredDevice[] => projectRef.current?.topology.devices ?? [],
+    [],
+  );
   const [isLoaded, setIsLoaded] = useState(false);
 
   const setGroups = useCallback((groups: DeviceGroup[]) => {
@@ -331,46 +351,46 @@ export function useProject() {
   }, []);
 
   const unstackGroup = useCallback((stackGroupId: string) => {
-  setProject((prev): Project | null => {
-    if (!prev) return null;
+    setProject((prev): Project | null => {
+      if (!prev) return null;
 
-    const group = prev.topology.groups.find((g) => g.id === stackGroupId);
-    if (!group || group.kind !== "stack") return prev;
+      const group = prev.topology.groups.find((g) => g.id === stackGroupId);
+      if (!group || group.kind !== "stack") return prev;
 
-    // Find member devices in their stored order
-    const memberOrder = group.memberOrder ?? [];
+      // Find member devices in their stored order
+      const memberOrder = group.memberOrder ?? [];
 
-    // Spread freed devices horizontally starting at the stack's position
-    const SPACING_X = 250;
-    const startX = group.position.x;
-    const startY = group.position.y;
+      // Spread freed devices horizontally starting at the stack's position
+      const SPACING_X = 250;
+      const startX = group.position.x;
+      const startY = group.position.y;
 
-    const updatedDevices = prev.topology.devices.map((d) => {
-      if (d.groupId !== stackGroupId) return d;
+      const updatedDevices = prev.topology.devices.map((d) => {
+        if (d.groupId !== stackGroupId) return d;
 
-      const idx = memberOrder.indexOf(d.id);
-      const safeIdx = idx >= 0 ? idx : 0;
+        const idx = memberOrder.indexOf(d.id);
+        const safeIdx = idx >= 0 ? idx : 0;
+
+        return {
+          ...d,
+          groupId: null,
+          position: {
+            x: startX + safeIdx * SPACING_X,
+            y: startY,
+          },
+        };
+      });
 
       return {
-        ...d,
-        groupId: null,
-        position: {
-          x: startX + safeIdx * SPACING_X,
-          y: startY,
+        ...prev,
+        topology: {
+          ...prev.topology,
+          groups: prev.topology.groups.filter((g) => g.id !== stackGroupId),
+          devices: updatedDevices,
         },
       };
     });
-
-    return {
-      ...prev,
-      topology: {
-        ...prev.topology,
-        groups: prev.topology.groups.filter((g) => g.id !== stackGroupId),
-        devices: updatedDevices,
-      },
-    };
-  });
-}, []);
+  }, []);
 
   const convertStackToLogical = useCallback((groupId: string) => {
     setProject((prev) => {
@@ -388,7 +408,7 @@ export function useProject() {
                   //  stackingCablePid: undefined,
                   // stackingCableQty: undefined,
                   // stackPowerCablePid: undefined,
-                 //  stackPowerCableQty: undefined,
+                  //  stackPowerCableQty: undefined,
                   memberOrder: undefined, // ⭐ logical groups don't need order
                 }
               : g,
@@ -450,64 +470,65 @@ export function useProject() {
    */
   const createStackFromDevices = useCallback(
     (deviceIds: string[], label: string = "Stack") => {
+      // ⭐ Read current devices from ref — never stale across renders
+      const currentDevices = getCurrentDevices();
+
+      const earlyMembers = currentDevices.filter((d) =>
+        deviceIds.includes(d.id),
+      );
+
+      console.log("[STACK ENTRY]", {
+        deviceIds,
+        refLen: currentDevices.length,
+        matched: earlyMembers.map((d) => d.id),
+      });
+
+      if (earlyMembers.length < 2) {
+        alert(
+          `Stack requires at least 2 devices.\n\n` +
+            `Selected: ${deviceIds.length}\n` +
+            `Found in project: ${earlyMembers.length}`,
+        );
+        return;
+      }
+
+      const validation = validateStackComposition(earlyMembers);
+      if (!validation.canStack) {
+        const messages = validation.issues
+          .filter((i) => i.severity === "block")
+          .map((i) => `• ${i.message}`)
+          .join("\n");
+        alert(`Cannot create stack:\n\n${messages}`);
+        return;
+      }
+
+      const warnings = validation.issues.filter((i) => i.severity === "warn");
+      if (warnings.length > 0) {
+        const ok = confirm(
+          `Stack will be created with these warnings:\n\n${warnings
+            .map((w) => `⚠ ${w.message}`)
+            .join("\n")}\n\nContinue?`,
+        );
+        if (!ok) return;
+      }
+
       setProject((prev): Project | null => {
         if (!prev) return null;
 
         const members = prev.topology.devices.filter((d) =>
           deviceIds.includes(d.id),
         );
+        if (members.length < 2) return prev;
 
-        if (members.length < 2) {
-          alert(`Stack requires at least 2 devices (found ${members.length})`);
-          return prev;
-        }
-
-        const validation = validateStackComposition(members);
-        if (!validation.canStack) {
-          const messages = validation.issues
-            .filter((i) => i.severity === "block")
-            .map((i) => `• ${i.message}`)
-            .join("\n");
-          alert(`Cannot create stack:\n\n${messages}`);
-          return prev;
-        }
-
-        const warnings = validation.issues.filter((i) => i.severity === "warn");
-        if (warnings.length > 0) {
-          const ok = confirm(
-            `Stack will be created with these warnings:\n\n${warnings
-              .map((w) => `⚠ ${w.message}`)
-              .join("\n")}\n\nContinue?`,
-          );
-          if (!ok) return prev;
-        }
-
-        // ─── Catalog-driven defaults ─────────────────────────────
         const seriesName = members[0].hardware.series;
-        const chassisPid = members[0].hardware.chassisPid; // ⭐ NEW
+        const chassisPid = members[0].hardware.chassisPid;
         const defaultCable = getDefaultStackingCable(seriesName);
         const defaultPowerCable = getDefaultStackPowerCable(seriesName);
         const effectiveCatalog = getEffectiveCatalog();
         const series = effectiveCatalog[seriesName];
-
-        // ⭐ FIXED — look up the bundle by the chassis the user is actually stacking
         const pidObj = series?.pids?.find((p) => p.pid === chassisPid);
         const stackingSpec = pidObj?.bundle?.stacking;
 
-        console.log("[STACK DEBUG]", {
-          seriesName,
-          chassisPid: members[0].hardware.chassisPid,
-          pids0_pid: series?.pids?.[0]?.pid,
-          pids0_hasBundle: !!series?.pids?.[0]?.bundle,
-          pids0_stacking: series?.pids?.[0]?.bundle?.stacking,
-          stackingSpec,
-          matchedByPid: series?.pids?.find(
-            (p) => p.pid === members[0].hardware.chassisPid,
-          )?.bundle?.stacking,
-        });
-
-        // Auto-pick stack adapter kit if family requires one
-        // Cisco convention: 1 kit per stack member
         let stackAdapterKitPid: string | undefined;
         let stackAdapterKitQty: number | undefined;
 
@@ -519,7 +540,6 @@ export function useProject() {
           stackAdapterKitQty = members.length;
         }
 
-        // ─── Position the stack at member centroid ───────────────
         const positions = members
           .map((d) => d.position)
           .filter((p): p is { x: number; y: number } => !!p);
@@ -531,7 +551,6 @@ export function useProject() {
           Math.max(1, positions.length);
 
         const newGroupId = `stack-${Date.now()}`;
-
         const orderedMembers = [...members].sort((a, b) => {
           const ay = a.position?.y ?? 0;
           const by = b.position?.y ?? 0;
@@ -546,14 +565,11 @@ export function useProject() {
           collapsed: false,
           position: { x: cx, y: cy },
           memberOrder,
-
           stackingCablePid: defaultCable ?? undefined,
           stackingCableQty: members.length,
-
           ...(stackAdapterKitPid && stackAdapterKitQty
             ? { stackAdapterKitPid, stackAdapterKitQty }
             : {}),
-
           ...(series?.supportsStackPower && defaultPowerCable
             ? {
                 stackPowerCablePid: defaultPowerCable,
@@ -562,7 +578,6 @@ export function useProject() {
             : {}),
         };
 
-        console.log("[STACK DEBUG 2] newGroup before save:", newGroup); // ⭐ ADD THIS
         const memberIdSet = new Set(deviceIds);
         const updatedDevices = prev.topology.devices.map((d) =>
           memberIdSet.has(d.id) ? { ...d, groupId: newGroupId } : d,
@@ -578,9 +593,8 @@ export function useProject() {
         };
       });
     },
-    [],
+    [getCurrentDevices],
   );
-
   // ============================================================
   // Lifecycle: Load on mount (with group migration)
   // ============================================================
@@ -626,6 +640,8 @@ export function useProject() {
 
   // ----- Setters -----
   const setDevices = useCallback((devices: ConfiguredDevice[]) => {
+     console.log("[setDevices] called with", devices.length, "devices",
+    devices.map(d => d.id)); 
     setProject((p) => {
       if (!p) return p;
       // 🔍 DIAGNOSTIC
@@ -828,7 +844,7 @@ export function useProject() {
     convertStackToLogical,
     updateStackSettings,
     createStackFromDevices,
-    unstackGroup
+    unstackGroup,
   };
 }
 

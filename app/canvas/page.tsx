@@ -1,5 +1,6 @@
 "use client";
 import dynamic from "next/dynamic";
+import { ProjectProvider } from "@/app/lib/storage/ProjectContext";
 
 const TopologyApp = dynamic(() => import("../components/chrome/TopologyApp"), {
   ssr: false,
@@ -11,5 +12,9 @@ const TopologyApp = dynamic(() => import("../components/chrome/TopologyApp"), {
 });
 
 export default function Page() {
-  return <TopologyApp />;
+  return (
+    <ProjectProvider>
+      <TopologyApp />
+    </ProjectProvider>
+  );
 }

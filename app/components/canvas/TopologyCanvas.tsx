@@ -538,6 +538,7 @@ function CanvasInner({
       onConvertStackToLogical,
       onRemoveGroup,
       onUpdateStack,
+      onUnstackGroup,
       onTidyGroup,
       onRenameGroup,
       deviceHandlers,
@@ -631,11 +632,11 @@ function CanvasInner({
     if (!devicesChanged && !groupsChanged) {
       return;
     }
-
+    setNodes(buildAllNodes(devices, groups));
     lastSyncedDevicesKeyRef.current = incomingDevicesKey;
     lastSyncedGroupKeyRef.current = incomingGroupKey;
 
-    setNodes(buildAllNodes(devices, groups));
+    
   }, [
     devices,
     groups,
@@ -666,10 +667,11 @@ function CanvasInner({
       incomingCollapseKey !== lastSyncedCollapseKeyRef.current;
 
     if (linksChanged || uiChanged || collapseChanged) {
+      setEdges(buildEdges(links, devices, groups, ui, onExpandBundle));
       lastSyncedLinkIdsRef.current = incomingLinkIds;
       lastSyncedUIRef.current = incomingUIKey;
       lastSyncedCollapseKeyRef.current = incomingCollapseKey;
-      setEdges(buildEdges(links, devices, groups, ui, onExpandBundle));
+      
     }
   }, [links, devices, groups, ui, onExpandBundle, setEdges]);
 
@@ -722,7 +724,7 @@ function CanvasInner({
         return g;
       });
       if (groupsChanged) {
-        lastSyncedGroupKeyRef.current = generateGroupsKey(updatedGroups);
+        //lastSyncedGroupKeyRef.current = generateGroupsKey(updatedGroups);
         setGroups(updatedGroups);
       }
 
@@ -799,7 +801,7 @@ function CanvasInner({
       }
 
       if (devicesChanged) {
-        lastSyncedDevicesKeyRef.current = generateDevicesKey(finalDevices);
+        // lastSyncedDevicesKeyRef.current = generateDevicesKey(finalDevices);
         setDevices(finalDevices);
 
         if (hasRemoval) {
@@ -808,10 +810,10 @@ function CanvasInner({
             (l) => ids.has(l.from) && ids.has(l.to),
           );
           if (filtered.length !== linksRef.current.length) {
-            lastSyncedLinkIdsRef.current = filtered
+              /*lastSyncedLinkIdsRef.current = filtered
               .map((l) => l.id)
               .sort()
-              .join("|");
+              .join("|"); */
             setLinks(filtered);
             setEdges(
               buildEdges(
@@ -834,7 +836,7 @@ function CanvasInner({
       setLinks,
       setGroups,
       onSelectionChange,
-      generateGroupsKey,
+      // generateGroupsKey,
       generateDevicesKey,
     ],
   );
@@ -862,10 +864,10 @@ function CanvasInner({
           (l) => !removedLinkIds.has(l.id),
         );
 
-        lastSyncedLinkIdsRef.current = newLinks
+        /*lastSyncedLinkIdsRef.current = newLinks
           .map((l) => l.id)
           .sort()
-          .join("|");
+          .join("|");*/
 
         setLinks(newLinks);
         setEdges(
@@ -923,10 +925,10 @@ function CanvasInner({
       };
 
       const newLinks = [...linksRef.current, newLink];
-      lastSyncedLinkIdsRef.current = newLinks
+      /*lastSyncedLinkIdsRef.current = newLinks
         .map((l) => l.id)
         .sort()
-        .join("|");
+        .join("|");*/
       setLinks(newLinks);
       setEdges(
         buildEdges(

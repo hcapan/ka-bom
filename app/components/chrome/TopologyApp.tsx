@@ -1,14 +1,14 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import { useProject } from "../../lib/storage/useProject";
+//import { useProject } from "../../lib/storage/useProject";
 import { buildBOM, downloadCCWExcel } from "../../lib/bom";
 import Toolbar from "./Toolbar";
-import DeviceListPanel from "../panels/DeviceListPanel";
 import DeviceInventoryPanel from "../panels/DeviceInventoryPanel";
 import TopologyCanvas from "../canvas/TopologyCanvas";
 import ConfigurePanel from "../panels/ConfigurePanel";
 import DeviceCatalogPanel from "../panels/DeviceCatalogPanel";
+import { useProject } from "../../lib/storage/ProjectContext";
 
 type ConfigureTarget = {
   deviceId: string;
