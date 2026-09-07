@@ -1,0 +1,158 @@
+{
+  "schemaVersion": 1,
+  "meta": {
+    "description": "Cisco Catalyst 9100 Series Wi-Fi 6/6E/7 access points",
+    "sourceFile": "catalyst-9100-ap.json"
+  },
+  "series": {
+    "Catalyst 9100 Access Points": {
+      "productCategory": "wireless-ap",
+      "category": "wireless",
+      "type": "wireless",
+      "vendor": "Cisco",
+      "description": "Wi-Fi 6/6E/7 enterprise access points",
+      "pids": [
+        {
+          "pid": "C9120AXI-E",
+          "description": "Catalyst 9120AX Wi-Fi 6 indoor AP, internal antennas, EU domain",
+          "vendor": "Cisco",
+          "attrs": {
+            "kind": "access-point",
+            "wifiStandard": "Wi-Fi 6",
+            "radios": "dual-band",
+            "antenna": "internal",
+            "outdoor": false,
+            "poeRequirement": "PoE+"
+          },
+          "bundle": {
+            "autoIncluded": [],
+            "smartnet": {
+              "baseSkuByTier": {
+                "SNT": "CON-SNT-C9120AX",
+                "SNTP": "CON-SNTP-C9120AX"
+              }
+            },
+            "license": {
+              "tier": "Advantage",
+              "entitlementPid": "AIR-DNA-A",
+              "subscriptionByTerm": {
+                "1": "AIR-DNA-A-1Y",
+                "3": "AIR-DNA-A-3Y",
+                "5": "AIR-DNA-A-5Y",
+                "7": "AIR-DNA-A-7Y"
+              }
+            }
+          }
+        },
+        {
+          "pid": "C9120AXE-E",
+          "description": "Catalyst 9120AX Wi-Fi 6 indoor AP, external antennas, EU domain",
+          "vendor": "Cisco",
+          "attrs": {
+            "kind": "access-point",
+            "wifiStandard": "Wi-Fi 6",
+            "radios": "dual-band",
+            "antenna": "external",
+            "outdoor": false,
+            "poeRequirement": "PoE+"
+          },
+          "bundle": {
+            "autoIncluded": [],
+            "smartnet": { "baseSkuByTier": { "SNT": "CON-SNT-C9120AX" } },
+            "license": {
+              "tier": "Advantage",
+              "entitlementPid": "AIR-DNA-A",
+              "subscriptionByTerm": {
+                "1": "AIR-DNA-A-1Y",
+                "3": "AIR-DNA-A-3Y",
+                "5": "AIR-DNA-A-5Y",
+                "7": "AIR-DNA-A-7Y"
+              }
+            }
+          }
+        },
+        {
+          "pid": "C9130AXI-E",
+          "description": "Catalyst 9130AX Wi-Fi 6 indoor AP, internal antennas, EU domain",
+          "vendor": "Cisco",
+          "attrs": {
+            "kind": "access-point",
+            "wifiStandard": "Wi-Fi 6",
+            "radios": "tri-band",
+            "antenna": "internal",
+            "outdoor": false,
+            "poeRequirement": "UPOE"
+          },
+          "bundle": {
+            "autoIncluded": [],
+            "smartnet": { "baseSkuByTier": { "SNT": "CON-SNT-C9130AX" } },
+            "license": {
+              "tier": "Advantage",
+              "entitlementPid": "AIR-DNA-A",
+              "subscriptionByTerm": {
+                "1": "AIR-DNA-A-1Y",
+                "3": "AIR-DNA-A-3Y",
+                "5": "AIR-DNA-A-5Y",
+                "7": "AIR-DNA-A-7Y"
+              }
+            }
+          }
+        },
+        {
+          "pid": "C9136I-E",
+          "description": "Catalyst 9136 Wi-Fi 6E indoor AP, internal antennas, EU domain",
+          "vendor": "Cisco",
+          "attrs": {
+            "kind": "access-point",
+            "wifiStandard": "Wi-Fi 6E",
+            "radios": "tri-band",
+            "antenna": "internal",
+            "outdoor": false,
+            "poeRequirement": "UPOE"
+          },
+          "bundle": {
+            "autoIncluded": [],
+            
+            "smartnet": { "baseSkuByTier": { "SNT": "CON-SNT-C9136" } },
+            "license": {
+              "tier": "Advantage",
+              "entitlementPid": "AIR-DNA-A",
+              "subscriptionByTerm": {
+                "1": "AIR-DNA-A-1Y",
+                "3": "AIR-DNA-A-3Y",
+                "5": "AIR-DNA-A-5Y",
+                "7": "AIR-DNA-A-7Y"
+              }
+            }
+          }
+        },
+        {
+          "pid": "C9166I-E",
+          "description": "Catalyst 9166 Wi-Fi 6E indoor AP, internal antennas, EU domain",
+          "vendor": "Cisco",
+          "attrs": {
+            "kind": "access-point",
+            "wifiStandard": "Wi-Fi 6E",
+            "radios": "quad-radio",
+            "antenna": "internal",
+            "outdoor": false,
+            "poeRequirement": "UPOE"
+          },
+          "bundle": {
+            "autoIncluded": [],
+            "smartnet": { "baseSkuByTier": { "SNT": "CON-SNT-C9166" } },
+            "license": {
+              "tier": "Premier",
+              "entitlementPid": "AIR-DNA-P",
+              "subscriptionByTerm": {
+                "1": "AIR-DNA-P-1Y",
+                "3": "AIR-DNA-P-3Y",
+                "5": "AIR-DNA-P-5Y"
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+}

@@ -13,6 +13,8 @@
 import switchingDataRaw from "./data/switching";
 import slotLayoutsDataRaw from "./data/slot-layouts.json";
 
+import wirelessDataRaw from "./data/wireless";
+
 import {
   SwitchingCatalogFileSchema,
   SlotLayoutsFileSchema,
@@ -22,8 +24,14 @@ import {
   type SwitchProductSKU,
 } from "./schema/switching";
 
-import { ChassisSlotSpec } from "./schema/common";
+import {
+  WirelessCatalogFileSchema,
+  type WirelessCatalogFile,
+  type APSeries,
+  type APProductSKU,
+} from "./schema/wireless";
 
+import { ChassisSlotSpec } from "./schema/common";
 import { validateOrThrow } from "./validation";
 
 // ------------------------------------------------------------
@@ -32,6 +40,7 @@ import { validateOrThrow } from "./validation";
 
 let _switchingCatalog: SwitchingCatalogFile | null = null;
 let _slotLayouts: SlotLayoutsFile | null = null;
+let _wirelessCatalog: WirelessCatalogFile | null = null; // ⭐ NEW
 
 /**
  * Returns the validated switching catalog. Validates on first call,
@@ -44,10 +53,27 @@ function getSwitchingCatalog(): SwitchingCatalogFile {
     _switchingCatalog = validateOrThrow(
       SwitchingCatalogFileSchema,
       switchingDataRaw,
-      "switching.json"
+      "switching.json",
     );
   }
   return _switchingCatalog;
+}
+
+/**
+ * Returns the validated wireless catalog. Validates on first call,
+ * then returns the cached result on subsequent calls.
+ *
+ * @throws ZodError if wireless.json fails schema validation
+ */
+function getWirelessCatalog(): WirelessCatalogFile {
+  if (_wirelessCatalog === null) {
+    _wirelessCatalog = validateOrThrow(
+      WirelessCatalogFileSchema,
+      wirelessDataRaw,
+      "wireless/*.json",
+    );
+  }
+  return _wirelessCatalog;
 }
 
 /**
@@ -61,7 +87,7 @@ function getSlotLayoutsFile(): SlotLayoutsFile {
     _slotLayouts = validateOrThrow(
       SlotLayoutsFileSchema,
       slotLayoutsDataRaw,
-      "slot-layouts.json"
+      "slot-layouts.json",
     );
   }
   return _slotLayouts;
@@ -108,7 +134,10 @@ export function getAddableSeriesNames(): string[] {
  * Returns a single PID's full SKU data, or null if not found.
  * Searches across all series.
  */
-export function getProductSKU(seriesName: string, pid: string): SwitchProductSKU | null {
+export function getProductSKU(
+  seriesName: string,
+  pid: string,
+): SwitchProductSKU | null {
   const series = getSeriesByName(seriesName);
   if (!series) return null;
   return series.pids.find((p) => p.pid === pid) ?? null;
@@ -234,7 +263,7 @@ export function getDefaultStackPowerCable(seriesName: string): string | null {
  * Returns all data cables available for stacking in a given series.
  */
 export function getStackingCablesForSeries(
-  seriesName: string
+  seriesName: string,
 ): { pid: string; length: string }[] {
   const series = getSeriesByName(seriesName);
   if (!series?.isStackable) return [];
@@ -250,7 +279,7 @@ export function getStackingCablesForSeries(
  * Returns all StackPower cables available for a given series.
  */
 export function getStackPowerCablesForSeries(
-  seriesName: string
+  seriesName: string,
 ): { pid: string; length: string }[] {
   const series = getSeriesByName(seriesName);
   if (!series?.supportsStackPower) return [];
@@ -276,7 +305,7 @@ export function getStackPowerCablesForSeries(
  */
 export function getAvailableModules(
   kind: SwitchProductSKU["kind"],
-  slotKind?: SwitchProductSKU["slotKind"]
+  slotKind?: SwitchProductSKU["slotKind"],
 ): {
   pid: string;
   description: string;
@@ -340,7 +369,7 @@ export function getModule(pid: string): {
  * Returns all stacking cable PIDs (data + optional StackPower).
  */
 export function getStackingCables(
-  includeStackPower: boolean = false
+  includeStackPower: boolean = false,
 ): { pid: string; description: string }[] {
   const results: { pid: string; description: string }[] = [];
   for (const series of Object.values(getSwitchingSeries())) {
@@ -356,6 +385,39 @@ export function getStackingCables(
 }
 
 // ------------------------------------------------------------
+// PUBLIC ACCESSORS — Wireless (APs)
+// ------------------------------------------------------------
+
+/**
+ * Returns all wireless AP series as a Record (keyed by series name).
+ */
+export function getWirelessSeries(): Record<string, APSeries> {
+  return getWirelessCatalog().series;
+}
+
+/**
+ * Returns a single wireless series by name, or null if not found.
+ */
+export function getWirelessSeriesByName(name: string): APSeries | null {
+  return getWirelessSeries()[name] ?? null;
+}
+
+/**
+ * Returns a single AP PID's full SKU data, or null if not found.
+ */
+export function getAPProductSKU(
+  seriesName: string,
+  pid: string,
+): APProductSKU | null {
+  const series = getWirelessSeriesByName(seriesName);
+  if (!series) return null;
+  return series.pids.find((p) => p.pid === pid) ?? null;
+}
+
+/**
+ * Returns the bundle for a wireless AP PID (license, smartnet, etc.).
+
+// ------------------------------------------------------------
 // DEBUG HELPER — for sanity checks during development
 // ------------------------------------------------------------
 
@@ -368,13 +430,13 @@ export function getCatalogStats() {
   const seriesNames = Object.keys(series);
   const totalPids = Object.values(series).reduce(
     (sum, s) => sum + s.pids.length,
-    0
+    0,
   );
   const moduleCatalogs = seriesNames.filter(
-    (n) => series[n].isModuleCatalog === true
+    (n) => series[n].isModuleCatalog === true,
   );
   const stackableSeries = seriesNames.filter(
-    (n) => series[n].isStackable === true
+    (n) => series[n].isStackable === true,
   );
   const slotLayouts = Object.keys(getSlotLayoutsFile().layouts);
 

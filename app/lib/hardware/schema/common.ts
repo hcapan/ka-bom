@@ -78,8 +78,8 @@ export const BundleAutoItemSchema = z.object({
 export type BundleAutoItem = z.infer<typeof BundleAutoItemSchema>;
 
 export const PowerCordSpecSchema = z.object({
-  qty: z.number().int().positive(),
-  byRegion: z.record(RegionSchema, z.string().optional()),
+  qty: z.number().int().nonnegative(),
+  byRegion: z.record(RegionSchema, z.string().optional()).optional(),
 });
 export type PowerCordSpec = z.infer<typeof PowerCordSpecSchema>;
 
@@ -180,7 +180,7 @@ export type PsuOptions = z.infer<typeof PsuOptionsSchema>;
 
 export const ChassisBundleSchema = z.object({
   autoIncluded: z.array(BundleAutoItemSchema),
-  powerCord: PowerCordSpecSchema,
+  powerCord: PowerCordSpecSchema.optional(),
   redundantPsu: LegacyRedundantPsuSchema.optional(),
   psuOptions: PsuOptionsSchema.optional(),
   psuConfig: PsuConfigSchema.optional(),

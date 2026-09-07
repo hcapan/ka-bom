@@ -48,12 +48,17 @@ import {
 import { PhysicalStackNode } from "./PhysicalStackNode";
 import { ModularChassisNode } from "./ModularChassisNode";
 import { isModularChassis } from "@/app/lib/hardware/chassisHelpers";
+import {
+  getWirelessSeriesByName,
+} from "../../lib/hardware/catalog";
+import AccessPointNode from "./AccessPointNode";
 
 const nodeTypes = {
   device: DeviceNode,
   group: GroupNode,
   stack: PhysicalStackNode,
   modular: ModularChassisNode,
+  ap: AccessPointNode,
 };
 const edgeTypes = { custom: CustomEdge, bundled: BundledEdge };
 
@@ -83,6 +88,15 @@ type Props = {
 // ============================================================
 // HELPERS
 // ============================================================
+
+// Helper: pull AP attrs from the wireless catalog
+function getAPAttrs(seriesName: string, pid: string) {
+  const series = getWirelessSeriesByName(seriesName);
+  if (!series) return undefined;
+  const sku = series.pids.find((p) => p.pid === pid);
+  return sku?.attrs;
+}
+
 
 function devicesToNodes(
   devices: ConfiguredDevice[],
@@ -137,6 +151,8 @@ function devicesToNodes(
       // ⭐ Detect modular chassis (C9404R / C9407R / C9410R, etc.)
       const isModular = isModularChassis(d.hardware.chassisPid);
 
+      const isAP = d.type === "wireless";
+
       let basePosition: { x: number; y: number };
       if (d.groupId && parentGroup) {
         const siblings = siblingsByGroup.get(d.groupId) ?? [];
@@ -160,6 +176,26 @@ function devicesToNodes(
           x: 100 + typeIndex * 250,
           y: LAYER_CONFIG[d.type].y + 50,
         };
+      }
+
+      if (isAP) {
+        return [
+          {
+            id: d.id,
+            type: "ap",
+            position: basePosition,
+            data: {
+              name: d.name,
+              pid: d.hardware.chassisPid,
+              model: d.hardware.series,
+              type: d.type,
+              attrs: getAPAttrs(d.hardware.series, d.hardware.chassisPid),
+            },
+            parentId: d.groupId ?? undefined,
+            extent: d.groupId ? ("parent" as const) : undefined,
+            draggable: !d.groupId,
+          },
+        ];
       }
 
       if (isModular) {
@@ -464,7 +500,7 @@ function CanvasInner({
   onConvertStackToLogical,
   onTidyGroup,
   onSelectionChange,
-  onUnstackGroup
+  onUnstackGroup,
 }: Props) {
   const { getNodes } = useReactFlow();
 
@@ -491,7 +527,6 @@ function CanvasInner({
           .map((id) => currentDevices.find((d) => d.id === id))
           .filter((d): d is ConfiguredDevice => Boolean(d));
 
-
         return {
           id: stack.id,
           type: "stack",
@@ -503,7 +538,7 @@ function CanvasInner({
             collapsed: stack.collapsed,
             onToggleCollapse: onToggleGroupCollapse,
             onConvertToLogical: onConvertStackToLogical,
-            onUnstack:onUnstackGroup,
+            onUnstack: onUnstackGroup,
             onDelete: onRemoveGroup,
           },
         };
@@ -635,8 +670,6 @@ function CanvasInner({
     setNodes(buildAllNodes(devices, groups));
     lastSyncedDevicesKeyRef.current = incomingDevicesKey;
     lastSyncedGroupKeyRef.current = incomingGroupKey;
-
-    
   }, [
     devices,
     groups,
@@ -671,7 +704,6 @@ function CanvasInner({
       lastSyncedLinkIdsRef.current = incomingLinkIds;
       lastSyncedUIRef.current = incomingUIKey;
       lastSyncedCollapseKeyRef.current = incomingCollapseKey;
-      
     }
   }, [links, devices, groups, ui, onExpandBundle, setEdges]);
 
@@ -810,7 +842,7 @@ function CanvasInner({
             (l) => ids.has(l.from) && ids.has(l.to),
           );
           if (filtered.length !== linksRef.current.length) {
-              /*lastSyncedLinkIdsRef.current = filtered
+            /*lastSyncedLinkIdsRef.current = filtered
               .map((l) => l.id)
               .sort()
               .join("|"); */
@@ -836,7 +868,7 @@ function CanvasInner({
       setLinks,
       setGroups,
       onSelectionChange,
-      // generateGroupsKey,
+      //generateGroupsKey,
       generateDevicesKey,
     ],
   );
@@ -892,7 +924,7 @@ function CanvasInner({
       if (params.source === params.target) return;
 
       // Validation: Check if a link already exists between these specific handles
-      const exists = linksRef.current.some(
+      /* const exists = linksRef.current.some(
         (l) =>
           l.from === params.source &&
           l.to === params.target &&
@@ -903,7 +935,7 @@ function CanvasInner({
       if (exists) {
         console.warn("Link already exists between these ports.");
         return;
-      }
+      } */
 
       const isLateral =
         (params.sourceHandle === "left" || params.sourceHandle === "right") &&
@@ -928,7 +960,7 @@ function CanvasInner({
       /*lastSyncedLinkIdsRef.current = newLinks
         .map((l) => l.id)
         .sort()
-        .join("|");*/
+        .join("|"); */
       setLinks(newLinks);
       setEdges(
         buildEdges(
@@ -957,9 +989,9 @@ function CanvasInner({
           console.log("[CANVAS CLICK]", {
             nodeId: node.id,
             nodeType: node.type,
-            willOpenPanel: node.type === "device" || node.type === "modular",
+            willOpenPanel: node.type === "device" || node.type === "modular" || node.type === "ap"
           });
-          if (node.type === "device" || node.type === "modular") {
+          if (node.type === "device" || node.type === "modular" || node.type === "ap") {
             onNodeClick?.(node.id);
           }
         }}
@@ -1006,6 +1038,7 @@ function CanvasInner({
             if (n.type === "group") return "#0ea5e9"; // sky (was violet)
             if (n.type === "stack") return "#0284c7"; // sky-600
             if (n.type === "modular") return "#0369a1"; // sky-700
+            if (n.type === "ap") return "#a855f7";
             const type = (n.data as { type?: DeviceType })?.type;
             return type ? LAYER_CONFIG[type].color : "#94a3b8";
           }}

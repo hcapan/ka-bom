@@ -17,29 +17,21 @@
 import {
   // Pure JSON accessors (no overrides)
   getSwitchingSeries as _getSwitchingSeries,
-  getSeriesByName as _getSeriesByName,
-  getProductSKU as _getProductSKU,
-  getBundle as _getBundle,
-  getFaceplate as _getFaceplate,
-  hasBundle as _hasBundle,
   getSlotLayout as _getSlotLayout,
   isModularChassis as _isModularChassis,
   getModularChassisPids,
-  isStackableSeries as _isStackableSeries,
-  supportsStackPower as _supportsStackPower,
-  isModuleCatalogSeries as _isModuleCatalogSeries,
   getDefaultStackingCable as _getDefaultStackingCable,
   getDefaultStackPowerCable as _getDefaultStackPowerCable,
   getStackingCablesForSeries,
   getStackPowerCablesForSeries,
-  getAvailableModules as _getAvailableModules,
-  getModule as _getModule,
+  getWirelessSeriesByName,
   getStackingCables,
   getCatalogStats,
-  getAddableSeriesNames as _getAddableSeriesNames,
 } from "./catalogLoader";
-
-
+import {
+  getWirelessSeries,
+  type APSeries,
+} from "./catalogLoader";
 
 import {
   CatalogOverrideSchema,
@@ -91,6 +83,7 @@ export {
   getStackPowerCablesForSeries,
   getStackingCables,
   getCatalogStats,
+  getWirelessSeriesByName
 };
 
 // ============================================================
@@ -204,7 +197,6 @@ export const HARDWARE_LIBRARY: Record<string, SwitchSeries> = new Proxy(
 // ============================================================
 
 const OVERRIDES_KEY = "ka-bom-catalog-overrides-v1";
-const LEGACY_OVERRIDES_KEY = "ka-bom-catalog-overrides-v1"; // same key historically
 
 /**
  * Loads localStorage overrides, performing version migration if needed.
@@ -397,20 +389,24 @@ export function getEffectiveCatalog(): Record<string, SwitchSeries> {
  * instead of replacing wholesale.
  */
 function mergeBundles(base: ChassisBundle, patch: ChassisBundle): ChassisBundle {
-  // autoIncluded: union by pid (override wins on conflict)
   const autoIncludedMap = new Map<string, ChassisBundle["autoIncluded"][number]>();
   for (const item of base.autoIncluded) autoIncludedMap.set(item.pid, item);
   for (const item of patch.autoIncluded) autoIncludedMap.set(item.pid, item);
 
+  const mergedPowerCord =
+    base.powerCord || patch.powerCord
+      ? {
+          qty: patch.powerCord?.qty ?? base.powerCord?.qty ?? 0,
+          byRegion: {
+            ...(base.powerCord?.byRegion ?? {}),
+            ...(patch.powerCord?.byRegion ?? {}),
+          },
+        }
+      : undefined;
+
   return {
     autoIncluded: Array.from(autoIncludedMap.values()),
-    powerCord: {
-      qty: patch.powerCord?.qty ?? base.powerCord.qty,
-      byRegion: {
-        ...base.powerCord.byRegion,
-        ...patch.powerCord?.byRegion,
-      },
-    },
+    ...(mergedPowerCord ? { powerCord: mergedPowerCord } : {}),
     redundantPsu: patch.redundantPsu ?? base.redundantPsu,
     smartnet: {
       baseSkuByTier: {
@@ -427,7 +423,7 @@ function mergeBundles(base: ChassisBundle, patch: ChassisBundle): ChassisBundle 
       },
     },
     stacking: patch.stacking ?? base.stacking,
-  };
+  } as ChassisBundle;   // ⭐ cast — the structure is correct, TS is over-strict on the record
 }
 
 // ============================================================
@@ -565,4 +561,49 @@ export function getDefaultStackingCable(seriesName: string): string | null {
 
 export function getDefaultStackPowerCable(seriesName: string): string | null {
   return _getDefaultStackPowerCable(seriesName);
+}
+
+// ============================================================
+// MULTI-CATEGORY ACCESS
+// ============================================================
+
+/**
+ * A series of any category — switch, AP, (future) firewall, router.
+ * Discriminated by `productCategory`.
+ */
+export type AnySeries = SwitchSeries | APSeries;
+
+/**
+ * Type guards — safely narrow AnySeries to a specific kind.
+ */
+export function isSwitchSeries(s: AnySeries): s is SwitchSeries {
+  return (
+    s.productCategory === "modular-switch" ||
+    s.productCategory === "fixed-switch"
+  );
+}
+
+export function isAPSeries(s: AnySeries): s is APSeries {
+  return s.productCategory === "wireless-ap";
+}
+
+/**
+ * Returns the entire catalog across all categories.
+ *
+ * - Includes switching (with overrides applied via getEffectiveCatalog)
+ * - Includes wireless APs
+ * - Future: security, routing, management
+ *
+ * Use this for category-aware UI (catalog panel tabs, filters,
+ * cross-category search). For switching-specific operations
+ * (stacking, slot layouts), use getEffectiveCatalog directly.
+ */
+export function getFullCatalog(): Record<string, AnySeries> {
+  return {
+    ...getEffectiveCatalog(),
+    ...getWirelessSeries(),
+    // Future:
+    // ...getSecuritySeries(),
+    // ...getRoutingSeries(),
+  };
 }

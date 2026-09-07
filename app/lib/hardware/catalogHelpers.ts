@@ -5,12 +5,16 @@ import type {
   SwitchProductSKU,
 } from "./types";
 import { getEffectiveCatalog } from "./catalog";
+import {
+  getFullCatalog,             // ⭐ changed from getEffectiveCatalog
+  type AnySeries,
+} from "./catalog";
 
 /** Returns only series matching a UI category. */
 export function getSeriesByCategory(
   category: DeviceCategory,
 ): Record<string, SwitchSeries> {
-  const catalog = getEffectiveCatalog();
+  const catalog = getFullCatalog();
   return Object.fromEntries(
     Object.entries(catalog).filter(([, s]) => s.category === category),
   );

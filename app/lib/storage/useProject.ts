@@ -73,7 +73,6 @@ export function useProject() {
   const projectRef = useRef<Project | null>(null);
   useEffect(() => {
     projectRef.current = project;
-    console.log("[REF SYNC]", project?.topology.devices ?? 0);
   });
   const getCurrentDevices = useCallback(
     (): ConfiguredDevice[] => projectRef.current?.topology.devices ?? [],
@@ -477,12 +476,6 @@ export function useProject() {
         deviceIds.includes(d.id),
       );
 
-      console.log("[STACK ENTRY]", {
-        deviceIds,
-        refLen: currentDevices.length,
-        matched: earlyMembers.map((d) => d.id),
-      });
-
       if (earlyMembers.length < 2) {
         alert(
           `Stack requires at least 2 devices.\n\n` +
@@ -640,8 +633,7 @@ export function useProject() {
 
   // ----- Setters -----
   const setDevices = useCallback((devices: ConfiguredDevice[]) => {
-     console.log("[setDevices] called with", devices.length, "devices",
-    devices.map(d => d.id)); 
+   
     setProject((p) => {
       if (!p) return p;
       // 🔍 DIAGNOSTIC
